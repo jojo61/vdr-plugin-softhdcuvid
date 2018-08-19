@@ -21,7 +21,7 @@ GNU Affero General Public License for more details.
 
 $Id: 5267da021a68b4a727b479417334bfbe67bbba14 $
 
-A software and GPU emulated HD output device plugin for VDR.
+A software and GPU emulated UHD output device plugin for VDR.
 
     o Video decoder CPU / VDPAU
     o Video output opengl
@@ -45,7 +45,7 @@ Currently I have tested it with a GTX 1050 from NVIDIA. HD and UHD ist working, 
 
 Current Status NVIDA:
 The CUDA driver supports HEVC with 8 Bit and 10 Bit up to UHD resolution. Opengl is able to output also 10 Bit, but NVIDIA does not support to output 10 Bit via HDMI.
-Only via DisplayPort you can get 10 Bit output to a ompatible screen. Thias is a restriction from NVIDIA.
+Only via DisplayPort you can get 10 Bit output to a ompatible screen. This is a restriction from NVIDIA.
 
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0 
