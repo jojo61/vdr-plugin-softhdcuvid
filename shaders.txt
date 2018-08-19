@@ -1,0 +1,92 @@
+Pro 7 1080i
+
+[vo/opengl] [  1] color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;
+[vo/opengl] [  2] color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg;
+[vo/opengl] [  3] // color conversion
+[vo/opengl] [  4] color.rgb = mat3(colormatrix) * color.rgb + colormatrix_c;
+[vo/opengl] [  5] color.a = 1.0;
+[vo/opengl] [  6] // color mapping
+
+UHD 10 Bit
+[vo/opengl] [  1] color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;
+[vo/opengl] [  2] color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;
+[vo/opengl] [  3] // color conversion
+[vo/opengl] [  4] color.rgb = mat3(colormatrix) * color.rgb + colormatrix_c;
+[vo/opengl] [  5] color.a = 1.0;
+[vo/opengl] [  6] // color mapping
+
+
+HEVC 8 Bit
+[vo/opengl] [  1] color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;
+[vo/opengl] [  2] color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;
+[vo/opengl] [  3] // color conversion
+[vo/opengl] [  4] color.rgb = mat3(colormatrix) * color.rgb + colormatrix_c;
+[vo/opengl] [  5] color.a = 1.0;
+[vo/opengl] [  6] // color mapping
+
+ZDF 720p
+[vo/opengl] [  1] color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;
+[vo/opengl] [  2] color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg;
+[vo/opengl] [  3] // color conversion
+[vo/opengl] [  4] color.rgb = mat3(colormatrix) * color.rgb + colormatrix_c;
+[vo/opengl] [  5] color.a = 1.0;
+[vo/opengl] [  6] // color mapping
+
+VERTEX
+#version 330
+in vec2 vertex_position;
+in vec2 vertex_texcoord0;
+out vec2 texcoord0;
+in vec2 vertex_texcoord1;
+out vec2 texcoord1;
+in vec2 vertex_texcoord2;
+out vec2 texcoord2;
+in vec2 vertex_texcoord3;
+out vec2 texcoord3;
+in vec2 vertex_texcoord4;
+out vec2 texcoord4;
+in vec2 vertex_texcoord5;
+out vec2 texcoord5;
+void main() {
+gl_Position = vec4(vertex_position, 1.0, 1.0);
+texcoord0 = vertex_texcoord0;
+texcoord1 = vertex_texcoord1;
+texcoord2 = vertex_texcoord2;
+texcoord3 = vertex_texcoord3;
+texcoord4 = vertex_texcoord4;
+texcoord5 = vertex_texcoord5;
+}
+
+FRAGMENT
+#version 330
+#define texture1D texture
+#define texture3D texture
+out vec4 out_color;
+in vec2 texcoord0;
+in vec2 texcoord1;
+in vec2 texcoord2;
+in vec2 texcoord3;
+in vec2 texcoord4;
+in vec2 texcoord5;
+uniform mat3 colormatrix;
+uniform vec3 colormatrix_c;
+uniform sampler2D texture0;
+uniform vec2 texture_size0;
+uniform mat2 texture_rot0;
+uniform vec2 pixel_size0;
+uniform sampler2D texture1;
+uniform vec2 texture_size1;
+uniform mat2 texture_rot1;
+uniform vec2 pixel_size1;
+#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))
+void main() {
+vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;
+color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg;
+// color conversion
+color.rgb = mat3(colormatrix) * color.rgb + colormatrix_c;
+color.a = 1.0;
+// color mapping
+out_color = color;
+}
+
