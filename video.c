@@ -3056,9 +3056,9 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
 				// keep use of last surface
 				++decoder->FramesDuped;
 				// FIXME: don't warn after stream start, don't warn during pause
-				printf("video: display buffer empty, duping frame (%d/%d) %d\n",
-				decoder->FramesDuped, decoder->FrameCounter,
-				VideoGetBuffers(decoder->Stream));
+//				printf("video: display buffer empty, duping frame (%d/%d) %d\n",
+//				decoder->FramesDuped, decoder->FrameCounter,
+//				VideoGetBuffers(decoder->Stream));
 				return;
 			}
 			decoder->SurfaceRead = (decoder->SurfaceRead + 1) % VIDEO_SURFACES_MAX;
