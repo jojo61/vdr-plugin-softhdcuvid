@@ -2690,12 +2690,9 @@ void StillPicture(const uint8_t * data, int size)
 #endif
     VideoSetTrickSpeed(MyVideoStream->HwDecoder, 1);
     VideoResetPacket(MyVideoStream);
-    old_video_hardware_decoder = VideoHardwareDecoder;
-    // enable/disable hardware decoder for still picture
-    if (VideoHardwareDecoder != ConfigStillDecoder) {
-	VideoHardwareDecoder = ConfigStillDecoder;
+
 	VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
-    }
+
 
     if (MyVideoStream->CodecID == AV_CODEC_ID_NONE) {
 	// FIXME: should detect codec, see PlayVideo
@@ -2706,60 +2703,59 @@ void StillPicture(const uint8_t * data, int size)
 #ifdef STILL_DEBUG
     fprintf(stderr, "still-picture\n");
 #endif
-    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 3 : 4);
-	++i) {
-	const uint8_t *split;
-	int n;
+    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 8 : 10);	++i) {
+		const uint8_t *split;
+		int n;
 
-	// FIXME: vdr pes recordings sends mixed audio/video
-	if ((data[3] & 0xF0) == 0xE0) {	// PES packet
-	    split = data;
-	    n = size;
-	    // split the I-frame into single pes packets
-	    do {
-		int len;
+		// FIXME: vdr pes recordings sends mixed audio/video
+		if ((data[3] & 0xF0) == 0xE0) {	// PES packet
+			split = data;
+			n = size;
+			// split the I-frame into single pes packets
+			do {
+			int len;
 
 #ifdef DEBUG
-		if (split[0] || split[1] || split[2] != 0x01) {
-		    Error(_("[softhddev] invalid still video packet\n"));
-		    break;
-		}
+			if (split[0] || split[1] || split[2] != 0x01) {
+				Error(_("[softhddev] invalid still video packet\n"));
+				break;
+			}
 #endif
 
-		len = (split[4] << 8) + split[5];
-		if (!len || len + 6 > n) {
-		    if ((split[3] & 0xF0) == 0xE0) {
-			// video only
-			while (!PlayVideo3(MyVideoStream, split, n)) {	// feed remaining bytes
+			len = (split[4] << 8) + split[5];
+			if (!len || len + 6 > n) {
+				if ((split[3] & 0xF0) == 0xE0) {
+				// video only
+				while (!PlayVideo3(MyVideoStream, split, n)) {	// feed remaining bytes
+				}
+				}
+				break;
 			}
-		    }
-		    break;
-		}
-		if ((split[3] & 0xF0) == 0xE0) {
-		    // video only
-		    while (!PlayVideo3(MyVideoStream, split, len + 6)) {	// feed it
-		    }
-		}
-		split += 6 + len;
-		n -= 6 + len;
-	    } while (n > 6);
+			if ((split[3] & 0xF0) == 0xE0) {
+				// video only
+				while (!PlayVideo3(MyVideoStream, split, len + 6)) {	// feed it
+				}
+			}
+			split += 6 + len;
+			n -= 6 + len;
+			} while (n > 6);
 
-	    VideoNextPacket(MyVideoStream, MyVideoStream->CodecID);	// terminate last packet
-	} else {			// ES packet
-	    if (MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
-		VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
-		MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
-	    }
-	    VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE,AV_NOPTS_VALUE, data, size);
-	}
-	if (MyVideoStream->CodecID == AV_CODEC_ID_H264) {
-	    VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE,seq_end_h264,sizeof(seq_end_h264));
-	} else if (MyVideoStream->CodecID == AV_CODEC_ID_HEVC) {
-	    VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE,seq_end_h265,sizeof(seq_end_h265));
-	} else {
-	    VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE, seq_end_mpeg, sizeof(seq_end_mpeg));
-	}
-	VideoNextPacket(MyVideoStream, MyVideoStream->CodecID);	// terminate last packet
+			VideoNextPacket(MyVideoStream, MyVideoStream->CodecID);	// terminate last packet
+		} else {			// ES packet
+			if (MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
+			VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
+			MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
+			}
+			VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE,AV_NOPTS_VALUE, data, size);
+		}
+		if (MyVideoStream->CodecID == AV_CODEC_ID_H264) {
+			VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE,seq_end_h264,sizeof(seq_end_h264));
+		} else if (MyVideoStream->CodecID == AV_CODEC_ID_HEVC) {
+			VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE,seq_end_h265,sizeof(seq_end_h265));
+		} else {
+			VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE, AV_NOPTS_VALUE, seq_end_mpeg, sizeof(seq_end_mpeg));
+		}
+		VideoNextPacket(MyVideoStream, MyVideoStream->CodecID);	// terminate last packet
     }
 
     // wait for empty buffers
@@ -2771,10 +2767,9 @@ void StillPicture(const uint8_t * data, int size)
 #ifdef STILL_DEBUG
     InStillPicture = 0;
 #endif
-    if (VideoHardwareDecoder != old_video_hardware_decoder) {
-		VideoHardwareDecoder = old_video_hardware_decoder;
-		VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
-    }
+
+	VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
+
     VideoSetTrickSpeed(MyVideoStream->HwDecoder, 0);
 }
 

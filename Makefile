@@ -124,11 +124,11 @@ CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu)
 LIBS += $(shell pkg-config --libs gl glu)
 endif
-ifeq ($(SCREENSAVER),1)
-CONFIG += -DUSE_SCREENSAVER
-_CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
-LIBS += $(shell pkg-config --libs xcb-screensaver xcb-dpms)
-endif
+#ifeq ($(SCREENSAVER),1)
+#CONFIG += -DUSE_SCREENSAVER
+#_CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
+#LIBS += $(shell pkg-config --libs xcb-screensaver xcb-dpms)
+#endif
 ifeq ($(SWRESAMPLE),1)
 CONFIG += -DUSE_SWRESAMPLE
 #_CFLAGS += $(shell pkg-config --cflags libswresample)
@@ -151,7 +151,11 @@ _CFLAGS += -I/usr/include/libavresample
 #LIBS += -lavresample
 _CFLAGS += -I/usr/include/libswresample
 _CFLAGS += -I./opengl -I./ -std=c99 -Wdeclaration-after-statement
-LIBS += -lavutil -lswresample -lswscale  -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda-8.0/targets/x86_64-linux/lib -lcudart  -lnvcuvid  
+
+LIBS += -L/usr/lib64/opengl/nvidia/lib
+LIBS += -L/usr/local/cuda/lib64
+
+LIBS += -lavutil -lswresample -lswscale  -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart  -lnvcuvid  
 
 ### Includes and Defines (add further entries here):
 

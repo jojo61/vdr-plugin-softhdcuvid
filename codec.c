@@ -269,7 +269,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	int ret;
 
 
-    Debug(3, "codec: using video codec ID %#06x (%s)\n", codec_id,
+    Debug(3, "***************codec: Video Open using video codec ID %#06x (%s)\n", codec_id,
 	avcodec_get_name(codec_id));
 
     if (decoder->VideoCtx) {
@@ -316,12 +316,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     
     if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {
   	  pthread_mutex_unlock(&CodecLockMutex);
-	  Fatal(_("codec: can't set options to video codec!\n"));
+	  Fatal(_("codec: can't set option deint to video codec!\n"));
     }
 
     if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
   	  pthread_mutex_unlock(&CodecLockMutex);
-	  Fatal(_("codec: can't set options to video codec!\n"));
+	  Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));
     }
 
 
@@ -457,7 +457,6 @@ next_part:
 	
 	if (ret1 >= 0) {
 		consumed = 1;
-//		return;
 	}		
 	if (ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) {  // decoder is full 
 		ret = 0;

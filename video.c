@@ -1185,7 +1185,7 @@ int redSize, greenSize, blueSize;
 glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_RED_SIZE, &redSize); 
 glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_GREEN_SIZE, &greenSize); 
 glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize); 
-printf("RGB size %d:%d:%d\n",redSize, greenSize, blueSize); 
+//printf("RGB size %d:%d:%d\n",redSize, greenSize, blueSize); 
 	
 	
 	
@@ -1200,7 +1200,7 @@ printf("RGB size %d:%d:%d\n",redSize, greenSize, blueSize);
 		GlxEnabled = 0;
 		return;
     }
-printf("bits per RGB %d\n",vi->bits_per_rgb);
+//printf("bits per RGB %d\n",vi->bits_per_rgb);
     if (vi->bits_per_rgb < 8) {
 		Error(_("video/glx: need atleast 8-bits per RGB\n"));
 		GlxEnabled = 0;
