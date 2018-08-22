@@ -3370,7 +3370,7 @@ void Suspend(int video, int audio, int dox11)
 void Resume(void)
 {
     if (!MyVideoStream->SkipStream && !SkipAudio) {	// we are not suspended
-	return;
+		return;
     }
 
     Debug(3, "[softhddev]%s:\n", __FUNCTION__);
@@ -3379,19 +3379,19 @@ void Resume(void)
     // FIXME: start x11
 
     if (!MyVideoStream->HwDecoder) {	// video not running
-	StartVideo();
+		StartVideo();
     }
-    if (!MyAudioDecoder) {		// audio not running
-	// StartAudio();
-	AudioInit();
-	av_new_packet(AudioAvPkt, AUDIO_BUFFER_SIZE);
-	MyAudioDecoder = CodecAudioNewDecoder();
-	AudioCodecID = AV_CODEC_ID_NONE;
-	AudioChannelID = -1;
+	if (!MyAudioDecoder) {		// audio not running
+		// StartAudio();
+		AudioInit();
+		av_new_packet(AudioAvPkt, AUDIO_BUFFER_SIZE);
+		MyAudioDecoder = CodecAudioNewDecoder();
+		AudioCodecID = AV_CODEC_ID_NONE;
+		AudioChannelID = -1;
     }
 
     if (MyVideoStream->Decoder) {
-	MyVideoStream->SkipStream = 0;
+		MyVideoStream->SkipStream = 0;
     }
     SkipAudio = 0;
 

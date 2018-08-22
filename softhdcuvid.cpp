@@ -905,7 +905,7 @@ void cMenuSetupSoft::Create(void)
 		&Video4to3DisplayFormat, 3, video_display_formats_4_3));
 	Add(new cMenuEditStraItem(trVDR("16:9+other video display format"),
 		&VideoOtherDisplayFormat, 3, video_display_formats_16_9));
-
+#if 0
 	// FIXME: switch config gray/color configuration
 	Add(new cMenuEditIntItem(tr("Video background color (RGB)"),
 		(int *)&Background, 0, 0x00FFFFFF));
@@ -915,13 +915,14 @@ void cMenuSetupSoft::Create(void)
 		&StudioLevels, trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode,
 		trVDR("no"), trVDR("yes")));
+#endif
 	Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync,
 		trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Black during channel switch"),
 		&BlackPicture, trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Clear decoder on channel switch"),
 		&ClearOnSwitch, trVDR("no"), trVDR("yes")));
-
+#if 0
 	Add(new cMenuEditIntItem(tr("Brightness (-1000..1000) (vdpau)"),
 		&Brightness, -1000, 1000, tr("min"), tr("max")));
 	Add(new cMenuEditIntItem(tr("Contrast (0..10000) (vdpau)"), &Contrast,
@@ -973,6 +974,7 @@ void cMenuSetupSoft::Create(void)
 		&AutoCropDelay, 0, 200));
 	Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"),
 		&AutoCropTolerance, 0, 32));
+#endif
     }
     //
     //	audio

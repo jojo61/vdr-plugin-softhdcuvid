@@ -15,15 +15,9 @@ PLUGIN = softhdcuvid
 ALSA ?= $(shell pkg-config --exists alsa && echo 1)
     # support OSS audio output module
 OSS ?= 1
-    # support VDPAU video output module
-VDPAU ?= $(shell pkg-config --exists vdpau && echo 1)
-    # support VA-API video output module (deprecated)
-VAAPI ?= $(shell pkg-config --exists libva && echo 1)
     # support glx output
-OPENGL ?= $(shell pkg-config --exists gl glu && echo 1)
-#OPENGL = 0
-    # screensaver disable/enable
-SCREENSAVER ?= 1
+OPENGL=1
+
     # use ffmpeg libswresample
 #SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
 SWRESAMPLE = 1
@@ -33,7 +27,7 @@ AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1)
 AVRESAMPLE = 0
 endif
 
-CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
+CONFIG :=  -DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DCUVID			# enable CUVID decoder
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
@@ -105,25 +99,58 @@ endif
 ifeq ($(OSS),1)
 CONFIG += -DUSE_OSS
 endif
-ifeq ($(VDPAU),1)
-CONFIG += -DUSE_VDPAU
-_CFLAGS += $(shell pkg-config --cflags vdpau)
-LIBS += $(shell pkg-config --libs vdpau)
-endif
-ifeq ($(VAAPI),1)
-CONFIG += -DUSE_VAAPI
-_CFLAGS += $(shell pkg-config --cflags libva-x11 libva)
-LIBS += $(shell pkg-config --libs libva-x11 libva)
 ifeq ($(OPENGL),1)
 _CFLAGS += $(shell pkg-config --cflags libva-glx)
 LIBS += $(shell pkg-config --libs libva-glx)
 endif
-endif
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
-_CFLAGS += $(shell pkg-config --cflags gl glu)
-LIBS += $(shell pkg-config --libs gl glu)
+_CFLAGS += $(shell pkg-config --cflags gl glu glew)
+LIBS += $(shell pkg-config --libs gl glu glew)
 endif
+#
+# Test that libswresample is available 
+#
+ifneq (exists, $(shell pkg-config libswresample && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'libswresample' not found!)
+  $(error ******************************************************************)
+endif
+
+#
+# Test and set config for libavutil 
+#
+ifneq (exists, $(shell pkg-config libavutil && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'libavutil' not found!)
+  $(error ******************************************************************)
+endif
+_CFLAGS += $(shell pkg-config --cflags libavutil)
+LIBS += $(shell pkg-config --libs libavutil)
+
+#
+# Test and set config for libswscale 
+#
+ifneq (exists, $(shell pkg-config libswscale && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'libswscale' not found!)
+  $(error ******************************************************************)
+endif
+_CFLAGS += $(shell pkg-config --cflags libswscale)
+LIBS += $(shell pkg-config --libs libswscale)
+
+#
+# Test and set config for libavcodec
+#
+ifneq (exists, $(shell pkg-config libavcodec && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'libavcodec' not found!)
+  $(error ******************************************************************)
+endif
+_CFLAGS += $(shell pkg-config --cflags libavcodec)
+LIBS += $(shell pkg-config --libs libavcodec)
+
+
 #ifeq ($(SCREENSAVER),1)
 #CONFIG += -DUSE_SCREENSAVER
 #_CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
@@ -131,8 +158,8 @@ endif
 #endif
 ifeq ($(SWRESAMPLE),1)
 CONFIG += -DUSE_SWRESAMPLE
-#_CFLAGS += $(shell pkg-config --cflags libswresample)
-#LIBS += $(shell pkg-config --libs libswresample)
+_CFLAGS += $(shell pkg-config --cflags libswresample)
+LIBS += $(shell pkg-config --libs libswresample)
 endif
 #ifeq ($(AVRESAMPLE),1)
 #CONFIG += -DUSE_AVRESAMPLE
@@ -145,18 +172,13 @@ endif
 _CFLAGS += $(shell pkg-config --cflags  x11 x11-xcb xcb xcb-icccm)
 LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
 
-_CFLAGS += -I/usr/include/libavcodec   -I/usr/local/cuda/include -std=c99
-LIBS += -lavcodec
-_CFLAGS += -I/usr/include/libavresample
-#LIBS += -lavresample
-_CFLAGS += -I/usr/include/libswresample
-_CFLAGS += -I./opengl -I./ -std=c99 -Wdeclaration-after-statement
+_CFLAGS += -I/usr/local/cuda/include 
+_CFLAGS += -I./opengl -I./
 
 LIBS += -L/usr/lib64/opengl/nvidia/lib
 LIBS += -L/usr/local/cuda/lib64
 
-LIBS += -lavutil -lswresample -lswscale  -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart  -lnvcuvid  
-
+LIBS += -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid 
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=

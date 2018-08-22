@@ -324,7 +324,7 @@ typedef struct {
 
 char VideoIgnoreRepeatPict;		///< disable repeat pict warning
 
-static const char *VideoDriverName;	///< video output device
+static const char *VideoDriverName="cuvid";	///< video output device
 static Display *XlibDisplay;		///< Xlib X11 display
 static xcb_connection_t *Connection;	///< xcb connection
 static xcb_colormap_t VideoColormap;	///< video colormap
@@ -1088,17 +1088,29 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 ///
 static void GlxInit(void)
 {
-    static GLint visual_attr[] = {
-	GLX_RGBA,
-	GLX_RED_SIZE, 8,
-	GLX_GREEN_SIZE, 8,
-	GLX_BLUE_SIZE, 8,
-#ifdef USE_DOUBLEBUFFER
-	GLX_DOUBLEBUFFER,
-#endif
-	None
-    };
+
     XVisualInfo *vi;
+		//The desired 30-bit color visual
+	int attributeList10[] = { 
+		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, 
+		GLX_RENDER_TYPE,   GLX_RGBA_BIT, 
+		GLX_DOUBLEBUFFER,  True,  
+		GLX_RED_SIZE,      10,   /*10bits for R */ 
+		GLX_GREEN_SIZE,    10,   /*10bits for G */ 
+		GLX_BLUE_SIZE,     10,   /*10bits for B */ 
+		None 
+	}; 
+		int attributeList[] = { 
+		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, 
+		GLX_RENDER_TYPE,   GLX_RGBA_BIT, 
+		GLX_DOUBLEBUFFER,  True,  
+		GLX_RED_SIZE,      8,   /*8 bits for R */ 
+		GLX_GREEN_SIZE,    8,   /*8 bits for G */ 
+		GLX_BLUE_SIZE,     8,   /*8 bits for B */ 
+		None 
+	}; 
+	int fbcount; 
+	
     GLXContext context;
     int major;
     int minor;
@@ -1146,52 +1158,29 @@ static void GlxInit(void)
 #endif
     // glXGetVideoSyncSGI glXWaitVideoSyncSGI
 
-#if 0
-    // FIXME: use xcb: xcb_glx_create_context
-#endif
+
 
     // create glx context
     glXMakeCurrent(XlibDisplay, None, NULL);
 	
-	//The desired 30-bit color visual
-int attributeList10[] = { 
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, 
-    GLX_RENDER_TYPE,   GLX_RGBA_BIT, 
-    GLX_DOUBLEBUFFER,  True,  
-    GLX_RED_SIZE,      8,   /*10bits for R */ 
-    GLX_GREEN_SIZE,    8,   /*10bits for G */ 
-    GLX_BLUE_SIZE,     8,   /*10bits for B */ 
-    None 
-}; 
-	int attributeList[] = { 
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, 
-    GLX_RENDER_TYPE,   GLX_RGBA_BIT, 
-    GLX_DOUBLEBUFFER,  True,  
-    GLX_RED_SIZE,      8,   /*10bits for R */ 
-    GLX_GREEN_SIZE,    8,   /*10bits for G */ 
-    GLX_BLUE_SIZE,     8,   /*10bits for B */ 
-    None 
-}; 
-int fbcount; 
-GLXFBConfig *fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList10,&fbcount);        
-if (!fbc) { 
-	GLXFBConfig *fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList,&fbcount);
-	if (!fbc)
-		Fatal(_("did not get FBconfig"));
-} 
-XVisualInfo *vis = glXGetVisualFromFBConfig(XlibDisplay, fbc[0]); 
-//Make sure we have 10bit Red, Green and Blue 
-int redSize, greenSize, blueSize;
-glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_RED_SIZE, &redSize); 
-glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_GREEN_SIZE, &greenSize); 
-glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize); 
-//printf("RGB size %d:%d:%d\n",redSize, greenSize, blueSize); 
+	GLXFBConfig *fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList10,&fbcount);   // try 10 Bit 
+	if (fbc==NULL) { 
+		fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList,&fbcount); // fall back to 8 Bit
+		if (fbc==NULL)
+			Fatal(_("did not get FBconfig"));
+	}
+
+	vi = glXGetVisualFromFBConfig(XlibDisplay, fbc[0]); 
 	
+
+	int redSize, greenSize, blueSize;
+	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_RED_SIZE, &redSize); 
+	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_GREEN_SIZE, &greenSize); 
+	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize); 
+	Debug(3,"RGB size %d:%d:%d\n",redSize, greenSize, blueSize); 
 	
-	
-    vi = glXChooseVisual(XlibDisplay, DefaultScreen(XlibDisplay), visual_attr);
     if (!vi) {
-		Error(_("video/glx: can't get a RGB visual\n"));
+		Fatal(_("video/glx: can't get a RGB visual\n"));
 		GlxEnabled = 0;
 		return;
     }
@@ -1200,7 +1189,6 @@ glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize);
 		GlxEnabled = 0;
 		return;
     }
-//printf("bits per RGB %d\n",vi->bits_per_rgb);
     if (vi->bits_per_rgb < 8) {
 		Error(_("video/glx: need atleast 8-bits per RGB\n"));
 		GlxEnabled = 0;
@@ -1310,6 +1298,7 @@ static void GlxExit(void)
     }
     if (GlxSharedContext) {
 		glXDestroyContext(XlibDisplay, GlxSharedContext);
+		GlxSharedContext=0;
     }
     if (GlxContext) {
 		glXDestroyContext(XlibDisplay, GlxContext);
@@ -2059,9 +2048,12 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	
     int n,i;
     CUcontext dummy;
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+	GlxCheck();
 	
     glGenBuffers(1,&vao_buffer);
-
+	GlxCheck();
+	
     if (decoder->cuda_ctx)
        checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));
 	
@@ -3947,11 +3939,11 @@ void VideoSetOsd3DMode(int mode)
 void VideoOsdInit(void)
 {
     if (OsdConfigWidth && OsdConfigHeight) {
-	OsdWidth = OsdConfigWidth;
-	OsdHeight = OsdConfigHeight;
+		OsdWidth = OsdConfigWidth;
+		OsdHeight = OsdConfigHeight;
     } else {
-	OsdWidth = VideoWindowWidth;
-	OsdHeight = VideoWindowHeight;
+		OsdWidth = VideoWindowWidth;
+		OsdHeight = VideoWindowHeight;
     }
 
     VideoThreadLock();
@@ -4174,7 +4166,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 {
 	prctl(PR_SET_NAME,"cuvid video",0,0,0);
 	
-#ifdef USE_GLX
+
     if (GlxEnabled) {
 		Debug(3, "video/glx: thread context %p <-> %p\n",glXGetCurrentContext(), GlxThreadContext);
 		Debug(3, "video/glx: context %p <-> %p\n", glXGetCurrentContext(),GlxContext);
@@ -4187,7 +4179,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 		// set glx context
 		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, GlxThreadContext);
     }
-#endif
+
 
     for (;;) {
 	// fix dead-lock with CuvidExit
@@ -4207,9 +4199,9 @@ static void *VideoDisplayHandlerThread(void *dummy)
 ///
 static void VideoThreadInit(void)
 {
-#ifdef USE_GLX
+
     glXMakeCurrent(XlibDisplay, None, NULL);
-#endif
+
     pthread_mutex_init(&VideoMutex, NULL);
     pthread_mutex_init(&VideoLockMutex, NULL);
     pthread_cond_init(&VideoWakeupCond, NULL);
@@ -4250,11 +4242,11 @@ static void VideoThreadExit(void)
 void VideoDisplayWakeup(void)
 {
     if (!XlibDisplay) {			// not yet started
-	return;
+		return;
     }
 
     if (!VideoThread) {			// start video thread, if needed
-	VideoThreadInit();
+		VideoThreadInit();
     }
 }
 
@@ -4313,14 +4305,14 @@ void VideoDelHwDecoder(VideoHwDecoder * hw_decoder)
 {
     if (hw_decoder) {
 #ifdef DEBUG
-	if (!pthread_equal(pthread_self(), VideoThread)) {
-	    Debug(3, "video: should only be called from inside the thread\n");
-	}
+		if (!pthread_equal(pthread_self(), VideoThread)) {
+			Debug(3, "video: should only be called from inside the thread\n");
+		}
 #endif
-	// only called from inside the thread
-	//VideoThreadLock();
-	VideoUsedModule->DelHwDecoder(hw_decoder);
-	//VideoThreadUnlock();
+		// only called from inside the thread
+		//VideoThreadLock();
+		VideoUsedModule->DelHwDecoder(hw_decoder);
+		//VideoThreadUnlock();
     }
 }
 
@@ -5571,16 +5563,18 @@ void VideoExit(void)
 
     VideoUsedModule->Exit();
     VideoUsedModule = &NoopModule;
-#ifdef USE_GLX
-    if (GlxEnabled) {
-		GlxExit();
-    }
-#endif
+
+	
 #ifdef USE_VIDEO_THREAD
     VideoThreadExit();
     // CUVID cleanup hangs in XLockDisplay every 100 exits
     // XUnlockDisplay(XlibDisplay);
     // xcb_flush(Connection);
+#endif
+#ifdef USE_GLX
+    if (GlxEnabled) {
+		GlxExit();
+    }
 #endif
     //
     //	FIXME: cleanup.
@@ -5590,7 +5584,7 @@ void VideoExit(void)
     //
     //	X11/xcb cleanup
     //
-    if (VideoWindow != XCB_NONE) {
+	if (VideoWindow != XCB_NONE) {
 		xcb_destroy_window(Connection, VideoWindow);
 		VideoWindow = XCB_NONE;
     }
@@ -5614,6 +5608,7 @@ void VideoExit(void)
 		XlibDisplay = NULL;
 		Connection = 0;
     }
+
 }
 
 
