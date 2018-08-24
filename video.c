@@ -446,6 +446,22 @@ static char DPMSDisabled;		///< flag we have disabled dpms
 static char EnableDPMSatBlackScreen;	///< flag we should enable dpms at black screen
 #endif
 
+static int GlxEnabled;			///< use GLX
+static int GlxVSyncEnabled = 1;		///< enable/disable v-sync
+static GLXContext GlxSharedContext;	///< shared gl context
+static GLXContext GlxContext;		///< our gl context
+
+#ifdef USE_VIDEO_THREAD
+static GLXContext GlxThreadContext;	///< our gl context for the thread
+#endif
+
+static XVisualInfo *GlxVisualInfo;	///< our gl visual
+
+static GLuint OsdGlTextures[2];		///< gl texture for OSD
+static int OsdIndex;			///< index into OsdGlTextures
+static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
+
+
 //----------------------------------------------------------------------------
 //	Common Functions
 //----------------------------------------------------------------------------
@@ -618,8 +634,8 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     *output_width  = (video_height * display_aspect_ratio.num + display_aspect_ratio.den ) / display_aspect_ratio.den;
     *output_height = (video_width  * display_aspect_ratio.den + display_aspect_ratio.num ) / display_aspect_ratio.num;
 // JOJO hier stimmt was nicht 
-	*output_width = video_width;
-	*output_height = video_height;
+//	*output_width = video_width;
+//	*output_height = video_height;
 
     if (*output_width > video_width) {
 		*output_width = video_width;
@@ -628,6 +644,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 		*output_height = video_height;
 		*output_x += (video_width - *output_width) / 2;
     }
+	
     Debug(3, "video: normal aspect output %dx%d%+d%+d Video %dx%d\n", *output_width, *output_height, *output_x, *output_y,video_width,video_height);
     return;
 
@@ -694,19 +711,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 
 #ifdef USE_GLX
 
-static int GlxEnabled;			///< use GLX
-static int GlxVSyncEnabled = 1;		///< enable/disable v-sync
-static GLXContext GlxSharedContext;	///< shared gl context
-static GLXContext GlxContext;		///< our gl context
 
-#ifdef USE_VIDEO_THREAD
-static GLXContext GlxThreadContext;	///< our gl context for the thread
-#endif
-
-static XVisualInfo *GlxVisualInfo;	///< our gl visual
-
-static GLuint OsdGlTextures[2];		///< gl texture for OSD
-static int OsdIndex;			///< index into OsdGlTextures
 
 ///
 ///	GLX extension functions
@@ -3072,7 +3077,8 @@ static void CuvidDisplayFrame(void)
 	static uint64_t last_time;
 	int i;
 	static unsigned int Count;
-
+	int filled;
+	CuvidDecoder *decoder;
 #if 0
 
 	//
@@ -3113,8 +3119,6 @@ static void CuvidDisplayFrame(void)
 	///
 
 	for (i = 0; i < CuvidDecoderN; ++i) {
-		int filled;
-		CuvidDecoder *decoder;
 
 		decoder = CuvidDecoders[i];
 		decoder->FramesDisplayed++;
@@ -3137,7 +3141,7 @@ static void CuvidDisplayFrame(void)
 	//
 	if (OsdShown) {
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], 0, 0, VideoWindowWidth, VideoWindowHeight);
+		GlxRenderTexture(OsdGlTextures[OsdIndex], decoder->OutputX, decoder->OutputY, decoder->OutputWidth, decoder->OutputHeight);
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
 		// FIXME: toggle osd
 	}
