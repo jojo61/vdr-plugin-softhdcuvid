@@ -313,16 +313,26 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
 
-    
-    if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {
-  	  pthread_mutex_unlock(&CodecLockMutex);
-	  Fatal(_("codec: can't set option deint to video codec!\n"));
-    }
-
-    if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
-  	  pthread_mutex_unlock(&CodecLockMutex);
-	  Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));
-    }
+	if (name && strcmp(name,"mpeg2_cuvid") == 0) {  // deinterlace for mpeg2 is somehow broken 
+			if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 0 ,0) < 0) {  // weave
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option deint to video codec!\n"));
+		}
+		if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option drop 2.field to video codec!\n"));
+		}
+	}
+	else {
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) { // adaptive
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option deint to video codec!\n"));
+		}
+		if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));
+		}
+	}
 
 
     if ((ret = avcodec_open2(decoder->VideoCtx, video_codec, NULL)) < 0) {
