@@ -599,23 +599,23 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
     const uint8_t *q;
 
     if (is_start) {			// start of pes packet
-	if (pesdx->Index && pesdx->Skip) {
-	    // copy remaining bytes down
-	    pesdx->Index -= pesdx->Skip;
-	    memmove(pesdx->Buffer, pesdx->Buffer + pesdx->Skip, pesdx->Index);
-	    pesdx->Skip = 0;
-	}
-	pesdx->State = PES_SYNC;
-	pesdx->HeaderIndex = 0;
-	pesdx->PTS = AV_NOPTS_VALUE;	// reset if not yet used
-	pesdx->DTS = AV_NOPTS_VALUE;
+		if (pesdx->Index && pesdx->Skip) {
+			// copy remaining bytes down
+			pesdx->Index -= pesdx->Skip;
+			memmove(pesdx->Buffer, pesdx->Buffer + pesdx->Skip, pesdx->Index);
+			pesdx->Skip = 0;
+		}
+		pesdx->State = PES_SYNC;
+		pesdx->HeaderIndex = 0;
+		pesdx->PTS = AV_NOPTS_VALUE;	// reset if not yet used
+		pesdx->DTS = AV_NOPTS_VALUE;
     }
     // cleanup, if too much cruft
     if (pesdx->Skip > PES_MAX_PAYLOAD / 2) {
-	// copy remaining bytes down
-	pesdx->Index -= pesdx->Skip;
-	memmove(pesdx->Buffer, pesdx->Buffer + pesdx->Skip, pesdx->Index);
-	pesdx->Skip = 0;
+		// copy remaining bytes down
+		pesdx->Index -= pesdx->Skip;
+		memmove(pesdx->Buffer, pesdx->Buffer + pesdx->Skip, pesdx->Index);
+		pesdx->Skip = 0;
     }
 
     p = data;
@@ -623,7 +623,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 	int n;
 
 	switch (pesdx->State) {
-	    case PES_SKIP:		// skip this packet
+	case PES_SKIP:		// skip this packet
 		return;
 
 	    case PES_START:		// at start of pes packet payload
@@ -644,7 +644,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		}
 #endif
 
-	    case PES_INIT:		// find start of audio packet
+	case PES_INIT:		// find start of audio packet
 		// FIXME: increase if needed the buffer
 
 		// fill buffer
@@ -731,7 +731,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		}
 		break;
 
-	    case PES_SYNC:		// wait for pes sync
+	case PES_SYNC:		// wait for pes sync
 		n = PES_START_CODE_SIZE - pesdx->HeaderIndex;
 		if (n > size) {
 		    n = size;
@@ -766,7 +766,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		}
 		break;
 
-	    case PES_HEADER:		// parse PES header
+	case PES_HEADER:		// parse PES header
 		n = pesdx->HeaderSize - pesdx->HeaderIndex;
 		if (n > size) {
 		    n = size;
@@ -779,13 +779,13 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		// have header upto size bits
 		if (pesdx->HeaderIndex == PES_HEADER_SIZE) {
 		    if ((pesdx->Header[6] & 0xC0) != 0x80) {
-			Error(_("pesdemux: mpeg1 pes packet unsupported\n"));
-			pesdx->State = PES_SKIP;
-			return;
+				Error(_("pesdemux: mpeg1 pes packet unsupported\n"));
+				pesdx->State = PES_SKIP;
+				return;
 		    }
 		    // have pes extension
 		    if (!pesdx->Header[8]) {
-			goto empty_header;
+				goto empty_header;
 		    }
 		    pesdx->HeaderSize += pesdx->Header[8];
 		    // have complete header
@@ -794,40 +794,37 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		    int64_t dts;
 
 		    if ((pesdx->Header[7] & 0xC0) == 0x80) {
-			pts =
-			    (int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 |
-			    (data[11] & 0xFE) << 14 | data[12] << 7 | (data[13]
-			    & 0xFE) >> 1;
-			Debug(4, "pesdemux: pts %#012" PRIx64 "\n", pts);
-			pesdx->PTS = pts;
+				pts =
+					(int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 |
+					(data[11] & 0xFE) << 14 | data[12] << 7 | (data[13]
+					& 0xFE) >> 1;
+				pesdx->PTS = pts;
+				pesdx->DTS = AV_NOPTS_VALUE;
 		    } else if ((pesdx->Header[7] & 0xC0) == 0xC0) {
-			pts =
-			    (int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 |
-			    (data[11] & 0xFE) << 14 | data[12] << 7 | (data[13]
-			    & 0xFE) >> 1;
-			pesdx->PTS = pts;
-			dts =
-			    (int64_t) (data[14] & 0x0E) << 29 | data[15] << 22
-			    | (data[16] & 0xFE) << 14 | data[17] << 7 |
-			    (data[18] & 0xFE) >> 1;
-			pesdx->DTS = dts;
-			Debug(4,
-			    "pesdemux: pts %#012" PRIx64 " %#012" PRIx64 "\n",
-			    pts, dts);
+				pts =
+					(int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 |
+					(data[11] & 0xFE) << 14 | data[12] << 7 | (data[13]
+					& 0xFE) >> 1;
+				pesdx->PTS = pts;
+				dts =
+					(int64_t) (data[14] & 0x0E) << 29 | data[15] << 22
+					| (data[16] & 0xFE) << 14 | data[17] << 7 |
+					(data[18] & 0xFE) >> 1;
+				pesdx->DTS = dts;
+				Debug(4,"pesdemux: pts %#012" PRIx64 " %#012" PRIx64 "\n", pts, dts);
 		    }
-
 		  empty_header:
 		    pesdx->State = PES_INIT;
 		    if (pesdx->StartCode == PES_PRIVATE_STREAM1) {
-			// only private stream 1, has sub streams
-			pesdx->State = PES_START;
+				// only private stream 1, has sub streams
+				pesdx->State = PES_START;
 		    }
 		}
 		break;
 
 #if 0
 		// Played with PlayAudio
-	    case PES_LPCM_HEADER:	// lpcm header
+	case PES_LPCM_HEADER:	// lpcm header
 		n = pesdx->HeaderSize - pesdx->HeaderIndex;
 		if (n > size) {
 		    n = size;
@@ -883,7 +880,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		}
 		break;
 
-	    case PES_LPCM_PAYLOAD:	// lpcm payload
+	case PES_LPCM_PAYLOAD:	// lpcm payload
 		// fill buffer
 		n = pesdx->Size - pesdx->Index;
 		if (n > size) {
@@ -1538,7 +1535,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
     const uint8_t *p;
     int n;
     int first;
-
+	
     // first scan
     first = !stream->PacketRb[stream->PacketWrite].stream_index;
     p = data;
@@ -1546,9 +1543,9 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 
 #ifdef DEBUG
     if (n < 4) {
-	// is a problem with the pes start code detection
-	Error(_("[softhddev] too short PES video packet\n"));
-	fprintf(stderr, "[softhddev] too short PES video packet\n");
+		// is a problem with the pes start code detection
+		Error(_("[softhddev] too short PES video packet\n"));
+		fprintf(stderr, "[softhddev] too short PES video packet\n");
     }
 #endif
 
@@ -1559,15 +1556,15 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (!p[0] || p[0] == 0xb3) {
 #ifdef DEBUG
-		fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
 #endif
-		stream->PacketRb[stream->PacketWrite].stream_index -= 3;
-		VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
-		VideoEnqueue(stream, pts, dts, startcode, 3);
-		first = p[0] == 0xb3;
-		p++;
-		n--;
-		pts = AV_NOPTS_VALUE;
+			stream->PacketRb[stream->PacketWrite].stream_index -= 3;
+			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
+			VideoEnqueue(stream, pts, dts, startcode, 3);
+			first = p[0] == 0xb3;
+			p++;
+			n--;
+			pts = AV_NOPTS_VALUE;
 	    }
 	    break;
 	case 2:			// 0x00 0x00 seen
@@ -1576,15 +1573,15 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (p[0] == 0x01 && (!p[1] || p[1] == 0xb3)) {
 #ifdef DEBUG
-		fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
 #endif
-		stream->PacketRb[stream->PacketWrite].stream_index -= 2;
-		VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
-		VideoEnqueue(stream, pts, dts, startcode, 2);
-		first = p[1] == 0xb3;
-		p += 2;
-		n -= 2;
-		pts = AV_NOPTS_VALUE;
+			stream->PacketRb[stream->PacketWrite].stream_index -= 2;
+			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
+			VideoEnqueue(stream, pts, dts, startcode, 2);
+			first = p[1] == 0xb3;
+			p += 2;
+			n -= 2;
+			pts = AV_NOPTS_VALUE;
 	    }
 	    break;
 	case 1:			// 0x00 seen
@@ -1593,15 +1590,15 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (!p[0] && p[1] == 0x01 && (!p[2] || p[2] == 0xb3)) {
 #ifdef DEBUG
-		fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
 #endif
-		stream->PacketRb[stream->PacketWrite].stream_index -= 1;
-		VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
-		VideoEnqueue(stream, pts, dts, startcode, 1);
-		first = p[2] == 0xb3;
-		p += 3;
-		n -= 3;
-		pts = AV_NOPTS_VALUE;
+			stream->PacketRb[stream->PacketWrite].stream_index -= 1;
+			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
+			VideoEnqueue(stream, pts, dts, startcode, 1);
+			first = p[2] == 0xb3;
+			p += 3;
+			n -= 3;
+			pts = AV_NOPTS_VALUE;
 	    }
 	case 0:
 	    break;
@@ -1610,40 +1607,40 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
     // b3 b4 b8 00 b5 ... 00 b5 ...
 
     while (n > 3) {
-	if (0 && !p[0] && !p[1] && p[2] == 0x01) {
-	    fprintf(stderr, " %02x", p[3]);
-	}
-	// scan for picture header 0x00000100
-	// FIXME: not perfect, must split at 0xb3 also
-	if (!p[0] && !p[1] && p[2] == 0x01 && !p[3]) {
-	    if (first) {
-		first = 0;
-		n -= 4;
-		p += 4;
-		continue;
-	    }
-	    // packet has already an picture header
-	    /*
-	       fprintf(stderr, "\nfix:%9d,%02x%02x%02x %02x ", n,
-	       p[0], p[1], p[2], p[3]);
-	     */
-	    // first packet goes only upto picture header
-	    VideoEnqueue(stream, pts, dts, data, p - data);
-	    VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
+		if (0 && !p[0] && !p[1] && p[2] == 0x01) {
+			fprintf(stderr, " %02x", p[3]);
+		}
+		// scan for picture header 0x00000100
+		// FIXME: not perfect, must split at 0xb3 also
+		if (!p[0] && !p[1] && p[2] == 0x01 && !p[3]) {
+			if (first) {
+			first = 0;
+			n -= 4;
+			p += 4;
+			continue;
+			}
+			// packet has already an picture header
+			/*
+			   fprintf(stderr, "\nfix:%9d,%02x%02x%02x %02x ", n,
+			   p[0], p[1], p[2], p[3]);
+			 */
+			// first packet goes only upto picture header
+			VideoEnqueue(stream, pts, dts, data, p - data);
+			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
 #ifdef DEBUG
-	    fprintf(stderr, "fix\r");
+			fprintf(stderr, "fix\r");
 #endif
-	    data = p;
-	    size = n;
+			data = p;
+			size = n;
 
-	    // time-stamp only valid for first packet
-	    pts = AV_NOPTS_VALUE;
-	    n -= 4;
-	    p += 4;
-	    continue;
-	}
-	--n;
-	++p;
+			// time-stamp only valid for first packet
+			pts = AV_NOPTS_VALUE;
+			n -= 4;
+			p += 4;
+			continue;
+		}
+		--n;
+		++p;
     }
 
     stream->StartCodeState = 0;
@@ -1669,7 +1666,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
     VideoEnqueue(stream, pts, dts, data, size);
 }
 
-#else
+#endif
 
 /**
 **	Fix packet for FFMpeg.
@@ -1700,41 +1697,41 @@ static void FixPacketForFFMpeg(VideoDecoder * vdecoder, AVPacket * avpkt)
     first = 1;
 #if STILL_DEBUG>1
     if (InStillPicture) {
-	fprintf(stderr, "fix(%d): ", n);
+		fprintf(stderr, "fix(%d): ", n);
     }
 #endif
 
     while (n > 3) {
 #if STILL_DEBUG>1
-	if (InStillPicture && !p[0] && !p[1] && p[2] == 0x01) {
-	    fprintf(stderr, " %02x", p[3]);
-	}
+		if (InStillPicture && !p[0] && !p[1] && p[2] == 0x01) {
+			fprintf(stderr, " %02x", p[3]);
+		}
 #endif
-	// scan for picture header 0x00000100
-	if (!p[0] && !p[1] && p[2] == 0x01 && !p[3]) {
-	    if (first) {
-		first = 0;
-		n -= 4;
-		p += 4;
-		continue;
-	    }
-	    // packet has already an picture header
-	    tmp->size = p - tmp->data;
+		// scan for picture header 0x00000100
+		if (!p[0] && !p[1] && p[2] == 0x01 && !p[3]) {
+			if (first) {
+				first = 0;
+				n -= 4;
+				p += 4;
+				continue;
+			}
+			// packet has already an picture header
+			tmp->size = p - tmp->data;
 #if STILL_DEBUG>1
-	    if (InStillPicture) {
-		fprintf(stderr, "\nfix:%9d,%02x %02x %02x %02x\n", tmp->size,
-		    tmp->data[0], tmp->data[1], tmp->data[2], tmp->data[3]);
-	    }
+			if (InStillPicture) {
+			fprintf(stderr, "\nfix:%9d,%02x %02x %02x %02x\n", tmp->size,
+				tmp->data[0], tmp->data[1], tmp->data[2], tmp->data[3]);
+			}
 #endif
-	    CodecVideoDecode(vdecoder, tmp);
-	    // time-stamp only valid for first packet
-	    tmp->pts = AV_NOPTS_VALUE;
-	    tmp->dts = AV_NOPTS_VALUE;
-	    tmp->data = p;
-	    tmp->size = n;
-	}
-	--n;
-	++p;
+			CodecVideoDecode(vdecoder, tmp);
+			// time-stamp only valid for first packet
+			tmp->pts = AV_NOPTS_VALUE;
+			tmp->dts = AV_NOPTS_VALUE;
+			tmp->data = p;
+			tmp->size = n;
+		}
+		--n;
+		++p;
     }
 
 #if STILL_DEBUG>1
@@ -1746,7 +1743,7 @@ static void FixPacketForFFMpeg(VideoDecoder * vdecoder, AVPacket * avpkt)
     CodecVideoDecode(vdecoder, tmp);
 }
 
-#endif
+
 
 /**
 **	Open video stream.
@@ -1971,7 +1968,7 @@ int VideoDecodeInput(VideoStream * stream)
     pthread_mutex_lock(&stream->DecoderLockMutex);
     if (stream->Decoder) {
 		CodecVideoDecode(stream->Decoder, avpkt);
-    }
+	}
     pthread_mutex_unlock(&stream->DecoderLockMutex);
     //fprintf(stderr, "]\n");
 #else
@@ -2251,8 +2248,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 
     // H264 NAL AUD Access Unit Delimiter (0x00) 0x00 0x00 0x01 0x09
     // and next start code
-    if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01
-	&& check[1] == 0x09 && !check[3] && !check[4]) {
+    if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01 && check[1] == 0x09 && !check[3] && !check[4]) {
 		// old PES HDTV recording z == 2 -> stronger check!
 		if (stream->CodecID == AV_CODEC_ID_H264) {
 #ifdef DUMP_TRICKSPEED
@@ -2298,8 +2294,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 		return size;
     }
      // HEVC Codec 
-    if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01
-         && check[1] == 0x46) {
+    if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01 && check[1] == 0x46) {
          // old PES HDTV recording z == 2 -> stronger check!
          if (stream->CodecID == AV_CODEC_ID_HEVC) {
              VideoNextPacket(stream, AV_CODEC_ID_HEVC);
@@ -2320,11 +2315,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 			Debug(3, "video: mpeg2 detected ID %02x\n", check[3]);
 			stream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
 		}
-#ifdef noDEBUG				// pip pes packet has no lenght
-		if (ValidateMpeg(data, size)) {
-			Debug(3, "softhddev/video: invalid mpeg2 video packet\n");
-		}
-#endif
+
 		// SKIP PES header, begin of start code
 #ifdef USE_PIP
 		VideoMpegEnqueue(stream, pts, dts, check - 2, l + 2);
@@ -2338,6 +2329,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 		Debug(3, "video: not detected\n");
 		return size;
     }
+
 #ifdef USE_PIP
     if (stream->CodecID == AV_CODEC_ID_MPEG2VIDEO) {
 		// SKIP PES header
@@ -2357,6 +2349,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 		VideoEnqueue(stream, pts, dts, data + 9 + n, size - 9 - n);
     }
 #else
+
     // SKIP PES header
     VideoEnqueue(stream, pts, dts, data + 9 + n, size - 9 - n);
 

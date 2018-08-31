@@ -634,8 +634,10 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     *output_width  = (video_height * display_aspect_ratio.num + display_aspect_ratio.den ) / display_aspect_ratio.den;
     *output_height = (video_width  * display_aspect_ratio.den + display_aspect_ratio.num ) / display_aspect_ratio.num;
 // JOJO hier stimmt was nicht 
-//	*output_width = video_width;
-//	*output_height = video_height;
+#if DEBUG
+	*output_width = video_width;
+	*output_height = video_height;
+#endif
 
     if (*output_width > video_width) {
 		*output_width = video_width;

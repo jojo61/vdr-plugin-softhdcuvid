@@ -307,16 +307,20 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	
 	decoder->VideoCtx->pkt_timebase.num = 1;
 	decoder->VideoCtx->pkt_timebase.den = 90000;
-	decoder->VideoCtx->framerate.num = 25;
+	decoder->VideoCtx->framerate.num = 50;
 	decoder->VideoCtx->framerate.den = 1;
 	
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
 
 	if (name && strcmp(name,"mpeg2_cuvid") == 0) {  // deinterlace for mpeg2 is somehow broken 
-			if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 0 ,0) < 0) {  // weave
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {  // weave
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
+		}
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 15 ,0) < 0) { 
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option surfces to video codec!\n"));
 		}
 		if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
 		  pthread_mutex_unlock(&CodecLockMutex);
@@ -456,12 +460,12 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     int consumed = 0;
     AVPacket *pkt; 
 	static uint64_t last_time = 0;
+	static uint64_t lastpts = 0;
 	
 next_part:
     video_ctx = decoder->VideoCtx;
     frame = decoder->Frame;
     pkt = avpkt;			// use copy
-   
     got_frame = 0;
     ret1 = avcodec_send_packet(video_ctx, pkt);
 	
@@ -475,8 +479,6 @@ next_part:
  	       	ret = avcodec_receive_frame(video_ctx, frame);   // get new frame
 			if (ret >= 0) {									// one is avail.
 				got_frame = 1;
-//				printf("got frame nach %ld ms\n",(GetusTicks() - last_time)/1000);
-				last_time = GetusTicks();
 			}
 			else
 	            got_frame = 0;
@@ -485,7 +487,7 @@ next_part:
 #ifdef FFMPEG_WORKAROUND_ARTIFACTS
 				if (!CodecUsePossibleDefectFrames && decoder->FirstKeyFrame) {
 					decoder->FirstKeyFrame++;
-					if (frame->key_frame || (decoder->FirstKeyFrame > 2)) {  // key frame is not reliable
+					if (frame->key_frame || (decoder->FirstKeyFrame > 3)) {  // key frame is not reliable
 						Debug(3, "codec: key frame after %d frames\n",decoder->FirstKeyFrame);
 						decoder->FirstKeyFrame = 0;
 						VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);	
