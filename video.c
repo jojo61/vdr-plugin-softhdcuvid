@@ -582,9 +582,9 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     }
 
     display_aspect_ratio.num =
-	VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
+	VideoScreen->width_in_pixels; // * VideoScreen->height_in_millimeters;
     display_aspect_ratio.den =
-	VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
+	VideoScreen->height_in_pixels; // * VideoScreen->width_in_millimeters;
 
     display_aspect_ratio = av_mul_q(input_aspect_ratio, display_aspect_ratio);
     Debug(3, "video: aspect %d:%d\n", display_aspect_ratio.num,
@@ -604,17 +604,17 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 	display_aspect_ratio.den);
 #endif
     if (!av_cmp_q(input_aspect_ratio, tmp_ratio)) {
-	switch (Video4to3ZoomMode) {
-	    case VideoNormal:
-		goto normal;
-	    case VideoStretch:
-		goto stretch;
-	    case VideoCenterCutOut:
-		goto center_cut_out;
-	    case VideoAnamorphic:
-		// FIXME: rest should be done by hardware
-		goto stretch;
-	}
+		switch (Video4to3ZoomMode) {
+			case VideoNormal:
+			goto normal;
+			case VideoStretch:
+			goto stretch;
+			case VideoCenterCutOut:
+			goto center_cut_out;
+			case VideoAnamorphic:
+			// FIXME: rest should be done by hardware
+			goto stretch;
+		}
     }
     switch (VideoOtherZoomMode) {
 	case VideoNormal:
@@ -806,6 +806,7 @@ static void GlxSetupDecoder(int width, int height, GLuint * textures)
 static inline void GlxRenderTexture(GLuint texture, int x, int y, int width,
     int height)
 {
+	
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -2904,6 +2905,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	VdpRect dst_video_rect;
 	int w = decoder->InputWidth;
 	int h = decoder->InputHeight;
+	int y;
 	CUgraphicsResource cuResource;
 	CUcontext dummy=NULL;
 	GLint texLoc;
@@ -2944,7 +2946,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 
 	// Render Progressive frame and simple interlaced
 
-	glViewport(decoder->OutputX, decoder->OutputY, decoder->OutputWidth, decoder->OutputHeight);
+//printf("decoder Y %d\n",decoder->OutputY);
+
+	y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
+	if (y <0 )
+		y = 0;
+	glViewport(decoder->OutputX, y, decoder->OutputWidth, decoder->OutputHeight);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
@@ -3111,10 +3118,8 @@ static void CuvidDisplayFrame(void)
 
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	
-//	printf("Frame %d display time %ld          \n",Count, (uint64_t)(GetusTicks()-last_time)/1000);
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
-
-	last_time = GetusTicks();
+	glClear(GL_COLOR_BUFFER_BIT);
 	//
 	//	Render videos into output
 	//
@@ -3143,7 +3148,8 @@ static void CuvidDisplayFrame(void)
 	//
 	if (OsdShown) {
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], decoder->OutputX, decoder->OutputY, decoder->OutputWidth, decoder->OutputHeight);
+//		GlxRenderTexture(OsdGlTextures[OsdIndex], decoder->OutputX, decoder->OutputY, decoder->OutputWidth, decoder->OutputHeight);
+GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
 		// FIXME: toggle osd
 	}
@@ -3339,7 +3345,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 			++decoder->FramesDuped;
 			decoder->SyncCounter = 1;
 			goto out;
-		} else if (diff < -25 * 90 && filled > 1 + 2 * decoder->Interlaced) {
+		} else if (diff < -25 * 90 && filled > 3 + 2 * decoder->Interlaced) {
 		    err = CuvidMessage(3, "video: speed up video, droping frame\n");
 			++decoder->FramesDropped;
 			CuvidAdvanceDecoderFrame(decoder);
