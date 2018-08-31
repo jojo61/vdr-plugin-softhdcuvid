@@ -247,7 +247,7 @@ $(OBJS): Makefile
 
 
 $(SOFILE): $(OBJS) shaders.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(LIBS) $(OBJS)  -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(OBJS) $(LIBS)  -o $@
 
 install-lib: $(SOFILE)
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
