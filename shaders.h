@@ -60,6 +60,45 @@ color.a = 1.0;\n\
 out_color = color;\n\
 }\n"};
 
+char fragment_bt2100[] = {"\
+#version 330\n\
+#define texture1D texture\n\
+#define texture3D texture\n\
+out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+in vec2 texcoord1;\n\
+in vec2 texcoord2;\n\
+in vec2 texcoord3;\n\
+in vec2 texcoord4;\n\
+in vec2 texcoord5;\n\
+uniform mat3 colormatrix;\n\
+uniform vec3 colormatrix_c;\n\
+uniform mat3 cms_matrix;\n\
+uniform sampler2D texture0;\n\
+//uniform vec2 texture_size0;\n\
+//uniform mat2 texture_rot0;\n\
+//uniform vec2 pixel_size0;\n\
+uniform sampler2D texture1;\n\
+//uniform vec2 texture_size1;\n\
+//uniform mat2 texture_rot1;\n\
+//uniform vec2 pixel_size1;\n\
+//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
+void main() {\n\
+vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
+color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;\n\
+color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;\n\
+// color conversion\n\
+color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
+color.a = 1.0;\n\
+// color mapping\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(2.4));\n\
+color.rgb = cms_matrix * color.rgb;\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
+out_color = color;\n\
+}\n"};
+
 /* Color conversion matrix: RGB = m * YUV + c
  * m is in row-major matrix, with m[row][col], e.g.:
  *     [ a11 a12 a13 ]     float m[3][3] = { { a11, a12, a13 },
@@ -76,6 +115,10 @@ out_color = color;\n\
 struct mp_cmat {
     float m[3][3]; // colormatrix
     float c[3];    //colormatrix_c
+};
+
+struct mp_mat {
+	float m[3][3];
 };
 
 // YUV input limited range (16-235 for luma, 16-240 for chroma)
@@ -106,6 +149,11 @@ struct mp_cmat yuv_bt2020cl = {\
 { 0.00000,   0.000000,  1.138393 },\
 { 1.138393,  0.000000 , 0.000000 }},\
 {-0.571429, -0.073059, -0.571429 } };
+
+float cms_matrix[3][3] = \
+{{ 1.660497, -0.124547, -0.018154},\
+{-0.587657,  1.132895, -0.100597},\
+{-0.072840, -0.008348,  1.118751}};
 
 struct gl_vao_entry {
     // used for shader / glBindAttribLocation
@@ -170,17 +218,47 @@ Debug(3,"Link Status %d loglen %d\n",status,log_length);
 
 }
 
-static GLuint sc_generate(GLuint gl_prog,char *vert, char *frag, int h) {
+static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     
     char vname[80];
     int n;
-	GLint texLoc;
-	float *m,*c;
-
+	GLint cmsLoc;
+	float *m,*c,*cms;
+	char *frag;
+	
+	switch (colorspace) {
+	case AVCOL_SPC_RGB:
+		m = &yuv_bt601.m[0][0];
+		c = &yuv_bt601.c[0];
+		frag = fragment;
+		Debug(3,"BT601 Colorspace used\n");
+		break;
+	case AVCOL_SPC_BT709:
+	case AVCOL_SPC_UNSPECIFIED:   //  comes with UHD
+		m = &yuv_bt709.m[0][0];
+		c = &yuv_bt709.c[0];
+		frag = fragment;
+		Debug(3,"BT709 Colorspace used\n");
+		break;
+	case AVCOL_SPC_BT2020_NCL:
+		m = &yuv_bt2020ncl.m[0][0];
+		c = &yuv_bt2020ncl.c[0];
+		cms = &cms_matrix[0][0];
+		frag = fragment_bt2100;
+		Debug(3,"BT2020NCL Colorspace used\n");
+		break;
+	default:								// fallback
+		m = &yuv_bt709.m[0][0];
+		c = &yuv_bt709.c[0];
+		frag = fragment;
+		Debug(3,"default BT709 Colorspace used  %d\n",colorspace);
+		break;
+	}
+	
 	Debug(3,"vor create\n");
 	gl_prog = glCreateProgram();
 	Debug(3,"vor compile vertex\n");
-	compile_attach_shader(gl_prog, GL_VERTEX_SHADER, vert);
+	compile_attach_shader(gl_prog, GL_VERTEX_SHADER, vertex);
 	Debug(3,"vor compile fragment\n");
 	compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, frag);
 	glBindAttribLocation(gl_prog,0,"vertex_position");
@@ -189,23 +267,9 @@ static GLuint sc_generate(GLuint gl_prog,char *vert, char *frag, int h) {
 		sprintf(vname,"vertex_texcoord%1d",n);
 		glBindAttribLocation(gl_prog,n+1,vname);
 	}
-	
-	// dirty hack to find colormatrix
-	// TODO find the right colormatrix in SEI message
-	if (h < 720) {
-		m = &yuv_bt601.m[0][0];
-		c = &yuv_bt601.c[0];
-	}
-	if (h >= 720 && h <=1080) {
-		m = &yuv_bt709.m[0][0];
-		c = &yuv_bt709.c[0];
-	}
-	else {
-		m = &yuv_bt2020ncl.m[0][0];
-		c = &yuv_bt2020ncl.c[0];
-	}
-	
+		
 	link_shader(gl_prog);
+	
 	gl_colormatrix = glGetUniformLocation(gl_prog,"colormatrix");
 	Debug(3,"get uniform colormatrix %d \n",gl_colormatrix);
 	if (gl_colormatrix != -1)
@@ -217,6 +281,13 @@ static GLuint sc_generate(GLuint gl_prog,char *vert, char *frag, int h) {
 	if (gl_colormatrix_c != -1)
 	  glProgramUniform3fv(gl_prog,gl_colormatrix_c,1,c);
 	GlxCheck();
+	
+	if (colorspace == AVCOL_SPC_BT2020_NCL) {
+		cmsLoc = glGetUniformLocation(gl_prog,"cms_matrix");
+		if (cmsLoc != -1)
+		  glProgramUniformMatrix3fv(gl_prog,cmsLoc,1,0,cms);
+		GlxCheck();
+	}
 	
     return gl_prog; 
 }
