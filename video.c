@@ -955,7 +955,7 @@ static void GlxOsdDrawARGB(int xi, int yi, int width, int height, int pitch,
 #ifdef DEBUG
     end = GetMsTicks();
 
-    Debug(3, "video/glx: osd upload %dx%d%+d%+d %dms %d\n", width, height, x, y, end - start, width * height * 4);
+    Debug(4, "video/glx: osd upload %dx%d%+d%+d %dms %d\n", width, height, x, y, end - start, width * height * 4);
 #endif
 }
 
@@ -2948,6 +2948,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 
 //printf("decoder Y %d\n",decoder->OutputY);
 
+	
 	y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
 	if (y <0 )
 		y = 0;
@@ -3058,7 +3059,7 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
 		// need 4 frames for interlaced
 			filled = atomic_read(&decoder->SurfacesFilled);
 	//JOJO	if (filled <= 1 + 2 * decoder->Interlaced) {
-			if (filled <  1 + 2 * decoder->Interlaced) {
+			if (filled <=  1 + 2 * decoder->Interlaced) {
 				// keep use of last surface
 				++decoder->FramesDuped;
 				// FIXME: don't warn after stream start, don't warn during pause
