@@ -1551,6 +1551,9 @@ typedef struct _cuvid_decoder_
     int OutputHeight;			///< real video output height
 
     enum AVPixelFormat PixFmt;		///< ffmpeg frame pixfmt
+	enum AVColorSpace  ColorSpace;	/// ffmpeg ColorSpace
+	enum AVColorTransferCharacteristic  trc;  // 
+	enum AVColorPrimaries color_primaries;
     int WrongInterlacedWarned;		///< warning about interlace flag issued
     int Interlaced;			///< ffmpeg interlaced flag
     int TopFieldFirst;			///< ffmpeg top field displayed first
@@ -2833,6 +2836,10 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->p
 		int w = decoder->InputWidth;
 		int h = decoder->InputHeight;
 
+		decoder->ColorSpace = frame->colorspace;     // save colorspace
+		decoder->trc = frame->color_trc;
+		decoder->color_primaries = frame->color_primaries;
+		
 		surface = CuvidGetVideoSurface0(decoder);
 		
 		// copy to texture
@@ -2960,7 +2967,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
 
 	if (gl_prog == 0)
-		gl_prog = sc_generate(gl_prog,vertex,fragment, decoder->InputHeight);    // generate shader programm
+		gl_prog = sc_generate(gl_prog, decoder->ColorSpace);    // generate shader programm
 	
 	glUseProgram(gl_prog);
 	texLoc = glGetUniformLocation(gl_prog, "texture0");
