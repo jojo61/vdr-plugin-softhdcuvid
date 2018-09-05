@@ -107,7 +107,13 @@ ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
 LIBS += $(shell pkg-config --libs gl glu glew)
+CONFIG += -DUSE_OPENGLOSD
+_CFLAGS += $(shell pkg-config --cflags glew)
+LIBS += $(shell pkg-config --libs glew) 
+_CFLAGS += $(shell pkg-config --cflags freetype2)
+LIBS   += $(shell pkg-config --libs freetype2)
 endif
+
 #
 # Test that libswresample is available 
 #
@@ -189,14 +195,14 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE $(CONFIG) \
 ### Make it standard
 
 override CXXFLAGS += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
-    -g  -Wextra -Winit-self -Werror=overloaded-virtual 
+    -g  -Wextra -Winit-self -Werror=overloaded-virtual -std=c++0x 
 override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
     -g -W  -Wextra -Winit-self -Wdeclaration-after-statement
 
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o softhddev.o video.o audio.o codec.o ringbuffer.o  
+OBJS = $(PLUGIN).o softhddev.o video.o audio.o codec.o ringbuffer.o openglosd.o 
 
 SRCS = $(wildcard $(OBJS:.o=.c)) $(PLUGIN).cpp
 

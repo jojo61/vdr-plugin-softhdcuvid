@@ -23,6 +23,9 @@
 /// @addtogroup Video
 /// @{
 
+#include <GL/gl.h>
+#include <GL/glx.h>
+
 //----------------------------------------------------------------------------
 //	Typedefs
 //----------------------------------------------------------------------------
@@ -75,6 +78,11 @@ extern void *VideoGetHwAccelContext(VideoHwDecoder *);
 extern void VideoDrawRenderState(VideoHwDecoder *,
     struct vdpau_render_state *);
 #endif
+#endif
+
+#ifdef USE_OPENGLOSD
+    /// Set callback funktion to notify VDR about VideoEvents
+extern void VideoSetVideoEventCallback(void (*)(void));
 #endif
 
     /// Poll video events.
@@ -227,7 +235,9 @@ extern void SetDPMSatBlackScreen(int);
 
     /// Raise the frontend window
 extern int VideoRaiseWindow(void);
-
+#ifdef USE_OPENGLOSD
+extern void ActivateOsd(GLuint,int,int,int,int);
+#endif
 #if 0
 long int gettid()
 {

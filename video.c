@@ -438,7 +438,9 @@ static int OsdDirtyX;			///< osd dirty area x
 static int OsdDirtyY;			///< osd dirty area y
 static int OsdDirtyWidth;		///< osd dirty area width
 static int OsdDirtyHeight;		///< osd dirty area height
-
+#ifdef USE_OPENGLOSD
+static void (*VideoEventCallback)(void) = NULL;  /// callback function to notify VDR about Video Events
+#endif
 static int64_t VideoDeltaPTS;		///< FIXME: fix pts
 
 #ifdef USE_SCREENSAVER
@@ -458,7 +460,7 @@ static GLXContext GlxThreadContext;	///< our gl context for the thread
 static XVisualInfo *GlxVisualInfo;	///< our gl visual
 
 static GLuint OsdGlTextures[2];		///< gl texture for OSD
-static int OsdIndex;			///< index into OsdGlTextures
+static int OsdIndex=0;			///< index into OsdGlTextures
 static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
 
 
@@ -810,7 +812,8 @@ static inline void GlxRenderTexture(GLuint texture, int x, int y, int width,
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture);
 
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	// no color
+//    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	// no color
+#ifndef USE_OPENGLOSD	
     glBegin(GL_QUADS); {
 		glTexCoord2f(1.0f, 1.0f);
 		glVertex2i(x + width, y + height);
@@ -822,6 +825,19 @@ static inline void GlxRenderTexture(GLuint texture, int x, int y, int width,
 		glVertex2i(x + width, y);
     }
     glEnd();
+#else
+	glBegin(GL_QUADS); {
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2i(x+width , y );
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2i(x, y );
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2i(x, y+height);
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2i(x+width , y+height);
+    }
+    glEnd();
+#endif
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
@@ -885,6 +901,7 @@ static void GlxOsdInit(int width, int height)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -1290,6 +1307,7 @@ static void GlxInit(void)
 
 }
 
+
 ///
 ///	Cleanup GLX.
 ///
@@ -1620,9 +1638,12 @@ static int CuvidDecoderN;		///< number of decoder streams
 
 GLuint vao_buffer;  // 
 //GLuint vao_vao[4];  // 
-GLuint gl_shader=0,gl_prog = 0;      // shader programm
+GLuint gl_shader=0,gl_prog = 0,gl_fbo=0;      // shader programm
 GLint gl_colormatrix,gl_colormatrix_c;
-
+GLuint OSDfb=0;
+GLuint OSDtexture;
+GLXContext OSDcontext;
+int OSDx,OSDy,OSDxsize,OSDysize;
 
 static struct timespec CuvidFrameTime;	///< time of last display
 
@@ -3065,7 +3086,6 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
 		// need 2 frames for progressive
 		// need 4 frames for interlaced
 			filled = atomic_read(&decoder->SurfacesFilled);
-	//JOJO	if (filled <= 1 + 2 * decoder->Interlaced) {
 			if (filled <=  1 + 2 * decoder->Interlaced) {
 				// keep use of last surface
 				++decoder->FramesDuped;
@@ -3096,33 +3116,6 @@ static void CuvidDisplayFrame(void)
 	static unsigned int Count;
 	int filled;
 	CuvidDecoder *decoder;
-#if 0
-
-	//
-	//	wait for surface no longer visible (blocks max ~5ms)
-	//
-	status =
-	CuvidPresentationQueueBlockUntilSurfaceIdle(CuvidQueue,
-	CuvidSurfacesRb[CuvidOutputSurfaceIndex], &first_time);
-	if (status != VDP_STATUS_OK) {
-	Error(_("video/cuvid: can't block queue: %s\n"),
-		CuvidGetErrorString(status));
-	}
-
-	// check if surface was displayed for more than 1 frame
-	// FIXME: 21 only correct for 50Hz
-	if (last_time && first_time > last_time + 21 * 1000 * 1000) {
-		// FIXME: ignore still-frame, trick-speed
-		Debug(3, "video/cuvid: %" PRId64 " display time %" PRId64 "\n",	first_time / 1000, (first_time - last_time) / 1000);
-		// FIXME: can be more than 1 frame long shown
-		for (i = 0; i < CuvidDecoderN; ++i) {
-			CuvidDecoders[i]->FramesMissed++;
-			CuvidMessage(2, _("video/cuvid: missed frame (%d/%d)\n"),
-			CuvidDecoders[i]->FramesMissed,
-			CuvidDecoders[i]->FrameCounter);
-		}
-	}
-#endif
 
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	
@@ -3155,9 +3148,13 @@ static void CuvidDisplayFrame(void)
 	//	add osd to surface
 	//
 	if (OsdShown) {
+#ifndef USE_OPENGLOSD
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-//		GlxRenderTexture(OsdGlTextures[OsdIndex], decoder->OutputX, decoder->OutputY, decoder->OutputWidth, decoder->OutputHeight);
-GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);
+		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);
+#else
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );
+		GlxRenderTexture(OSDtexture, OSDx, OSDy, OSDxsize, OSDysize);
+#endif
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
 		// FIXME: toggle osd
 	}
@@ -3854,6 +3851,7 @@ static const VideoModule NoopModule = {
 void VideoOsdClear(void)
 {
     VideoThreadLock();
+
     VideoUsedModule->OsdClear();
 
     OsdDirtyX = OsdWidth;		// reset dirty area
@@ -3909,6 +3907,19 @@ void VideoOsdDrawARGB(int xi, int yi, int width, int height, int pitch,
     VideoThreadUnlock();
 }
 
+#ifdef USE_OPENGLOSD
+void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize) {
+	OsdShown = 1;
+	OSDtexture = texture;
+	OSDx = x;
+	OSDy = y;
+	OSDxsize = xsize;
+	OSDysize = ysize;
+}
+#endif
+
+
+
 ///
 ///	Get OSD size.
 ///
@@ -3920,8 +3931,8 @@ void VideoGetOsdSize(int *width, int *height)
     *width = 1920;
     *height = 1080;			// unknown default
     if (OsdWidth && OsdHeight) {
-	*width = OsdWidth;
-	*height = OsdHeight;
+		*width = OsdWidth;
+		*height = OsdHeight;
     }
 }
 
@@ -3933,10 +3944,10 @@ void VideoGetOsdSize(int *width, int *height)
 void VideoSetOsdSize(int width, int height)
 {
     if (OsdConfigWidth != width || OsdConfigHeight != height) {
-	VideoOsdExit();
-	OsdConfigWidth = width;
-	OsdConfigHeight = height;
-	VideoOsdInit();
+		VideoOsdExit();
+		OsdConfigWidth = width;
+		OsdConfigHeight = height;
+		VideoOsdInit();
     }
 }
 
@@ -4148,7 +4159,12 @@ void VideoPollEvent(void)
 		VideoEvent();
     }
 }
-
+#ifdef USE_OPENGLOSD
+void VideoSetVideoEventCallback(void (*videoEventCallback)(void))
+{
+    VideoEventCallback = videoEventCallback;
+}
+#endif
 //----------------------------------------------------------------------------
 //	Thread
 //----------------------------------------------------------------------------
@@ -5110,7 +5126,10 @@ void VideoSetVideoMode( __attribute__ ((unused))
     if ((unsigned)width == VideoWindowWidth	&& (unsigned)height == VideoWindowHeight) {
 		return;				// same size nothing todo
     }
-	
+#ifdef USE_OPENGLOSD
+    if (VideoEventCallback)
+        VideoEventCallback();
+#endif	
     VideoOsdExit();  
 
     VideoThreadLock();
@@ -5487,11 +5506,13 @@ void VideoInit(const char *display_name)
 		if (VideoWindowWidth) {
 			VideoWindowHeight = (VideoWindowWidth * 9) / 16;
 		} else {			// default to fullscreen
-//			VideoWindowHeight = screen->height_in_pixels;
-//			VideoWindowWidth = screen->width_in_pixels;
+			VideoWindowHeight = screen->height_in_pixels;
+			VideoWindowWidth = screen->width_in_pixels;
 	//***********************************************************************************************
-			VideoWindowHeight = 1080;
-			VideoWindowWidth = 1920;
+//         if (strcmp(":0.0",display_name) == 0) {
+//			VideoWindowHeight = 1080;
+//			VideoWindowWidth = 1920;
+//		 }
 		}
     }
     if (!VideoWindowWidth) {
@@ -5631,4 +5652,37 @@ void VideoExit(void)
 
 }
 
+int GlxInitopengl() {
+	
+	while (GlxSharedContext == NULL) {
+		sleep(1);					// wait until Init from video thread is ready
+//		printf("GlxConext %p\n",GlxSharedContext);
+	}
+	OSDcontext = glXCreateContext(XlibDisplay, GlxVisualInfo, GlxSharedContext,GL_TRUE);
+	if (!OSDcontext) {
+		Debug(3,"video/osd: can't create glx context\n");
+		return 0;
+	}
+	glXMakeCurrent(XlibDisplay, VideoWindow, OSDcontext);
+	glViewport(0, 0, VideoWindowWidth, VideoWindowHeight);
+    glDepthRange(-1.0, 1.0);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glClearDepth(1.0);
+    GlxCheck();
+	if (glewInit())
+		Fatal(_("glewinit failed\n"));
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0.0, VideoWindowWidth, VideoWindowHeight, 0.0, -1.0, 1.0);
+    GlxCheck();
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);		// setup 2d drawing
+	return 1;
+	
+}
 
