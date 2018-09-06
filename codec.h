@@ -47,7 +47,7 @@ enum HWAccelID {
      HWACCEL_CUVID,
 };
  
-AVBufferRef *hw_device_ctx;
+extern AVBufferRef *hw_device_ctx;
 ///
 ///     Video decoder structure.
 ///

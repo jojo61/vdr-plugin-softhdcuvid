@@ -27,7 +27,7 @@ AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1)
 AVRESAMPLE = 0
 endif
 
-CONFIG :=  -DDEBUG #-DOSD_DEBUG	# enable debug output+functions
+CONFIG := #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DCUVID			# enable CUVID decoder
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
