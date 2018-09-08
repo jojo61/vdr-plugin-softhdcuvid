@@ -1447,7 +1447,7 @@ static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const v
 #ifdef DEBUG
     if (avpkt->stream_index > VideoMaxPacketSize) {
 		VideoMaxPacketSize = avpkt->stream_index;
-		Debug(3, "video: max used PES packet size: %d\n", VideoMaxPacketSize);
+		Debug(4, "video: max used PES packet size: %d\n", VideoMaxPacketSize);
     }
 #endif
 }
@@ -2231,13 +2231,13 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 		dts = (int64_t) (data[14] & 0x0E) << 29 | data[15] << 22 | (data[16] &
 			   0xFE) << 14 | data[17] << 7 | (data[18] & 0xFE) >> 1;
     }
-//printf("PTS %ld DTS %ld\n",pts,dts);
+
     check = data + 9 + n;
     l = size - 9 - n;
     z = 0;
     while (!*check) {			// count leading zeros
 		if (l < 3) {
-			Warning(_("[softhddev] empty video packet %d bytes\n"), size);
+//			Warning(_("[softhddev] empty video packet %d bytes\n"), size);
 			z = 0;
 			break;
 		}

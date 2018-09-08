@@ -551,7 +551,7 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
 		}
     }
 }
-
+static int CuvidMessage(int level, const char *format, ...);
 ///
 ///	Update output for new size or aspect ratio.
 ///
@@ -584,9 +584,9 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     }
 
     display_aspect_ratio.num =
-	VideoScreen->width_in_pixels; // * VideoScreen->height_in_millimeters;
+	VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
     display_aspect_ratio.den =
-	VideoScreen->height_in_pixels; // * VideoScreen->width_in_millimeters;
+	VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
 
     display_aspect_ratio = av_mul_q(input_aspect_ratio, display_aspect_ratio);
     Debug(3, "video: aspect %d:%d\n", display_aspect_ratio.num,
@@ -649,7 +649,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 		*output_x += (video_width - *output_width) / 2;
     }
 	
-    Debug(3, "video: normal aspect output %dx%d%+d%+d Video %dx%d\n", *output_width, *output_height, *output_x, *output_y,video_width,video_height);
+    CuvidMessage(2, "video: normal aspect output %dx%d%+d%+d Video %dx%d\n", *output_width, *output_height, *output_x, *output_y,video_width,video_height);
     return;
 
   stretch:
@@ -1770,17 +1770,16 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 
     glDeleteBuffers(1,(GLuint *)&vao_buffer);
 
-	if (decoder->cuda_ctx)
-       checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));
-	
-	for (i=0;i<decoder->SurfacesNeeded;i++)
-		for (j=0;j<2;j++) {
-			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+	if (decoder->cuda_ctx) {
+    	checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));	
+		for (i=0;i<decoder->SurfacesNeeded;i++) {
+			for (j=0;j<2;j++) {
+				checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+			}
 		}
+    	checkCudaErrors(cuCtxPopCurrent(NULL));
+	}
 	
-	if (decoder->cuda_ctx)
-       checkCudaErrors(cuCtxPopCurrent(NULL));
-
 	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
 	if (gl_prog)
@@ -2110,11 +2109,12 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
 			SDK_CHECK_ERROR_GL();
 			// register this texture with CUDA
-			checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i*2+n],
-													GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
-			checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
-			checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n],0, 0));
-			checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
+			if (decoder->cuda_ctx) {
+				checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i*2+n],GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
+				checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
+				checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n],0, 0));
+				checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
+			}
 		}
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -2240,7 +2240,8 @@ static int init_cuvid(AVCodecContext *avctx,CuvidDecoder * decoder)
     AVCUDADeviceContext *device_hwctx;
     CUcontext dummy;
  
-    hw_device_ctx = NULL;
+    AVBufferRef *hw_device_ctx = NULL;
+	
     hw_device_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_CUDA);
 
     if (!hw_device_ctx)
@@ -2294,6 +2295,7 @@ static int init_cuvid(AVCodecContext *avctx,CuvidDecoder * decoder)
 ///			it is terminated by -1 as 0 is a valid format, the
 ///			formats are ordered by quality.
 ///
+
 static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
     AVCodecContext * video_ctx, const enum AVPixelFormat *fmt)
 {
@@ -2328,14 +2330,14 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 
 	Debug(3,"video profile %d codec id %d\n",video_ctx->profile,video_ctx->codec_id);
     if (*fmt_idx == AV_PIX_FMT_NONE) {
-		Error(_("video/vdpau: no valid vdpau pixfmt found\n"));
+		Error(_("video: no valid pixfmt found\n"));
     }
 
 
     if (*fmt_idx != AV_PIX_FMT_CUDA) {
-		Fatal(_("video/vdpau: no valid profile found\n"));
+		Fatal(_("video: no valid profile found\n"));
     }
-    Debug(3, "video/vdpau: create decoder 16bit?=%d %dx%d \n",bitformat16, video_ctx->width, video_ctx->height);
+    Debug(3, "video: create decoder 16bit?=%d %dx%d \n",bitformat16, video_ctx->width, video_ctx->height);
 
 
     decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1; 
@@ -2880,15 +2882,10 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->p
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
-    (void)decoder;
-
     int ret,n;
     unsigned int device_count,version;
     CUdevice device;
-    AVHWDeviceContext *device_ctx;
-    AVCUDADeviceContext *device_hwctx;
-    CUcontext dummy;
-	
+
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
 	
 	if (decoder->cuda_ctx) {
@@ -2912,8 +2909,6 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 
     cuCtxGetApiVersion(decoder->cuda_ctx,&version);
 	Debug(3, "***********CUDA API Version %d\n",version);
-//	cudaProfilerInitialize("./nvconfig","./nvresult.csv", cudaCSV);
-//	cudaProfilerStart();
 
 	return NULL;
 }
@@ -4872,18 +4867,14 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
     // define only available with xcb-utils-0.3.8
 #ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
     // FIXME: utf _NET_WM_NAME
-    xcb_icccm_set_wm_name(Connection, VideoWindow, XCB_ATOM_STRING, 8,
-	sizeof("softhddevice") - 1, "softhddevice");
-    xcb_icccm_set_wm_icon_name(Connection, VideoWindow, XCB_ATOM_STRING, 8,
-	sizeof("softhddevice") - 1, "softhddevice");
+    xcb_icccm_set_wm_name(Connection, VideoWindow, XCB_ATOM_STRING, 8,	sizeof("softhdcuvid") - 1, "softhdcuvid");
+    xcb_icccm_set_wm_icon_name(Connection, VideoWindow, XCB_ATOM_STRING, 8,	sizeof("softhdcuvid") - 1, "softhdcuvid");
 #endif
     // define only available with xcb-utils-0.3.6
 #ifdef XCB_NUM_WM_HINTS_ELEMENTS
     // FIXME: utf _NET_WM_NAME
-    xcb_set_wm_name(Connection, VideoWindow, XCB_ATOM_STRING,
-	sizeof("softhddevice") - 1, "softhddevice");
-    xcb_set_wm_icon_name(Connection, VideoWindow, XCB_ATOM_STRING,
-	sizeof("softhddevice") - 1, "softhddevice");
+    xcb_set_wm_name(Connection, VideoWindow, XCB_ATOM_STRING, sizeof("softhdcuvid") - 1, "softhdcuvid");
+    xcb_set_wm_icon_name(Connection, VideoWindow, XCB_ATOM_STRING, sizeof("softhdcuvid") - 1, "softhdcuvid");
 #endif
 
     // FIXME: size hints
@@ -4893,22 +4884,20 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0,
 		    sizeof("WM_DELETE_WINDOW") - 1, "WM_DELETE_WINDOW"),
 		NULL))) {
-	WmDeleteWindowAtom = reply->atom;
-	free(reply);
-	if ((reply =
-		xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection,
-			0, sizeof("WM_PROTOCOLS") - 1, "WM_PROTOCOLS"),
-		    NULL))) {
+		WmDeleteWindowAtom = reply->atom;
+		free(reply);
+		if ((reply =
+			xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection,
+				0, sizeof("WM_PROTOCOLS") - 1, "WM_PROTOCOLS"),
+				NULL))) {
 #ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
-	    xcb_icccm_set_wm_protocols(Connection, VideoWindow, reply->atom, 1,
-		&WmDeleteWindowAtom);
+			xcb_icccm_set_wm_protocols(Connection, VideoWindow, reply->atom, 1,&WmDeleteWindowAtom);
 #endif
 #ifdef XCB_NUM_WM_HINTS_ELEMENTS
-	    xcb_set_wm_protocols(Connection, reply->atom, VideoWindow, 1,
-		&WmDeleteWindowAtom);
+			xcb_set_wm_protocols(Connection, reply->atom, VideoWindow, 1,&WmDeleteWindowAtom);
 #endif
-	    free(reply);
-	}
+			free(reply);
+		}
     }
     //
     //	prepare fullscreen.
@@ -4916,15 +4905,15 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
     if ((reply =
 	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0,
 		    sizeof("_NET_WM_STATE") - 1, "_NET_WM_STATE"), NULL))) {
-	NetWmState = reply->atom;
-	free(reply);
+		NetWmState = reply->atom;
+		free(reply);
     }
     if ((reply =
 	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0,
 		    sizeof("_NET_WM_STATE_FULLSCREEN") - 1,
 		    "_NET_WM_STATE_FULLSCREEN"), NULL))) {
-	NetWmStateFullscreen = reply->atom;
-	free(reply);
+		NetWmStateFullscreen = reply->atom;
+		free(reply);
     }
 
     xcb_map_window(Connection, VideoWindow);
@@ -4935,12 +4924,10 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
     pixmap = xcb_generate_id(Connection);
     xcb_create_pixmap(Connection, 1, pixmap, parent, 1, 1);
     cursor = xcb_generate_id(Connection);
-    xcb_create_cursor(Connection, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 1,
-	1);
+    xcb_create_cursor(Connection, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 1,1);
 
     values[0] = cursor;
-    xcb_change_window_attributes(Connection, VideoWindow, XCB_CW_CURSOR,
-	values);
+    xcb_change_window_attributes(Connection, VideoWindow, XCB_CW_CURSOR, values);
     VideoCursorPixmap = pixmap;
     VideoBlankCursor = cursor;
     VideoBlankTick = 0;
@@ -5509,10 +5496,12 @@ void VideoInit(const char *display_name)
 			VideoWindowHeight = screen->height_in_pixels;
 			VideoWindowWidth = screen->width_in_pixels;
 	//***********************************************************************************************
-//         if (strcmp(":0.0",display_name) == 0) {
-//			VideoWindowHeight = 1080;
-//			VideoWindowWidth = 1920;
-//		 }
+#if DEBUG
+         if (strcmp(":0.0",display_name) == 0) {
+			VideoWindowHeight = 1080;
+			VideoWindowWidth = 1920;
+		 }
+#endif
 		}
     }
     if (!VideoWindowWidth) {

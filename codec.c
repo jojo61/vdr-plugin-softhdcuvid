@@ -116,7 +116,7 @@ static pthread_mutex_t CodecLockMutex;
 
     /// Flag prefer fast channel switch
 char CodecUsePossibleDefectFrames;
-
+AVBufferRef *hw_device_ctx;
 //----------------------------------------------------------------------------
 //	Video
 //----------------------------------------------------------------------------
@@ -268,7 +268,6 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     const char *name;
 	int ret;
 
-
     Debug(3, "***************codec: Video Open using video codec ID %#06x (%s)\n", codec_id,
 	avcodec_get_name(codec_id));
 
@@ -276,27 +275,28 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		Error(_("codec: missing close\n"));
     }
   
-    name = NULL;
+    name = "NULL";
     if (!strcasecmp(VideoGetDriverName(), "cuvid")) {
 		switch (codec_id) {
 		case AV_CODEC_ID_MPEG2VIDEO:
-			name = VideoHardwareDecoder < 0 ? "mpeg2_cuvid" : NULL;
+			name = "mpeg2_cuvid";
 			break;
 		case AV_CODEC_ID_H264:
-			name = VideoHardwareDecoder ? "h264_cuvid" : NULL;
+			name = "h264_cuvid";
 			break;	
 		case AV_CODEC_ID_HEVC:
-			name = VideoHardwareDecoder ? "hevc_cuvid" : NULL;
+			name = "hevc_cuvid";
 			break;	
 		}
     }
-
+	
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
 		Debug(3, "codec: cuvid decoder found\n");
-    } else
-		if (!(video_codec = avcodec_find_decoder(codec_id))) {
-			Fatal(_("codec: codec ID %#06x not found\n"), codec_id);			
-		}
+    } else {
+		Debug(3,"Decoder %s not supported\n",name);
+		Fatal(_(" No decoder found"));
+	}
+	
     decoder->VideoCodec = video_codec;
 
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
@@ -327,7 +327,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		  Fatal(_("codec: can't set option drop 2.field to video codec!\n"));
 		}
 	}
-	else {
+	else if (strstr(name,"cuvid") != NULL) {
 		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) { // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
@@ -361,7 +361,8 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	decoder->VideoCtx->thread_count = 1;
 	decoder->VideoCtx->active_thread_type = 0;
 	decoder->VideoCtx->draw_horiz_band = NULL;
-	decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
+	if (strstr(name,"cuvid"))
+		decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
 
 
     //

@@ -1895,12 +1895,13 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     VideoGetOsdSize(&osdWidth, &osdHeight);
 	
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
-
+#if 0
     //create vdpau output framebuffer
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
+#endif
 }
 
 cOglOsd::~cOglOsd() {

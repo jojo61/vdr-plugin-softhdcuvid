@@ -15,9 +15,10 @@ PLUGIN = softhdcuvid
 ALSA ?= $(shell pkg-config --exists alsa && echo 1)
     # support OSS audio output module
 OSS ?= 1
-    # support glx output
-OPENGL=1
+    # support OPENGLOSD 
+OPENGLOSD=1
 
+OPENGL=1
     # use ffmpeg libswresample
 #SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
 SWRESAMPLE = 1
@@ -27,7 +28,7 @@ AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1)
 AVRESAMPLE = 0
 endif
 
-CONFIG := #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
+CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DCUVID			# enable CUVID decoder
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
@@ -103,11 +104,13 @@ ifeq ($(OPENGL),1)
 _CFLAGS += $(shell pkg-config --cflags libva-glx)
 LIBS += $(shell pkg-config --libs libva-glx)
 endif
+ifeq ($(OPENGLOSD),1)
+CONFIG += -DUSE_OPENGLOSD
+endif
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
 LIBS += $(shell pkg-config --libs gl glu glew)
-CONFIG += -DUSE_OPENGLOSD
 _CFLAGS += $(shell pkg-config --cflags glew)
 LIBS += $(shell pkg-config --libs glew) 
 _CFLAGS += $(shell pkg-config --cflags freetype2)
@@ -202,7 +205,10 @@ override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o softhddev.o video.o audio.o codec.o ringbuffer.o openglosd.o 
+OBJS = $(PLUGIN).o softhddev.o video.o audio.o codec.o ringbuffer.o  
+ifeq ($(OPENGLOSD),1)
+OBJS += openglosd.o 
+endif
 
 SRCS = $(wildcard $(OBJS:.o=.c)) $(PLUGIN).cpp
 
