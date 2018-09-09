@@ -1594,10 +1594,10 @@ bool cOglThread::InitOpenGL(void) {
         return false;
     }
 #endif
-#if 1
+
 	if (!GlxInitopengl())
 		return false;
-#endif
+
     VertexBuffers[vbText]->EnableBlending();
     glDisable(GL_DEPTH_TEST);
     return true;
@@ -1650,7 +1650,7 @@ void cOglThread::DeleteVertexBuffers(void) {
 void cOglThread::Cleanup(void) {
 	esyslog("[softhddev]OglThread cleanup\n");
     DeleteVertexBuffers();
-    delete cOglOsd::oFb;
+//    delete cOglOsd::oFb;
     cOglOsd::oFb = NULL;
     DeleteShaders();
 //    glVDPAUFiniNV();

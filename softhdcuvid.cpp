@@ -3595,163 +3595,163 @@ cString cPluginSoftHdDevice::SVDRPCommand(const char *command,
 	}
     }
     if (!strcasecmp(command, "SUSP")) {
-	if (cSoftHdControl::Player) {	// already suspended
-	    return "SoftHdDevice already suspended";
-	}
-	if (SuspendMode != NOT_SUSPENDED) {
-	    return "SoftHdDevice already detached";
-	}
-	cControl::Launch(new cSoftHdControl);
-	cControl::Attach();
-	Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
-	SuspendMode = SUSPEND_NORMAL;
+		if (cSoftHdControl::Player) {	// already suspended
+			return "SoftHdDevice already suspended";
+		}
+		if (SuspendMode != NOT_SUSPENDED) {
+			return "SoftHdDevice already detached";
+		}
 #ifdef USE_OPENGLOSD
-    dsyslog("[softhddev]stopping Ogl Thread svdrp STAT");
-    cSoftOsdProvider::StopOpenGlThread();
+		dsyslog("[softhddev]stopping Ogl Thread svdrp STAT");
+		cSoftOsdProvider::StopOpenGlThread();
 #endif
-	return "SoftHdDevice is suspended";
+		cControl::Launch(new cSoftHdControl);
+		cControl::Attach();
+		Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
+		SuspendMode = SUSPEND_NORMAL;
+		return "SoftHdDevice is suspended";
     }
     if (!strcasecmp(command, "RESU")) {
-	if (SuspendMode == NOT_SUSPENDED) {
-	    return "SoftHdDevice already resumed";
-	}
-	if (SuspendMode != SUSPEND_NORMAL) {
-	    return "can't resume SoftHdDevice";
-	}
-	if (ShutdownHandler.GetUserInactiveTime()) {
-	    ShutdownHandler.SetUserInactiveTimeout();
-	}
-	if (cSoftHdControl::Player) {	// suspended
-	    cControl::Shutdown();	// not need, if not suspended
-	}
-	Resume();
-	SuspendMode = NOT_SUSPENDED;
-	return "SoftHdDevice is resumed";
+		if (SuspendMode == NOT_SUSPENDED) {
+			return "SoftHdDevice already resumed";
+		}
+		if (SuspendMode != SUSPEND_NORMAL) {
+			return "can't resume SoftHdDevice";
+		}
+		if (ShutdownHandler.GetUserInactiveTime()) {
+			ShutdownHandler.SetUserInactiveTimeout();
+		}
+		if (cSoftHdControl::Player) {	// suspended
+			cControl::Shutdown();	// not need, if not suspended
+		}
+		Resume();
+		SuspendMode = NOT_SUSPENDED;
+		return "SoftHdDevice is resumed";
     }
     if (!strcasecmp(command, "DETA")) {
-	if (SuspendMode == SUSPEND_DETACHED) {
-	    return "SoftHdDevice already detached";
-	}
-	if (cSoftHdControl::Player) {	// already suspended
-	    return "can't suspend SoftHdDevice already suspended";
-	}
-	cControl::Launch(new cSoftHdControl);
-	cControl::Attach();
-	Suspend(1, 1, 0);
-	SuspendMode = SUSPEND_DETACHED;
+		if (SuspendMode == SUSPEND_DETACHED) {
+			return "SoftHdDevice already detached";
+		}
+		if (cSoftHdControl::Player) {	// already suspended
+			return "can't suspend SoftHdDevice already suspended";
+		}
 #ifdef USE_OPENGLOSD
-    dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
-    cSoftOsdProvider::StopOpenGlThread();
+		dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
+		cSoftOsdProvider::StopOpenGlThread();
 #endif
-	return "SoftHdDevice is detached";
+		cControl::Launch(new cSoftHdControl);
+		cControl::Attach();
+		Suspend(1, 1, 0);
+		SuspendMode = SUSPEND_DETACHED;
+		return "SoftHdDevice is detached";
     }
     if (!strcasecmp(command, "ATTA")) {
-	char *tmp;
-	char *t;
-	char *s;
-	char *o;
+		char *tmp;
+		char *t;
+		char *s;
+		char *o;
 
-	if (SuspendMode != SUSPEND_DETACHED) {
-	    return "can't attach SoftHdDevice not detached";
-	}
-	if (!(tmp = strdup(option))) {
-	    return "out of memory";
-	}
-	t = tmp;
-	while ((s = strsep(&t, " \t\n\r"))) {
-	    if (!strcmp(s, "-d")) {
-		if (!(o = strsep(&t, " \t\n\r"))) {
-		    free(tmp);
-		    return "missing option argument";
+		if (SuspendMode != SUSPEND_DETACHED) {
+			return "can't attach SoftHdDevice not detached";
 		}
-		free(ConfigX11Display);
-		ConfigX11Display = strdup(o);
-		X11DisplayName = ConfigX11Display;
-	    } else if (!strncmp(s, "-d", 2)) {
-		free(ConfigX11Display);
-		ConfigX11Display = strdup(s + 2);
-		X11DisplayName = ConfigX11Display;
-
-	    } else if (!strcmp(s, "-a")) {
-		if (!(o = strsep(&t, " \t\n\r"))) {
-		    free(tmp);
-		    return "missing option argument";
+		if (!(tmp = strdup(option))) {
+			return "out of memory";
 		}
-		free(ConfigAudioDevice);
-		ConfigAudioDevice = strdup(o);
-		AudioSetDevice(ConfigAudioDevice);
-	    } else if (!strncmp(s, "-a", 2)) {
-		free(ConfigAudioDevice);
-		ConfigAudioDevice = strdup(s + 2);
-		AudioSetDevice(ConfigAudioDevice);
+		t = tmp;
+		while ((s = strsep(&t, " \t\n\r"))) {
+			if (!strcmp(s, "-d")) {
+			if (!(o = strsep(&t, " \t\n\r"))) {
+				free(tmp);
+				return "missing option argument";
+			}
+			free(ConfigX11Display);
+			ConfigX11Display = strdup(o);
+			X11DisplayName = ConfigX11Display;
+			} else if (!strncmp(s, "-d", 2)) {
+			free(ConfigX11Display);
+			ConfigX11Display = strdup(s + 2);
+			X11DisplayName = ConfigX11Display;
 
-	    } else if (!strcmp(s, "-p")) {
-		if (!(o = strsep(&t, " \t\n\r"))) {
-		    free(tmp);
-		    return "missing option argument";
+			} else if (!strcmp(s, "-a")) {
+			if (!(o = strsep(&t, " \t\n\r"))) {
+				free(tmp);
+				return "missing option argument";
+			}
+			free(ConfigAudioDevice);
+			ConfigAudioDevice = strdup(o);
+			AudioSetDevice(ConfigAudioDevice);
+			} else if (!strncmp(s, "-a", 2)) {
+			free(ConfigAudioDevice);
+			ConfigAudioDevice = strdup(s + 2);
+			AudioSetDevice(ConfigAudioDevice);
+
+			} else if (!strcmp(s, "-p")) {
+			if (!(o = strsep(&t, " \t\n\r"))) {
+				free(tmp);
+				return "missing option argument";
+			}
+			free(ConfigPassthroughDevice);
+			ConfigPassthroughDevice = strdup(o);
+			AudioSetPassthroughDevice(ConfigPassthroughDevice);
+			} else if (!strncmp(s, "-p", 2)) {
+			free(ConfigPassthroughDevice);
+			ConfigPassthroughDevice = strdup(s + 2);
+			AudioSetPassthroughDevice(ConfigPassthroughDevice);
+
+			} else if (*s) {
+			free(tmp);
+			return "unsupported option";
+			}
 		}
-		free(ConfigPassthroughDevice);
-		ConfigPassthroughDevice = strdup(o);
-		AudioSetPassthroughDevice(ConfigPassthroughDevice);
-	    } else if (!strncmp(s, "-p", 2)) {
-		free(ConfigPassthroughDevice);
-		ConfigPassthroughDevice = strdup(s + 2);
-		AudioSetPassthroughDevice(ConfigPassthroughDevice);
-
-	    } else if (*s) {
 		free(tmp);
-		return "unsupported option";
-	    }
-	}
-	free(tmp);
-	if (ShutdownHandler.GetUserInactiveTime()) {
-	    ShutdownHandler.SetUserInactiveTimeout();
-	}
-	if (cSoftHdControl::Player) {	// suspended
-	    cControl::Shutdown();	// not need, if not suspended
-	}
-	Resume();
-	SuspendMode = NOT_SUSPENDED;
-	return "SoftHdDevice is attached";
+		if (ShutdownHandler.GetUserInactiveTime()) {
+			ShutdownHandler.SetUserInactiveTimeout();
+		}
+		if (cSoftHdControl::Player) {	// suspended
+			cControl::Shutdown();	// not need, if not suspended
+		}
+		Resume();
+		SuspendMode = NOT_SUSPENDED;
+		return "SoftHdDevice is attached";
     }
     if (!strcasecmp(command, "HOTK")) {
-	int hotk;
+		int hotk;
 
-	hotk = strtol(option, NULL, 0);
-	HandleHotkey(hotk);
-	return "hot-key executed";
+		hotk = strtol(option, NULL, 0);
+		HandleHotkey(hotk);
+		return "hot-key executed";
     }
     if (!strcasecmp(command, "PRIM")) {
-	int primary;
+		int primary;
 
-	primary = strtol(option, NULL, 0);
-	if (!primary && MyDevice) {
-	    primary = MyDevice->DeviceNumber() + 1;
-	}
-	dsyslog("[softhddev] switching primary device to %d\n", primary);
-	DoMakePrimary = primary;
-	return "switching primary device requested";
+		primary = strtol(option, NULL, 0);
+		if (!primary && MyDevice) {
+			primary = MyDevice->DeviceNumber() + 1;
+		}
+		dsyslog("[softhddev] switching primary device to %d\n", primary);
+		DoMakePrimary = primary;
+		return "switching primary device requested";
     }
     if (!strcasecmp(command, "3DOF")) {
-	VideoSetOsd3DMode(0);
-	return "3d off";
+		VideoSetOsd3DMode(0);
+		return "3d off";
     }
     if (!strcasecmp(command, "3DSB")) {
-	VideoSetOsd3DMode(1);
-	return "3d sbs";
+		VideoSetOsd3DMode(1);
+		return "3d sbs";
     }
     if (!strcasecmp(command, "3DTB")) {
-	VideoSetOsd3DMode(2);
-	return "3d tb";
+		VideoSetOsd3DMode(2);
+		return "3d tb";
     }
 
     if (!strcasecmp(command, "RAIS")) {
-	if (!ConfigStartX11Server) {
-	    VideoRaiseWindow();
-	} else {
-	    return "Raise not possible";
-	}
-	return "Window raised";
+		if (!ConfigStartX11Server) {
+			VideoRaiseWindow();
+		} else {
+			return "Raise not possible";
+		}
+		return "Window raised";
     }
 
     return NULL;

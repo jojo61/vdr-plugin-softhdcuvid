@@ -633,8 +633,8 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
   normal:
     *output_x = video_x;
     *output_y = video_y;
-    *output_width  = (video_height * display_aspect_ratio.num + display_aspect_ratio.den ) / display_aspect_ratio.den;
-    *output_height = (video_width  * display_aspect_ratio.den + display_aspect_ratio.num ) / display_aspect_ratio.num;
+    *output_width  = (video_height * display_aspect_ratio.num + display_aspect_ratio.den -1 ) / display_aspect_ratio.den;
+    *output_height = (video_width  * display_aspect_ratio.den + display_aspect_ratio.num -1 ) / display_aspect_ratio.num;
 // JOJO hier stimmt was nicht 
 #if DEBUG
 	*output_width = video_width;
@@ -866,6 +866,7 @@ static void GlxUploadOsdTexture(int x, int y, int width, int height,
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glDisable(GL_TEXTURE_2D);
+
 }
 
 ///
@@ -886,12 +887,12 @@ static void GlxOsdInit(int width, int height)
 #endif
 
     Debug(3, "video/glx: osd init context %p <-> %p\n", glXGetCurrentContext(), GlxContext);
-
+	
+#ifndef USE_OPENGLOSD
     //
     //	create a RGBA texture.
     //
     glEnable(GL_TEXTURE_2D);		// create 2d texture(s)
-
     glGenTextures(2, OsdGlTextures);
     for (i = 0; i < 2; ++i) {
 		glBindTexture(GL_TEXTURE_2D, OsdGlTextures[i]);
@@ -901,11 +902,12 @@ static void GlxOsdInit(int width, int height)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-
     }
-
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
+#else
+	OsdGlTextures[0] = 0;
+#endif
 }
 
 ///
@@ -914,6 +916,7 @@ static void GlxOsdInit(int width, int height)
 static void GlxOsdExit(void)
 {
     if (OsdGlTextures[0]) {
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );
 		glDeleteTextures(2, OsdGlTextures);
 		OsdGlTextures[0] = 0;
 		OsdGlTextures[1] = 0;
@@ -4878,18 +4881,14 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 #endif
 
     // FIXME: size hints
-
+#if 0
     // register interest in the delete window message
     if ((reply =
-	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0,
-		    sizeof("WM_DELETE_WINDOW") - 1, "WM_DELETE_WINDOW"),
-		NULL))) {
+	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0, sizeof("WM_DELETE_WINDOW") - 1, "WM_DELETE_WINDOW"),NULL))) {
 		WmDeleteWindowAtom = reply->atom;
 		free(reply);
 		if ((reply =
-			xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection,
-				0, sizeof("WM_PROTOCOLS") - 1, "WM_PROTOCOLS"),
-				NULL))) {
+			xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection,0, sizeof("WM_PROTOCOLS") - 1, "WM_PROTOCOLS"),NULL))) {
 #ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
 			xcb_icccm_set_wm_protocols(Connection, VideoWindow, reply->atom, 1,&WmDeleteWindowAtom);
 #endif
@@ -4899,6 +4898,7 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 			free(reply);
 		}
     }
+#endif
     //
     //	prepare fullscreen.
     //
@@ -5439,7 +5439,11 @@ void VideoInit(const char *display_name)
 		Debug(3, "video: x11 already setup\n");
 	return;
     }
-
+#ifdef USE_GLX
+    if (!XInitThreads()) {
+		Error(_("video: Can't initialize X11 thread support on '%s'\n"),display_name);
+	}
+#endif
     // Open the connection to the X server.
     // use the DISPLAY environment variable as the default display name
     if (!display_name && !(display_name = getenv("DISPLAY"))) {
@@ -5451,11 +5455,7 @@ void VideoInit(const char *display_name)
 		// FIXME: we need to retry connection
 	return;
     }
-#ifdef USE_GLX
-    if (!XInitThreads()) {
-		Error(_("video: Can't initialize X11 thread support on '%s'\n"),display_name);
-	}
-#endif
+
     // Register error handler
     XSetIOErrorHandler(VideoIOErrorHandler);
 
