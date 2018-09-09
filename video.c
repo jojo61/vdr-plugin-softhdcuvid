@@ -5439,6 +5439,7 @@ void VideoInit(const char *display_name)
 		Debug(3, "video: x11 already setup\n");
 	return;
     }
+
     // Open the connection to the X server.
     // use the DISPLAY environment variable as the default display name
     if (!display_name && !(display_name = getenv("DISPLAY"))) {
@@ -5450,7 +5451,7 @@ void VideoInit(const char *display_name)
 		// FIXME: we need to retry connection
 	return;
     }
-#ifdef USE_GLX_not_needed_done_with_locks
+#ifdef USE_GLX
     if (!XInitThreads()) {
 		Error(_("video: Can't initialize X11 thread support on '%s'\n"),display_name);
 	}
