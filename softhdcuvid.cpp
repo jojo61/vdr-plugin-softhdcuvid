@@ -315,18 +315,18 @@ void cSoftOsd::SetActive(bool on)
 #endif
 
     if (Active() == on) {
-	return;				// already active, no action
+		return;				// already active, no action
     }
     cOsd::SetActive(on);
 
     if (on) {
-	Dirty = 1;
-	// only flush here if there are already bitmaps
-	if (GetBitmap(0)) {
-	    Flush();
-	}
+		Dirty = 1;
+		// only flush here if there are already bitmaps
+		if (GetBitmap(0)) {
+			Flush();
+		}
     } else {
-	OsdClose();
+		OsdClose();
     }
 }
 
@@ -391,7 +391,7 @@ eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
 
     // clear old OSD, when new areas are set
     if (!IsTrueColor()) {
-	cBitmap *bitmap;
+		cBitmap *bitmap;
 	int i;
 
 	for (i = 0; (bitmap = GetBitmap(i)); i++) {
@@ -399,8 +399,8 @@ eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
 	}
     }
     if (Active()) {
-	VideoOsdClear();
-	Dirty = 1;
+		VideoOsdClear();
+		Dirty = 1;
     }
     return cOsd::SetAreas(areas, n);
 }
@@ -1612,12 +1612,12 @@ eOSState cSoftHdControl::ProcessKey(eKeys key)
 {
     if (SuspendMode == SUSPEND_NORMAL && (!ISMODELESSKEY(key)
 	    || key == kMenu || key == kBack || key == kStop)) {
-	delete Player;
+		delete Player;
 
-	Player = NULL;
-	Resume();
-	SuspendMode = NOT_SUSPENDED;
-	return osEnd;
+		Player = NULL;
+		Resume();
+		SuspendMode = NOT_SUSPENDED;
+		return osEnd;
     }
     return osContinue;
 }
@@ -1640,8 +1640,8 @@ cSoftHdControl::~cSoftHdControl()
     Player = NULL;
     // loose control resume
     if (SuspendMode == SUSPEND_NORMAL) {
-	Resume();
-	SuspendMode = NOT_SUSPENDED;
+		Resume();
+		SuspendMode = NOT_SUSPENDED;
     }
 
     dsyslog("[softhddev]%s: dummy player stopped\n", __FUNCTION__);
@@ -3104,14 +3104,14 @@ void cPluginSoftHdDevice::Housekeeping(void)
     // check if user is inactive, automatic enter suspend mode
     // FIXME: cControl prevents shutdown, disable this until fixed
     if (0 && SuspendMode == NOT_SUSPENDED && ShutdownHandler.IsUserInactive()) {
-	// don't overwrite already suspended suspend mode
-	cControl::Launch(new cSoftHdControl);
-	cControl::Attach();
-	Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
-	SuspendMode = SUSPEND_NORMAL;
+		// don't overwrite already suspended suspend mode
+		cControl::Launch(new cSoftHdControl);
+		cControl::Attach();
+		Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
+		SuspendMode = SUSPEND_NORMAL;
 #ifdef USE_OPENGLOSD
-    dsyslog("[softhddev]stopping Ogl Thread Housekeeping");
-    cSoftOsdProvider::StopOpenGlThread();
+		dsyslog("[softhddev]stopping Ogl Thread Housekeeping");
+		cSoftOsdProvider::StopOpenGlThread();
 #endif
     }
 

@@ -44,7 +44,10 @@ extern "C"
 #include "audio.h"
 #include "video.h"
 #include "codec.h"
+
 }
+
+extern "C" pthread_mutex_t OSDMutex;
 
 struct sOglImage {
     GLuint texture;

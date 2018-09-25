@@ -1556,7 +1556,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (!p[0] || p[0] == 0xb3) {
 #ifdef DEBUG
-			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			printf("last: %d start  aspect %02x\n", stream->StartCodeState,p[4]);
 #endif
 			stream->PacketRb[stream->PacketWrite].stream_index -= 3;
 			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1566,6 +1566,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 			n--;
 			pts = AV_NOPTS_VALUE;
 	    }
+
 	    break;
 	case 2:			// 0x00 0x00 seen
 #ifdef DEBUG
@@ -1573,7 +1574,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (p[0] == 0x01 && (!p[1] || p[1] == 0xb3)) {
 #ifdef DEBUG
-			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			printf( "last: %d start  aspect %02x\n", stream->StartCodeState,p[5]);
 #endif
 			stream->PacketRb[stream->PacketWrite].stream_index -= 2;
 			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1590,7 +1591,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 #endif
 	    if (!p[0] && p[1] == 0x01 && (!p[2] || p[2] == 0xb3)) {
 #ifdef DEBUG
-			fprintf(stderr, "last: %d start\n", stream->StartCodeState);
+			printf( "last: %d start  aspect %02x\n", stream->StartCodeState,p[6]);
 #endif
 			stream->PacketRb[stream->PacketWrite].stream_index -= 1;
 			VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1614,10 +1615,10 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 		// FIXME: not perfect, must split at 0xb3 also
 		if (!p[0] && !p[1] && p[2] == 0x01 && !p[3]) {
 			if (first) {
-			first = 0;
-			n -= 4;
-			p += 4;
-			continue;
+				first = 0;
+				n -= 4;
+				p += 4;
+				continue;
 			}
 			// packet has already an picture header
 			/*
@@ -1639,6 +1640,9 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 			p += 4;
 			continue;
 		}
+		if (!p[0] && !p[1] && p[2] == 0x01 && p[3] == 0xb3) {
+//			printf("aspectratio %02x\n",p[7]>>4);
+		}
 		--n;
 		++p;
     }
@@ -1647,17 +1651,17 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
     switch (n) {			// handle packet border start code
 	case 3:
 	    if (!p[0] && !p[1] && p[2] == 0x01) {
-		stream->StartCodeState = 3;
+			stream->StartCodeState = 3;
 	    }
 	    break;
 	case 2:
 	    if (!p[0] && !p[1]) {
-		stream->StartCodeState = 2;
+			stream->StartCodeState = 2;
 	    }
 	    break;
 	case 1:
 	    if (!p[0]) {
-		stream->StartCodeState = 1;
+			stream->StartCodeState = 1;
 	    }
 	    break;
 	case 0:
@@ -1756,9 +1760,9 @@ static void VideoStreamOpen(VideoStream * stream)
     stream->CodecID = AV_CODEC_ID_NONE;
     stream->LastCodecID = AV_CODEC_ID_NONE;
     if ((stream->HwDecoder = VideoNewHwDecoder(stream))) {
-	stream->Decoder = CodecVideoNewDecoder(stream->HwDecoder);
-	VideoPacketInit(stream);
-	stream->SkipStream = 0;
+		stream->Decoder = CodecVideoNewDecoder(stream->HwDecoder);
+		VideoPacketInit(stream);
+		stream->SkipStream = 0;
     }
 }
 
@@ -3321,7 +3325,7 @@ void Suspend(int video, int audio, int dox11)
 {
     pthread_mutex_lock(&SuspendLockMutex);
     if (MyVideoStream->SkipStream && SkipAudio) {	// already suspended
-	pthread_mutex_unlock(&SuspendLockMutex);
+		pthread_mutex_unlock(&SuspendLockMutex);
 	return;
     }
 
@@ -3337,17 +3341,17 @@ void Suspend(int video, int audio, int dox11)
     SkipAudio = 1;
 
     if (audio) {
-	AudioExit();
-	if (MyAudioDecoder) {
-	    CodecAudioClose(MyAudioDecoder);
-	    CodecAudioDelDecoder(MyAudioDecoder);
-	    MyAudioDecoder = NULL;
-	}
-	NewAudioStream = 0;
-	av_free_packet(AudioAvPkt);
+		AudioExit();
+		if (MyAudioDecoder) {
+			CodecAudioClose(MyAudioDecoder);
+			CodecAudioDelDecoder(MyAudioDecoder);
+			MyAudioDecoder = NULL;
+		}
+		NewAudioStream = 0;
+		av_free_packet(AudioAvPkt);
     }
     if (video) {
-	StopVideo();
+		StopVideo();
     }
 
     if (dox11) {

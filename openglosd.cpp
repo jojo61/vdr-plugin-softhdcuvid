@@ -672,7 +672,7 @@ void cOglVb::DrawArrays(int count) {
     glFlush();    
 }
 
-
+#if 0
 /****************************************************************************************
 * cOpenGLCmd
 ****************************************************************************************/
@@ -686,7 +686,7 @@ bool cOglCmdInitOutputFb::Execute(void) {
     oFb->Unbind();
     return ok;
 }
-
+#endif
 //------------------ cOglCmdInitFb --------------------
 cOglCmdInitFb::cOglCmdInitFb(cOglFb *fb, cCondWait *wait) : cOglCmd(fb) {
     this->wait = wait;
@@ -1649,13 +1649,18 @@ void cOglThread::DeleteVertexBuffers(void) {
 
 void cOglThread::Cleanup(void) {
 	esyslog("[softhddev]OglThread cleanup\n");
+	pthread_mutex_lock(&OSDMutex);
+	OsdClose();
+
     DeleteVertexBuffers();
 //    delete cOglOsd::oFb;
+
     cOglOsd::oFb = NULL;
     DeleteShaders();
 //    glVDPAUFiniNV();
     cOglFont::Cleanup();
 //    glutExit();
+	pthread_mutex_unlock(&OSDMutex);
 }
 
 /****************************************************************************************
@@ -1921,7 +1926,7 @@ eOsdError cOglOsd::SetAreas(const tArea *Areas, int NumAreas) {
 
     //now we know the actuaL osd size, create double buffer frame buffer
     if (bFb) {
-        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
+        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));		
         DestroyPixmap(oglPixmaps[0]);
     }
     bFb = new cOglFb(r.Width(), r.Height(), r.Width(), r.Height());
@@ -1995,6 +2000,8 @@ void cOglOsd::Flush(void) {
     //clear buffer
     //uint64_t start = cTimeMs::Now();
     //dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
+	
+	pthread_mutex_lock(&OSDMutex);
     oglThread->DoCmd(new cOglCmdFill(bFb, clrTransparent));
 
     //render pixmap textures blended to buffer
@@ -2015,6 +2022,7 @@ void cOglOsd::Flush(void) {
         }
     }
     ActivateOsd(bFb->texture,Left(), Top() , bFb->Width(), bFb->Height());
+	pthread_mutex_unlock(&OSDMutex);
 //    oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top()));
     //dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
 }

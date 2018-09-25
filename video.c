@@ -416,7 +416,7 @@ static pthread_t VideoThread;		///< video decode thread
 static pthread_cond_t VideoWakeupCond;	///< wakeup condition variable
 static pthread_mutex_t VideoMutex;	///< video condition mutex
 static pthread_mutex_t VideoLockMutex;	///< video lock mutex
-
+pthread_mutex_t OSDMutex;			///< OSD update mutex
 #endif
 
 #ifdef USE_VIDEO_THREAD2
@@ -601,9 +601,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     tmp_ratio.num = 4;
     tmp_ratio.den = 3;
 #ifdef DEBUG
-    fprintf(stderr, "ratio: %d:%d %d:%d\n", input_aspect_ratio.num,
-	input_aspect_ratio.den, display_aspect_ratio.num,
-	display_aspect_ratio.den);
+    Debug(4, "ratio: %d:%d %d:%d\n", input_aspect_ratio.num, input_aspect_ratio.den, display_aspect_ratio.num, display_aspect_ratio.den);
 #endif
     if (!av_cmp_q(input_aspect_ratio, tmp_ratio)) {
 		switch (Video4to3ZoomMode) {
@@ -635,12 +633,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
     *output_y = video_y;
     *output_width  = (video_height * display_aspect_ratio.num + display_aspect_ratio.den -1 ) / display_aspect_ratio.den;
     *output_height = (video_width  * display_aspect_ratio.den + display_aspect_ratio.num -1 ) / display_aspect_ratio.num;
-// JOJO hier stimmt was nicht 
-#if DEBUG
-	*output_width = video_width;
-	*output_height = video_height;
-#endif
-
+// JOJO
     if (*output_width > video_width) {
 		*output_width = video_width;
 		*output_y += (video_height - *output_height) / 2;
@@ -988,14 +981,17 @@ static void GlxOsdClear(void)
 {
     void *texbuf;
 
+#ifdef USE_OPENGLOSD
+	return;
+#endif
+	
 #ifdef DEBUG
     if (!GlxEnabled) {
-	Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
+		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
 	return;
     }
 
-    Debug(3, "video/glx: osd context %p <-> %p\n", glXGetCurrentContext(),
-	GlxContext);
+    Debug(3, "video/glx: osd context %p <-> %p\n", glXGetCurrentContext(),	GlxContext);
 #endif
 
     // FIXME: any opengl function to clear an area?
@@ -1011,7 +1007,6 @@ static void GlxOsdClear(void)
     texbuf = calloc(OsdWidth * OsdHeight, 4);
     GlxUploadOsdTexture(0, 0, OsdWidth, OsdHeight, texbuf);
     glXMakeCurrent(XlibDisplay, None, NULL);
-
     free(texbuf);
 }
 
@@ -1327,7 +1322,6 @@ static void GlxExit(void)
     }
     if (GlxSharedContext) {
 		glXDestroyContext(XlibDisplay, GlxSharedContext);
-		GlxSharedContext=0;
     }
     if (GlxContext) {
 		glXDestroyContext(XlibDisplay, GlxContext);
@@ -1998,6 +1992,7 @@ Debug(3,"cuvid del hw decoder\n");
         decoder->cuda_ctx = NULL;
     }
 #endif
+	glXMakeCurrent(XlibDisplay, None, NULL);
     for (i = 0; i < CuvidDecoderN; ++i) {
 		if (CuvidDecoders[i] == decoder) {
 			CuvidDecoders[i] = NULL;
@@ -2819,7 +2814,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
     int surface;
     VideoDecoder        *ist = video_ctx->opaque;
 
-#if 0
+
     // update aspect ratio changes
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,60,100)
     if (decoder->InputWidth && decoder->InputHeight
@@ -2827,6 +2822,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		Debug(3, "video/vdpau: aspect ratio changed\n");
 
 		decoder->InputAspect = frame->sample_aspect_ratio;
+printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_ratio.den);
 		CuvidUpdateOutput(decoder);
     }
 #else
@@ -2838,7 +2834,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		CuvidUpdateOutput(decoder);
     }
 #endif
-#endif
+
 
  	//
 	//	Check image, format, size
@@ -3145,17 +3141,20 @@ static void CuvidDisplayFrame(void)
 	//
 	//	add osd to surface
 	//
-	if (OsdShown) {
+	if (OsdShown) {		
 #ifndef USE_OPENGLOSD
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);
+		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);		
 #else
+		pthread_mutex_lock(&OSDMutex);
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );
 		GlxRenderTexture(OSDtexture, OSDx, OSDy, OSDxsize, OSDysize);
+		pthread_mutex_unlock(&OSDMutex);
 #endif
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
-		// FIXME: toggle osd
+		
 	}
+
 	glXGetVideoSyncSGI (&Count);    // get current frame
 	glXSwapBuffers(XlibDisplay, VideoWindow);
 	
@@ -4238,6 +4237,7 @@ static void VideoThreadInit(void)
 
     pthread_mutex_init(&VideoMutex, NULL);
     pthread_mutex_init(&VideoLockMutex, NULL);
+	pthread_mutex_init(&OSDMutex, NULL);
     pthread_cond_init(&VideoWakeupCond, NULL);
     pthread_create(&VideoThread, NULL, VideoDisplayHandlerThread, NULL);
 }
@@ -4264,6 +4264,7 @@ static void VideoThreadExit(void)
 		pthread_cond_destroy(&VideoWakeupCond);
 		pthread_mutex_destroy(&VideoLockMutex);
 		pthread_mutex_destroy(&VideoMutex);
+		pthread_mutex_destroy(&OSDMutex);
     }
 
 }
@@ -4686,12 +4687,12 @@ void VideoGetVideoSize(VideoHwDecoder * hw_decoder, int *width, int *height,
     // FIXME: test to check if working, than make module function
 
     if (VideoUsedModule == &CuvidModule) {
-	*width = hw_decoder->Cuvid.InputWidth;
-	*height = hw_decoder->Cuvid.InputHeight;
-	av_reduce(aspect_num, aspect_den,
-	    hw_decoder->Cuvid.InputWidth * hw_decoder->Cuvid.InputAspect.num,
-	    hw_decoder->Cuvid.InputHeight * hw_decoder->Cuvid.InputAspect.den,
-	    1024 * 1024);
+		*width = hw_decoder->Cuvid.InputWidth;
+		*height = hw_decoder->Cuvid.InputHeight;
+		av_reduce(aspect_num, aspect_den,
+			hw_decoder->Cuvid.InputWidth * hw_decoder->Cuvid.InputAspect.num,
+			hw_decoder->Cuvid.InputHeight * hw_decoder->Cuvid.InputAspect.den,
+			1024 * 1024);
     }
 
 
@@ -4881,7 +4882,7 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 #endif
 
     // FIXME: size hints
-#if 0
+
     // register interest in the delete window message
     if ((reply =
 	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0, sizeof("WM_DELETE_WINDOW") - 1, "WM_DELETE_WINDOW"),NULL))) {
@@ -4898,7 +4899,7 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 			free(reply);
 		}
     }
-#endif
+
     //
     //	prepare fullscreen.
     //
@@ -5611,7 +5612,7 @@ void VideoExit(void)
     //	FIXME: cleanup.
     //
     //RandrExit();
-
+	pthread_mutex_lock(&OSDMutex);
     //
     //	X11/xcb cleanup
     //
@@ -5638,6 +5639,7 @@ void VideoExit(void)
 		}
 		XlibDisplay = NULL;
 		Connection = 0;
+		pthread_mutex_unlock(&OSDMutex);
     }
 
 }
