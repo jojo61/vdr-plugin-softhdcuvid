@@ -452,8 +452,8 @@ bool cOglFb::Init(void) {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); //GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  //GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
@@ -528,7 +528,6 @@ bool cOglOutputFb::Init(void) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         esyslog("[softhddev]ERROR::cOglOutputFb: Framebuffer is not complete!");
-		return true;
         return false;
     }
 #endif
@@ -705,7 +704,7 @@ cOglCmdDeleteFb::cOglCmdDeleteFb(cOglFb *fb) : cOglCmd(fb) {
 }
 
 bool cOglCmdDeleteFb::Execute(void) {
-	
+	delete fb;
     return true;
 }
 
@@ -1280,7 +1279,7 @@ bool cOglCmdDrawTexture::Execute(void) {
     };
 
     VertexBuffers[vbTexture]->ActivateShader();
-    VertexBuffers[vbTexture]->SetShaderAlpha(128);
+    VertexBuffers[vbTexture]->SetShaderAlpha(255);
     VertexBuffers[vbTexture]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
 
     fb->Bind();
