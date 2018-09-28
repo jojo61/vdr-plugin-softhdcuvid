@@ -1967,12 +1967,14 @@ Debug(3,"Cuvid Clean up\n");
 static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
-Debug(3,"cuvid del hw decoder\n");
-#if 0	
+Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
+//#if 0	
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
     }
-	
+#if 0	
     if (decoder->cuda_ctx) {
         cuCtxDestroy (decoder->cuda_ctx);   
         decoder->cuda_ctx = NULL;
