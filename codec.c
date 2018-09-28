@@ -302,6 +302,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
 		Fatal(_("codec: can't allocate video codec context\n"));
     }
+	if (!HwDeviceContext) {
+		Fatal("codec: no hw device context to be used");
+    }
+    decoder->VideoCtx->hw_device_ctx = av_buffer_ref(HwDeviceContext);
+
+	
     // FIXME: for software decoder use all cpus, otherwise 1
     decoder->VideoCtx->thread_count = 1;
 	

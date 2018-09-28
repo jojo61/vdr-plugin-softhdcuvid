@@ -99,6 +99,16 @@ typedef struct _video_decoder_ VideoDecoder;
 typedef struct _audio_decoder_ AudioDecoder;
 
 //----------------------------------------------------------------------------
+//  Variables
+//----------------------------------------------------------------------------
+
+    /// x11 display name
+extern const char *X11DisplayName;
+
+    /// HW device context from video module
+extern AVBufferRef *HwDeviceContext;
+
+//----------------------------------------------------------------------------
 //	Variables
 //----------------------------------------------------------------------------
 

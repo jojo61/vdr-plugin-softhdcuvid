@@ -776,6 +776,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
     oFb->Unbind();
 	pthread_mutex_unlock(&OSDMutex);
+	printf("osdput  fb x %d y %d  %dx%d  oFb %dx%d\n",x,y,fb->Width(), fb->Height(),oFb->Width(), oFb->Height());
     ActivateOsd(oFb->texture,x, y ,fb->Width(), fb->Height());
 	
     return true;
@@ -1901,7 +1902,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 	
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 
-    //create vdpau output framebuffer
+    //create  output framebuffer
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));

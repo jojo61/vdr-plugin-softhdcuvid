@@ -321,7 +321,7 @@ typedef struct {
 //----------------------------------------------------------------------------
 //	Variables
 //----------------------------------------------------------------------------
-
+AVBufferRef *HwDeviceContext;		///< ffmpeg HW device context
 char VideoIgnoreRepeatPict;		///< disable repeat pict warning
 
 static const char *VideoDriverName="cuvid";	///< video output device
@@ -462,7 +462,7 @@ static XVisualInfo *GlxVisualInfo;	///< our gl visual
 static GLuint OsdGlTextures[2];		///< gl texture for OSD
 static int OsdIndex=0;			///< index into OsdGlTextures
 static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
-
+GLXContext OSDcontext;
 
 //----------------------------------------------------------------------------
 //	Common Functions
@@ -1194,25 +1194,25 @@ static void GlxInit(void)
 		return;
     }
     if (!vi->visual) {
-		Error(_("video/glx: no valid visual found\n"));
+		Fatal(_("video/glx: no valid visual found\n"));
 		GlxEnabled = 0;
 		return;
     }
     if (vi->bits_per_rgb < 8) {
-		Error(_("video/glx: need atleast 8-bits per RGB\n"));
+		Fatal(_("video/glx: need atleast 8-bits per RGB\n"));
 		GlxEnabled = 0;
 		return;
     }
     context = glXCreateContext(XlibDisplay, vi, NULL, GL_TRUE);
     if (!context) {
-		Error(_("video/glx: can't create glx context\n"));
+		Fatal(_("video/glx: can't create glx context\n"));
 		GlxEnabled = 0;
 		return;
     }
     GlxSharedContext = context;
     context = glXCreateContext(XlibDisplay, vi, GlxSharedContext, GL_TRUE);
     if (!context) {
-		Error(_("video/glx: can't create glx context\n"));
+		Fatal(_("video/glx: can't create glx context\n"));
 		GlxEnabled = 0;
 		glXDestroyContext(XlibDisplay, GlxSharedContext);
 		GlxSharedContext = 0;
@@ -1314,6 +1314,9 @@ static void GlxExit(void)
     }
     if (GlxThreadContext) {
 		glXDestroyContext(XlibDisplay, GlxThreadContext);
+    }
+	if (OSDcontext) {
+		glXDestroyContext(XlibDisplay, OSDcontext);
     }
     // FIXME: must free GlxVisualInfo
 }
@@ -1625,7 +1628,7 @@ GLuint gl_shader=0,gl_prog = 0,gl_fbo=0;      // shader programm
 GLint gl_colormatrix,gl_colormatrix_c;
 GLuint OSDfb=0;
 GLuint OSDtexture;
-GLXContext OSDcontext;
+
 int OSDx,OSDy,OSDxsize,OSDysize;
 
 static struct timespec CuvidFrameTime;	///< time of last display
@@ -1866,9 +1869,14 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 	Debug(3,"Cuvid New HW Decoder\n");
     if ((unsigned)CuvidDecoderN >=	sizeof(CuvidDecoders) / sizeof(*CuvidDecoders)) {
 		Error(_("video/cuvid: out of decoders\n"));
-	return NULL;
+		return NULL;
     }
-
+	
+    if (av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) {
+		Fatal("codec: can't allocate HW video codec context");
+    }
+    HwDeviceContext = av_buffer_ref(hw_device_ctx);
+	
     if (!(decoder = calloc(1, sizeof(*decoder)))) {
 		Error(_("video/cuvid: out of memory\n"));
 		return NULL;
@@ -1894,15 +1902,8 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 		decoder->SurfacesRb[i] = -1;
     }
 
-#ifdef DEBUG
-    if (VIDEO_SURFACES_MAX < 1 + 1 + 1 + 1) {
-		Error(_("video/cuvid: need 1 future, 1 current, 1 back and 1 work surface\n"));
-    }
-#endif
-
     decoder->OutputWidth = VideoWindowWidth;
     decoder->OutputHeight = VideoWindowHeight;
-
     decoder->PixFmt = AV_PIX_FMT_NONE;
 
 #ifdef USE_AUTOCROP
@@ -1915,7 +1916,6 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 		decoder->SyncOnAudio = 1;
     }
     decoder->Closing = -300 - 1;
-
     decoder->PTS = AV_NOPTS_VALUE;
 
     CuvidDecoders[CuvidDecoderN++] = decoder;
@@ -1968,7 +1968,7 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
 Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
-//#if 0	
+	
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
@@ -2206,7 +2206,7 @@ static int cuvid_get_buffer(AVCodecContext *s, AVFrame *frame, int flags)
     return ret;
 }
 
-
+#if 0
 static void cuvid_uninit(AVCodecContext *avctx)
 {
     VideoDecoder *ist = avctx->opaque;
@@ -2273,7 +2273,7 @@ static int init_cuvid(AVCodecContext *avctx,CuvidDecoder * decoder)
 
     return 0;
 }
-
+#endif
 ///
 ///	Callback to negotiate the PixelFormat.
 ///
@@ -2334,10 +2334,12 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 
     if (*fmt_idx == AV_PIX_FMT_CUDA  )  {       // HWACCEL used 
         CuvidCleanup(decoder);
-        if (init_cuvid(video_ctx,decoder)) {
+#if 0
+		if (init_cuvid(video_ctx,decoder)) {
 			Fatal(_("CUVID Init failed\n"));
 		}
-		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
+#endif
+		CuvidMessage(2,"no CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
         ist->active_hwaccel_id = HWACCEL_CUVID;
         ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
         decoder->InputWidth = video_ctx->width;
@@ -3135,7 +3137,13 @@ static void CuvidDisplayFrame(void)
 		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);		
 #else
 		pthread_mutex_lock(&OSDMutex);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );		
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );	
+		glViewport(0, 0, VideoWindowWidth, VideoWindowHeight);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0.0, VideoWindowWidth, VideoWindowHeight, 0.0, -1.0, 1.0);
+		GlxCheck();
+//		printf("osd %d %dx%d\n",OSDtexture,VideoWindowWidth, VideoWindowHeight);
 		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight);
 		pthread_mutex_unlock(&OSDMutex);
 #endif
@@ -5486,7 +5494,7 @@ void VideoInit(const char *display_name)
 			VideoWindowHeight = screen->height_in_pixels;
 			VideoWindowWidth = screen->width_in_pixels;
 	//***********************************************************************************************
-#if DEBUG
+#if DEBUG_no
          if (strcmp(":0.0",display_name) == 0) {
 			VideoWindowHeight = 1080;
 			VideoWindowWidth = 1920;
@@ -5638,6 +5646,7 @@ int GlxInitopengl() {
 		sleep(1);					// wait until Init from video thread is ready
 //		printf("GlxConext %p\n",GlxSharedContext);
 	}
+	glXMakeCurrent(XlibDisplay, None, NULL);
 	OSDcontext = glXCreateContext(XlibDisplay, GlxVisualInfo, GlxSharedContext,GL_TRUE);
 	if (!OSDcontext) {
 		Debug(3,"video/osd: can't create glx context\n");
