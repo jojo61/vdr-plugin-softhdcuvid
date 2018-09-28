@@ -512,17 +512,15 @@ cOglOutputFb::~cOglOutputFb(void) {
 }
 
 bool cOglOutputFb::Init(void) {
-#if 0
-    //fetching osd vdpau output surface from softhddevice
-//    void *vdpauOutputSurface = GetVDPAUOutputSurface();
+
     glGenTextures(1, &texture);
-    //register surface for texture
-//    surface = glVDPAURegisterOutputSurfaceNV(vdpauOutputSurface, GL_TEXTURE_2D, 1, &texture);
-    //set write access to surface
-//    glVDPAUSurfaceAccessNV(surface, GL_WRITE_DISCARD_NV);
-    //create framebuffer
-//    glVDPAUMapSurfacesNV (1, &surface);
     glBindTexture(GL_TEXTURE_2D, texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	
     glGenFramebuffers(1, &fb);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
@@ -530,18 +528,18 @@ bool cOglOutputFb::Init(void) {
         esyslog("[softhddev]ERROR::cOglOutputFb: Framebuffer is not complete!");
         return false;
     }
-#endif
+
     return true;
 }
 
 void cOglOutputFb::BindWrite(void) {
 //    glVDPAUMapSurfacesNV(1, &surface);
-//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
 }
 
 void cOglOutputFb::Unbind(void) {
 //    glVDPAUUnmapSurfacesNV(1, &surface);
-//    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 /****************************************************************************************
@@ -671,7 +669,7 @@ void cOglVb::DrawArrays(int count) {
     glFlush();    
 }
 
-#if 0
+
 /****************************************************************************************
 * cOpenGLCmd
 ****************************************************************************************/
@@ -685,7 +683,7 @@ bool cOglCmdInitOutputFb::Execute(void) {
     oFb->Unbind();
     return ok;
 }
-#endif
+
 //------------------ cOglCmdInitFb --------------------
 cOglCmdInitFb::cOglCmdInitFb(cOglFb *fb, cCondWait *wait) : cOglCmd(fb) {
     this->wait = wait;
@@ -761,7 +759,7 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
 
     return true;
 }
-#if 0
+
 //------------------ cOglCmdCopyBufferToOutputFb --------------------
 cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputFb *oFb, GLint x, GLint y) : cOglCmd(fb) {
     this->oFb = oFb;
@@ -770,16 +768,19 @@ cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputF
 }
 
 bool cOglCmdCopyBufferToOutputFb::Execute(void) {
-    
+    pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
+	
+	glClear(GL_COLOR_BUFFER_BIT);
     fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
     oFb->Unbind();
-
-//    ActivateOsd(oFb->texture,oFb->fb,glXGetCurrentContext());
+	pthread_mutex_unlock(&OSDMutex);
+    ActivateOsd(oFb->texture,x, y ,fb->Width(), fb->Height());
+	
     return true;
 }
-#endif
+
 //------------------ cOglCmdFill --------------------
 cOglCmdFill::cOglCmdFill(cOglFb *fb, GLint color) : cOglCmd(fb) {
     this->color = color;
@@ -1899,13 +1900,13 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     VideoGetOsdSize(&osdWidth, &osdHeight);
 	
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
-#if 0
+
     //create vdpau output framebuffer
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
-#endif
+
 }
 
 cOglOsd::~cOglOsd() {
@@ -2000,7 +2001,7 @@ void cOglOsd::Flush(void) {
     //uint64_t start = cTimeMs::Now();
     //dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
 	
-	pthread_mutex_lock(&OSDMutex);
+
     oglThread->DoCmd(new cOglCmdFill(bFb, clrTransparent));
 
     //render pixmap textures blended to buffer
@@ -2020,9 +2021,7 @@ void cOglOsd::Flush(void) {
             }
         }
     }
-    ActivateOsd(bFb->texture,Left(), Top() , bFb->Width(), bFb->Height());
-	pthread_mutex_unlock(&OSDMutex);
-//    oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top()));
+    oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top()));
     //dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
 }
 

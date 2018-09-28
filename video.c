@@ -798,15 +798,14 @@ static void GlxSetupDecoder(int width, int height, GLuint * textures)
 ///	@param width	window width
 ///	@param height	window height
 ///
-static inline void GlxRenderTexture(GLuint texture, int x, int y, int width,
-    int height)
+static inline void GlxRenderTexture(GLuint texture, int x, int y, int width, int height)
 {
 	
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture);
 
 //    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	// no color
-#ifndef USE_OPENGLOSD	
+
     glBegin(GL_QUADS); {
 		glTexCoord2f(1.0f, 1.0f);
 		glVertex2i(x + width, y + height);
@@ -818,19 +817,6 @@ static inline void GlxRenderTexture(GLuint texture, int x, int y, int width,
 		glVertex2i(x + width, y);
     }
     glEnd();
-#else
-	glBegin(GL_QUADS); {
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex2i(x+width , y );
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex2i(x, y );
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex2i(x, y+height);
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex2i(x+width , y+height);
-    }
-    glEnd();
-#endif
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
@@ -3147,8 +3133,8 @@ static void CuvidDisplayFrame(void)
 		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);		
 #else
 		pthread_mutex_lock(&OSDMutex);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );
-		GlxRenderTexture(OSDtexture, OSDx, OSDy, OSDxsize, OSDysize);
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );		
+		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight);
 		pthread_mutex_unlock(&OSDMutex);
 #endif
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
