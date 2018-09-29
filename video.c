@@ -1017,7 +1017,7 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 
     // set glx context
     if (!glXMakeCurrent(XlibDisplay, window, context)) {
-		Error(_("video/glx: can't make glx context current\n"));
+		Fatal(_("video/glx: can't make glx context current\n"));
 		GlxEnabled = 0;
 		return;
     }
@@ -1314,9 +1314,6 @@ static void GlxExit(void)
     }
     if (GlxThreadContext) {
 		glXDestroyContext(XlibDisplay, GlxThreadContext);
-    }
-	if (OSDcontext) {
-		glXDestroyContext(XlibDisplay, OSDcontext);
     }
     // FIXME: must free GlxVisualInfo
 }
@@ -1753,7 +1750,10 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
     CUdeviceptr d;
 
     Debug(3, "video/cuvid: %s\n", __FUNCTION__);
-
+	
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	GlxCheck();
+	
     glDeleteBuffers(1,(GLuint *)&vao_buffer);
 
 	if (decoder->cuda_ctx) {
@@ -1968,8 +1968,7 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
 Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
-	
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
@@ -2065,7 +2064,8 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	
     int n,i;
     CUcontext dummy;
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+//	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 	
     glGenBuffers(1,&vao_buffer);
@@ -3101,8 +3101,8 @@ static void CuvidDisplayFrame(void)
 	int filled;
 	CuvidDecoder *decoder;
 
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
-	
+//	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);	
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
 	glClear(GL_COLOR_BUFFER_BIT);
 	//
@@ -3147,8 +3147,8 @@ static void CuvidDisplayFrame(void)
 		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight);
 		pthread_mutex_unlock(&OSDMutex);
 #endif
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);	
-		
+//		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	}
 
 	glXGetVideoSyncSGI (&Count);    // get current frame
@@ -5594,21 +5594,18 @@ void VideoExit(void)
 
 	
 #ifdef USE_VIDEO_THREAD
-    VideoThreadExit();
-    // CUVID cleanup hangs in XLockDisplay every 100 exits
-    // XUnlockDisplay(XlibDisplay);
-    // xcb_flush(Connection);
+    VideoThreadExit();   // destroy all mutexes 
 #endif
 #ifdef USE_GLX
     if (GlxEnabled) {
-		GlxExit();
+		GlxExit();       // delete all contexts
     }
 #endif
     //
     //	FIXME: cleanup.
     //
     //RandrExit();
-	pthread_mutex_lock(&OSDMutex);
+	
     //
     //	X11/xcb cleanup
     //
@@ -5635,32 +5632,35 @@ void VideoExit(void)
 		}
 		XlibDisplay = NULL;
 		Connection = 0;
-		pthread_mutex_unlock(&OSDMutex);
     }
+	
 
 }
 
 int GlxInitopengl() {
 	
-	while (GlxSharedContext == NULL) {
+	while (GlxSharedContext == NULL || GlxContext == NULL) {
 		sleep(1);					// wait until Init from video thread is ready
 //		printf("GlxConext %p\n",GlxSharedContext);
 	}
-	glXMakeCurrent(XlibDisplay, None, NULL);
+
 	OSDcontext = glXCreateContext(XlibDisplay, GlxVisualInfo, GlxSharedContext,GL_TRUE);
 	if (!OSDcontext) {
 		Debug(3,"video/osd: can't create glx context\n");
 		return 0;
 	}
+	Debug(3,"Create OSD GLX context\n");
 	glXMakeCurrent(XlibDisplay, VideoWindow, OSDcontext);
+#if 0
 	glViewport(0, 0, VideoWindowWidth, VideoWindowHeight);
     glDepthRange(-1.0, 1.0);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glColor3f(1.0f, 1.0f, 1.0f);
     glClearDepth(1.0);
     GlxCheck();
-	if (glewInit())
-		Fatal(_("glewinit failed\n"));
+
+//	if (glewInit())
+//		Fatal(_("glewinit failed\n"));
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -5671,6 +5671,7 @@ int GlxInitopengl() {
     glLoadIdentity();
 
     glDisable(GL_DEPTH_TEST);		// setup 2d drawing
+#endif
 	return 1;
 	
 }
