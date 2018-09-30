@@ -1204,6 +1204,9 @@ static void GlxInit(void)
 		GlxEnabled = 0;
 		return;
     }
+	
+	Debug(3, "Chosen visual ID = 0x%x\n", vi->visualid );
+
     context = glXCreateContext(XlibDisplay, vi, NULL, GL_TRUE);
     if (!context) {
 		Fatal(_("video/glx: can't create glx context\n"));
@@ -1309,12 +1312,15 @@ static void GlxExit(void)
     }
     if (GlxSharedContext) {
 		glXDestroyContext(XlibDisplay, GlxSharedContext);
+		GlxCheck();
     }
     if (GlxContext) {
 		glXDestroyContext(XlibDisplay, GlxContext);
+		GlxCheck();
     }
     if (GlxThreadContext) {
 		glXDestroyContext(XlibDisplay, GlxThreadContext);
+		GlxCheck();
     }
     // FIXME: must free GlxVisualInfo
 }

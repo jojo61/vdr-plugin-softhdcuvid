@@ -392,11 +392,11 @@ eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
     // clear old OSD, when new areas are set
     if (!IsTrueColor()) {
 		cBitmap *bitmap;
-	int i;
+		int i;
 
-	for (i = 0; (bitmap = GetBitmap(i)); i++) {
-	    bitmap->Clean();
-	}
+		for (i = 0; (bitmap = GetBitmap(i)); i++) {
+			bitmap->Clean();
+		}
     }
     if (Active()) {
 		VideoOsdClear();
@@ -418,20 +418,18 @@ void cSoftOsd::Flush(void)
 #endif
 
     if (!Active()) {			// this osd is not active
-	return;
+		return;
     }
 #ifdef USE_YAEPG
     // support yaepghd, video window
     if (vidWin.bpp) {
 #ifdef OSD_DEBUG
-	dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, vidWin.Width(),
-	    vidWin.Height(), vidWin.x1, vidWin.y2);
+		dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, vidWin.Width(), vidWin.Height(), vidWin.x1, vidWin.y2);
 #endif
-	// FIXME: vidWin is OSD relative not video window.
-	// FIXME: doesn't work if fixed OSD width != real window width
-	// FIXME: solved in VideoSetOutputPosition
-	::ScaleVideo(Left() + vidWin.x1, Top() + vidWin.y1, vidWin.Width(),
-	    vidWin.Height());
+		// FIXME: vidWin is OSD relative not video window.
+		// FIXME: doesn't work if fixed OSD width != real window width
+		// FIXME: solved in VideoSetOutputPosition
+		::ScaleVideo(Left() + vidWin.x1, Top() + vidWin.y1, vidWin.Width(), vidWin.Height());
     }
 #endif
 
@@ -3644,10 +3642,6 @@ cString cPluginSoftHdDevice::SVDRPCommand(const char *command,
 		cControl::Attach();
 		Suspend(1, 1, 0);
 		SuspendMode = SUSPEND_DETACHED;
-#ifdef USE_OPENGLOSD_no
-		dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
-		cSoftOsdProvider::StopOpenGlThread();
-#endif
 		return "SoftHdDevice is detached";
     }
     if (!strcasecmp(command, "ATTA")) {
