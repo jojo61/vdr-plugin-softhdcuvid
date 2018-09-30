@@ -776,7 +776,6 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
     oFb->Unbind();
 	pthread_mutex_unlock(&OSDMutex);
-	printf("osdput  fb x %d y %d  %dx%d  oFb %dx%d\n",x,y,fb->Width(), fb->Height(),oFb->Width(), oFb->Height());
     ActivateOsd(oFb->texture,x, y ,fb->Width(), fb->Height());
 	
     return true;
@@ -2023,6 +2022,7 @@ void cOglOsd::Flush(void) {
         }
     }
     oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top()));
+
     //dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
 }
 

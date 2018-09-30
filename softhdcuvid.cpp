@@ -3644,6 +3644,10 @@ cString cPluginSoftHdDevice::SVDRPCommand(const char *command,
 		cControl::Attach();
 		Suspend(1, 1, 0);
 		SuspendMode = SUSPEND_DETACHED;
+#ifdef USE_OPENGLOSD_no
+		dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
+		cSoftOsdProvider::StopOpenGlThread();
+#endif
 		return "SoftHdDevice is detached";
     }
     if (!strcasecmp(command, "ATTA")) {

@@ -1098,7 +1098,8 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 static void GlxInit(void)
 {
 
-    XVisualInfo *vi;
+    XVisualInfo *vi=NULL;
+	
 		//The desired 30-bit color visual
 	int attributeList10[] = { 
 		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT, 
@@ -1798,7 +1799,7 @@ static int CuvidGetVideoSurface0(CuvidDecoder * decoder)
 
     if (!decoder->SurfaceFreeN) {
 //	Error(_("video/cuvid: out of surfaces\n"));
-		return 0;
+		return -1;
     }
     // use oldest surface
     surface = decoder->SurfacesFree[0];
@@ -1872,8 +1873,8 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 		return NULL;
     }
 	
-    if (av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) {
-		Fatal("codec: can't allocate HW video codec context");
+    if (i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) {
+		Fatal("codec: can't allocate HW video codec context err &d",i);
     }
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
 	
@@ -1968,11 +1969,13 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
 Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
+	pthread_mutex_lock(&VideoLockMutex);
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
     }
+	pthread_mutex_unlock(&VideoLockMutex);
 #if 0	
     if (decoder->cuda_ctx) {
         cuCtxDestroy (decoder->cuda_ctx);   
@@ -2307,6 +2310,9 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		// check supported pixel format with entry point
 		switch (*fmt_idx) {
 			case AV_PIX_FMT_CUDA:
+#ifdef VAAPI
+			case AV_PIX_FMT_VAAPI_VLD:
+#endif
 				break;
 			default:
 				continue;
@@ -2319,10 +2325,11 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		Error(_("video: no valid pixfmt found\n"));
     }
 
-
+#ifndef VAAPI
     if (*fmt_idx != AV_PIX_FMT_CUDA) {
 		Fatal(_("video: no valid profile found\n"));
     }
+#endif
     Debug(3, "video: create decoder 16bit?=%d %dx%d \n",bitformat16, video_ctx->width, video_ctx->height);
 
 
@@ -2355,7 +2362,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
         CuvidSetupOutput(decoder);
         return AV_PIX_FMT_CUDA;
     }
-	Fatal(_("CUVID Not found\n"));
+	Fatal(_("NO Format valid"));
     return *fmt_idx;
 }
 
@@ -2853,6 +2860,9 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->p
 		decoder->color_primaries = frame->color_primaries;
 		
 		surface = CuvidGetVideoSurface0(decoder);
+		
+		if (surface == -1)     // no free surfaces
+			return;
 		
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
