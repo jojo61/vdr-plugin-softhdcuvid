@@ -2460,20 +2460,20 @@ uint8_t *CreateJpeg(uint8_t * image, int raw_size, int *size, int quality,
 uint8_t *GrabImage(int *size, int jpeg, int quality, int width, int height)
 {
     if (jpeg) {
-	uint8_t *image;
-	int raw_size;
+		uint8_t *image;
+		int raw_size;
 
-	raw_size = 0;
-	image = VideoGrab(&raw_size, &width, &height, 0);
-	if (image) {			// can fail, suspended, ...
-	    uint8_t *jpg_image;
+		raw_size = 0;
+		image = VideoGrab(&raw_size, &width, &height, 0);
+		if (image) {			// can fail, suspended, ...
+			uint8_t *jpg_image;
 
-	    jpg_image = CreateJpeg(image, size, quality, width, height);
+			jpg_image = CreateJpeg(image, size, quality, width, height);
 
-	    free(image);
-	    return jpg_image;
-	}
-	return NULL;
+			free(image);
+			return jpg_image;
+		}
+		return NULL;
     }
     return VideoGrab(size, &width, &height, 1);
 }

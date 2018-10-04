@@ -291,14 +291,16 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     }
 	
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
-		Debug(3, "codec: cuvid decoder found\n");
+		Debug(3, "codec: decoder found\n");
     } else {
 		Debug(3,"Decoder %s not supported\n",name);
 		Fatal(_(" No decoder found"));
 	}
-	
-    decoder->VideoCodec = video_codec;
 
+    decoder->VideoCodec = video_codec;
+	
+	Debug(3, "codec: video '%s'\n", decoder->VideoCodec->long_name);
+	
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
 		Fatal(_("codec: can't allocate video codec context\n"));
     }
@@ -319,8 +321,8 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
 
-	if (name && strcmp(name,"mpeg2_cuvid") == 0) {  // deinterlace for mpeg2 is somehow broken 
-		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {  // weave
+	if (strcmp(decoder->VideoCodec->long_name,"Nvidia CUVID MPEG2VIDEO decoder") == 0) {  // deinterlace for mpeg2 is somehow broken 
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {  // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
 		}
@@ -333,7 +335,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		  Fatal(_("codec: can't set option drop 2.field to video codec!\n"));
 		}
 	}
-	else if (strstr(name,"cuvid") != NULL) {
+	else if (strstr(decoder->VideoCodec->long_name,"Nvidia CUVID") != NULL) {
 		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) { // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
@@ -354,10 +356,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     pthread_mutex_unlock(&CodecLockMutex);
 
     decoder->VideoCtx->opaque = decoder;	// our structure
-
-    Debug(3, "codec: video '%s'\n", decoder->VideoCodec->long_name);
-    
-
+	
     //decoder->VideoCtx->debug = FF_DEBUG_STARTCODE;
     //decoder->VideoCtx->err_recognition |= AV_EF_EXPLODE;
 
@@ -367,7 +366,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	decoder->VideoCtx->thread_count = 1;
 	decoder->VideoCtx->active_thread_type = 0;
 	decoder->VideoCtx->draw_horiz_band = NULL;
-	if (strstr(name,"cuvid"))
+	if (strstr(decoder->VideoCodec->long_name,"Nvidia CUVID") != NULL) 
 		decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
 
 

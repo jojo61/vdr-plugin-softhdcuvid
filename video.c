@@ -41,7 +41,7 @@
 #define USE_XLIB_XCB			///< use xlib/xcb backend
 #define noUSE_SCREENSAVER		///< support disable screensaver
 //#define USE_AUTOCROP			///< compile auto-crop support
-//#define USE_GRAB			///< experimental grab code
+#define USE_GRAB			///< experimental grab code
 //#define USE_GLX			///< outdated GLX code
 #define USE_DOUBLEBUFFER		///< use GLX double buffers
 //#define USE_VAAPI				///< enable vaapi support
@@ -1581,6 +1581,9 @@ typedef struct _cuvid_decoder_
     unsigned AutoCropBufferSize;	///< auto-crop buffer size
     AutoCropCtx AutoCrop[1];		///< auto-crop variables
 #endif
+	
+	int grabwidth,grabheight,grab;   // Grab Data
+	void *grabbase;
 
     int SurfacesNeeded;			///< number of surface to request
     int SurfaceUsedN;			///< number of used video surfaces
@@ -2215,74 +2218,7 @@ static int cuvid_get_buffer(AVCodecContext *s, AVFrame *frame, int flags)
     return ret;
 }
 
-#if 0
-static void cuvid_uninit(AVCodecContext *avctx)
-{
-    VideoDecoder *ist = avctx->opaque;
-    av_buffer_unref(&ist->hw_frames_ctx);
-}
 
-
-static int init_cuvid(AVCodecContext *avctx,CuvidDecoder * decoder)
-{
-    VideoDecoder *ist = avctx->opaque;
-    AVHWFramesContext *frames_ctx;
-    int ret;
-
-    unsigned int device_count,version;
-    CUdevice device;
-    AVHWDeviceContext *device_ctx;
-    AVCUDADeviceContext *device_hwctx;
-    CUcontext dummy;
- 
-    AVBufferRef *hw_device_ctx = NULL;
-	
-    hw_device_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_CUDA);
-
-    if (!hw_device_ctx)
-        return -1;
-
-    device_ctx = (void *)hw_device_ctx->data;
-
-    device_hwctx = device_ctx->hwctx;
-    device_hwctx->cuda_ctx = decoder->cuda_ctx;
-
-    ret = av_hwdevice_ctx_init(hw_device_ctx);
-
-    if (ret < 0) {
-        Debug(3, "av_hwdevice_ctx_init failed\n");
-        return -1;
-    }
-
-// ab hier frames init
-    av_buffer_unref(&ist->hw_frames_ctx);
-    ist->hw_frames_ctx = av_hwframe_ctx_alloc(hw_device_ctx);
-    if (!ist->hw_frames_ctx) {
-        Debug(3, "Error creating a CUDA frames context\n");
-        return AVERROR(ENOMEM);
-    }
-
-    frames_ctx = (AVHWFramesContext*)ist->hw_frames_ctx->data;
-
-    frames_ctx->format = AV_PIX_FMT_CUDA;
-    frames_ctx->sw_format = avctx->sw_pix_fmt;
-    frames_ctx->width = avctx->width;
-    frames_ctx->height = avctx->height;
-
-    Debug(3, "Initializing CUDA frames context: sw_format = %s, width = %d, height = %d\n",
-           av_get_pix_fmt_name(frames_ctx->sw_format), frames_ctx->width, frames_ctx->height);
-
-    ret = av_hwframe_ctx_init(ist->hw_frames_ctx);
-    if (ret < 0) {
-        Debug(3, "Error initializing a CUDA frame pool\n");
-        return ret;
-    }
-
-    ist->hwaccel_uninit = cuvid_uninit;
-
-    return 0;
-}
-#endif
 ///
 ///	Callback to negotiate the PixelFormat.
 ///
@@ -2373,6 +2309,72 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 }
 
 #ifdef USE_GRAB
+
+int get_RGB(CuvidDecoder *decoder) {
+	uint8_t *base = decoder->grabbase;;
+	int width = decoder->grabwidth;
+	int height = decoder->grabheight;
+	GLuint fb,texture;
+	int current,i;
+	GLint texLoc;
+		
+	glGenTextures(1, &texture);
+	GlxCheck();
+	glBindTexture(GL_TEXTURE_2D, texture);
+	GlxCheck();
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	GlxCheck();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	GlxCheck();
+
+	glGenFramebuffers(1, &fb);
+	glBindFramebuffer(GL_FRAMEBUFFER, fb);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		Debug(3,"video/cuvid: grab Framebuffer is not complete!");
+		return 0;
+	}
+	
+	current = decoder->SurfacesRb[decoder->SurfaceRead];
+		
+	glViewport(0,0,width, height);
+
+	if (gl_prog == 0)
+		gl_prog = sc_generate(gl_prog, decoder->ColorSpace);    // generate shader programm
+	
+	glUseProgram(gl_prog);
+	texLoc = glGetUniformLocation(gl_prog, "texture0");
+	glUniform1i(texLoc, 0);
+	texLoc = glGetUniformLocation(gl_prog, "texture1");
+	glUniform1i(texLoc, 1);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+1]);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, fb);
+	
+	render_pass_quad(1);	
+	glUseProgram(0);
+	glActiveTexture(GL_TEXTURE0);
+	
+	Debug(3,"Read pixels %d %d\n",width,height);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	
+	glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_BYTE,base);
+    GlxCheck();
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteTextures(1,&texture);
+	
+}
+
 ///
 ///	Grab output surface already locked.
 ///
@@ -2380,35 +2382,33 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 ///	@param ret_width[in,out]	width of output
 ///	@param ret_height[in,out]	height of output
 ///
-static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width,
-    int *ret_height)
+static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int *ret_height)
 {
-    VdpOutputSurface surface;
-    VdpStatus status;
-    VdpRGBAFormat rgba_format;
+    int surface,i;
+
+    int rgba_format;
     uint32_t size;
     uint32_t width;
     uint32_t height;
-    void *base;
+    uint8_t *base;
     void *data[1];
     uint32_t pitches[1];
     VdpRect source_rect;
     VdpRect output_rect;
+	CuvidDecoder *decoder;
 
-    surface = CuvidSurfacesRb[CuvidOutputSurfaceIndex];
-
-    //	get real surface size
-    status =
-	CuvidOutputSurfaceGetParameters(surface, &rgba_format, &width,
-	&height);
-    if (status != VDP_STATUS_OK) {
-	Error(_("video/vdpau: can't get output surface parameters: %s\n"),
-	    CuvidGetErrorString(status));
-	return NULL;
-    }
-
-    Debug(3, "video/vdpau: grab %dx%d format %d\n", width, height,
-	rgba_format);
+	decoder = CuvidDecoders[0];
+	if (decoder == NULL)   // no video aktiv
+		return NULL;
+	
+//    surface = CuvidSurfacesRb[CuvidOutputSurfaceIndex];
+	
+	//	get real surface size
+    width = decoder->InputWidth;
+	height = decoder->InputHeight;
+    
+    
+    Debug(3, "video/cuvid: grab %dx%d\n", width, height);
 
     source_rect.x0 = 0;
     source_rect.y0 = 0;
@@ -2416,114 +2416,72 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width,
     source_rect.y1 = height;
 
     if (ret_width && ret_height) {
-	if (*ret_width <= -64) {	// this is an Atmo grab service request
-	    int overscan;
+		if (*ret_width <= -64) {	// this is an Atmo grab service request
+			int overscan;
 
-	    // calculate aspect correct size of analyze image
-	    width = *ret_width * -1;
-	    height = (width * source_rect.y1) / source_rect.x1;
+			// calculate aspect correct size of analyze image
+			width = *ret_width * -1;
+			height = (width * source_rect.y1) / source_rect.x1;
 
-	    // calculate size of grab (sub) window
-	    overscan = *ret_height;
+			// calculate size of grab (sub) window
+			overscan = *ret_height;
 
-	    if (overscan > 0 && overscan <= 200) {
-		source_rect.x0 = source_rect.x1 * overscan / 1000;
-		source_rect.x1 -= source_rect.x0;
-		source_rect.y0 = source_rect.y1 * overscan / 1000;
-		source_rect.y1 -= source_rect.y0;
-	    }
-	} else {
-	    if (*ret_width > 0 && (unsigned)*ret_width < width) {
-		width = *ret_width;
-	    }
-	    if (*ret_height > 0 && (unsigned)*ret_height < height) {
-		height = *ret_height;
-	    }
-	}
+			if (overscan > 0 && overscan <= 200) {
+			source_rect.x0 = source_rect.x1 * overscan / 1000;
+			source_rect.x1 -= source_rect.x0;
+			source_rect.y0 = source_rect.y1 * overscan / 1000;
+			source_rect.y1 -= source_rect.y0;
+			}
+		} else {
+			if (*ret_width > 0 && (unsigned)*ret_width < width) {
+				width = *ret_width;
+			}
+			if (*ret_height > 0 && (unsigned)*ret_height < height) {
+				height = *ret_height;
+			}
+		}
 
-	Debug(3, "video/vdpau: grab source rect %d,%d:%d,%d dest dim %dx%d\n",
-	    source_rect.x0, source_rect.y0, source_rect.x1, source_rect.y1,
-	    width, height);
+		Debug(3, "video/cuvid: grab source rect %d,%d:%d,%d dest dim %dx%d\n",
+			source_rect.x0, source_rect.y0, source_rect.x1, source_rect.y1,
+			width, height);
 
-	if ((source_rect.x1 - source_rect.x0) != width
-	    || (source_rect.y1 - source_rect.y0) != height) {
-	    output_rect.x0 = 0;
-	    output_rect.y0 = 0;
-	    output_rect.x1 = width;
-	    output_rect.y1 = height;
 
-	    status =
-		CuvidOutputSurfaceRenderOutputSurface(CuvidGrabRenderSurface,
-		&output_rect, surface, &source_rect, NULL, NULL,
-		VDP_OUTPUT_SURFACE_RENDER_ROTATE_0);
-	    if (status != VDP_STATUS_OK) {
-		Error(_("video/vdpau: can't render output surface: %s\n"),
-		    CuvidGetErrorString(status));
-		return NULL;
-	    }
-
-	    surface = CuvidGrabRenderSurface;
-	    source_rect = output_rect;
-#if 0
-	    // FIXME: what if CuvidGrabRenderSurface has different sizes
-	    //	get real surface size
-	    status =
-		CuvidOutputSurfaceGetParameters(surface, &rgba_format, &width,
-		&height);
-	    if (status != VDP_STATUS_OK) {
-		Error(_
-		    ("video/vdpau: can't get output surface parameters: %s\n"),
-		    CuvidGetErrorString(status));
-		return NULL;
-	    }
-	    if (width != output_rect.x1 || height != output_rect.y1) {
-		// FIXME: this warning can be removed, is now for debug only
-		Warning(_("video/vdpau: video surface size mismatch\n"));
-	    }
-#endif
-	}
-    }
-
-    switch (rgba_format) {
-	case VDP_RGBA_FORMAT_B8G8R8A8:
-	case VDP_RGBA_FORMAT_R8G8B8A8:
-	    size = width * height * sizeof(uint32_t);
-	    base = malloc(size);
-	    if (!base) {
-			Error(_("video/vdpau: out of memory\n"));
+		output_rect.x0 = 0;
+		output_rect.y0 = 0;
+		output_rect.x1 = width;
+		output_rect.y1 = height;
+		
+		size = width * height * sizeof(uint32_t);
+		
+		base = malloc(size);
+		
+		if (!base) {
+			Error(_("video/cuvid: out of memory\n"));
 			return NULL;
-	    }
-	    pitches[0] = width * sizeof(uint32_t);
-	    data[0] = base;
-	    break;
-	case VDP_RGBA_FORMAT_R10G10B10A2:
-	case VDP_RGBA_FORMAT_B10G10R10A2:
-	case VDP_RGBA_FORMAT_A8:
-	default:
-	    Error(_("video/vdpau: unsupported rgba format %d\n"), rgba_format);
-	    return NULL;
-    }
+		}
+		decoder->grabbase = base;
+		decoder->grabwidth = width;
+		decoder->grabheight = height;
+		decoder->grab = 1;
+		
+		while(decoder->grab) {
+			usleep(1000);				// wait for data
+		}
+		Debug(3,"got grab data\n");
 
-#if 0
-    status = CuvidOutputSurfaceGetBitsNative(surface, &source_rect, data, pitches);
-    if (status != VDP_STATUS_OK) {
-		Error(_("video/vdpau: can't get video surface bits native: %s\n"),
-			CuvidGetErrorString(status));
-		free(base);
-		return NULL;
-    }
-#endif
-    if (ret_size) {
-		*ret_size = size;
-    }
-    if (ret_width) {
-		*ret_width = width;
-    }
-    if (ret_height) {
-		*ret_height = height;
-    }
+		if (ret_size) {
+			*ret_size = size;
+		}
+		if (ret_width) {
+			*ret_width = width;
+		}
+		if (ret_height) {
+			*ret_height = height;
+		}
+		return base;
+	}
 
-    return base;
+    return NULL;
 }
 
 ///
@@ -2538,13 +2496,11 @@ static uint8_t *CuvidGrabOutputSurface(int *ret_size, int *ret_width,
 {
     uint8_t *img;
 
-    if (CuvidGrabRenderSurface == VDP_INVALID_HANDLE) {
-	return NULL;			// vdpau video module not yet initialized
-    }
-
-    pthread_mutex_lock(&CuvidGrabMutex);
+//    pthread_mutex_lock(&CuvidGrabMutex);
+//	pthread_mutex_lock(&VideoLockMutex);
     img = CuvidGrabOutputSurfaceLocked(ret_size, ret_width, ret_height);
-    pthread_mutex_unlock(&CuvidGrabMutex);
+//	pthread_mutex_unlock(&VideoLockMutex);
+//    pthread_mutex_unlock(&CuvidGrabMutex);
     return img;
 }
 
@@ -2934,15 +2890,11 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	int w = decoder->InputWidth;
 	int h = decoder->InputHeight;
 	int y;
-	CUgraphicsResource cuResource;
-	CUcontext dummy=NULL;
 	GLint texLoc;
 	
 	size_t nSize = 0;
 	static uint32_t lasttime = 0;
-	
-
-	
+		
 #ifdef USE_AUTOCROP
 	// FIXME: can move to render frame
 	CuvidCheckAutoCrop(decoder);
@@ -2974,18 +2926,10 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 
 	// Render Progressive frame and simple interlaced
 
-//printf("decoder Y %d\n",decoder->OutputY);
-
-	
 	y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
 	if (y <0 )
 		y = 0;
 	glViewport(decoder->OutputX, y, decoder->OutputWidth, decoder->OutputHeight);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
 
 	if (gl_prog == 0)
 		gl_prog = sc_generate(gl_prog, decoder->ColorSpace);    // generate shader programm
@@ -2999,13 +2943,13 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+0]);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+1]);
+	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+1]);	
 	
-	render_pass_quad();
+	render_pass_quad(0);
 	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
-//printf("render frame %d ",current);
+
 	Debug(4, "video/vdpau: yy video surface %p displayed\n", current, decoder->SurfaceRead);
 }
 
@@ -3136,13 +3080,17 @@ static void CuvidDisplayFrame(void)
 		// need 1 frame for progressive, 3 frames for interlaced	
 		if (filled < 1 + 2 * decoder->Interlaced) { 
 			// FIXME: rewrite MixVideo to support less surfaces
-			if ((VideoShowBlackPicture && !decoder->TrickSpeed) || decoder->Closing < -300) {
+			if ((VideoShowBlackPicture && !decoder->TrickSpeed) || (VideoShowBlackPicture && decoder->Closing < -300)) {
 				CuvidBlackSurface(decoder);
 				CuvidMessage(3, "video/cuvid: black surface displayed\n");
 			}
 			continue;
 		}
 		CuvidMixVideo(decoder, i);
+		if (i==0 && decoder->grab) {   // Grab frame 
+			get_RGB(decoder);
+			decoder->grab = 0;
+		}
 	}
 	//
 	//	add osd to surface
@@ -3641,26 +3589,21 @@ static const uint8_t OsdZeros[4096 * 2160 * 4];	///< 0 for clear osd
 static const VideoModule CuvidModule = {
 	.Name = "cuvid",
 	.Enabled = 1,
-	.NewHwDecoder =
-	(VideoHwDecoder * (*const)(VideoStream *)) CuvidNewHwDecoder,
+	.NewHwDecoder =	(VideoHwDecoder * (*const)(VideoStream *)) CuvidNewHwDecoder,
 	.DelHwDecoder = (void (*const) (VideoHwDecoder *))CuvidDelHwDecoder,
-	.GetSurface = (unsigned (*const) (VideoHwDecoder *,
-	    const AVCodecContext *))CuvidGetVideoSurface,
-    .ReleaseSurface =
-	(void (*const) (VideoHwDecoder *, unsigned))CuvidReleaseSurface,
+	.GetSurface = (unsigned (*const) (VideoHwDecoder *, const AVCodecContext *))CuvidGetVideoSurface,
+    .ReleaseSurface = (void (*const) (VideoHwDecoder *, unsigned))CuvidReleaseSurface,
     .get_format = (enum AVPixelFormat(*const) (VideoHwDecoder *,
 	    AVCodecContext *, const enum AVPixelFormat *))Cuvid_get_format,
     .RenderFrame = (void (*const) (VideoHwDecoder *,
 	    const AVCodecContext *, const AVFrame *))CuvidSyncRenderFrame,
-    .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))
-	CuvidGetHwAccelContext,
+    .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))	CuvidGetHwAccelContext,
     .SetClock = (void (*const) (VideoHwDecoder *, int64_t))CuvidSetClock,
     .GetClock = (int64_t(*const) (const VideoHwDecoder *))CuvidGetClock,
     .SetClosing = (void (*const) (const VideoHwDecoder *))CuvidSetClosing,
     .ResetStart = (void (*const) (const VideoHwDecoder *))CuvidResetStart,
-    .SetTrickSpeed =
-	(void (*const) (const VideoHwDecoder *, int))CuvidSetTrickSpeed,
- //   .GrabOutput = NULL,
+    .SetTrickSpeed = (void (*const) (const VideoHwDecoder *, int))CuvidSetTrickSpeed,
+    .GrabOutput = CuvidGrabOutputSurface,
     .GetStats = (void (*const) (VideoHwDecoder *, int *, int *, int *,
 	    int *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
@@ -4563,14 +4506,14 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 	// hardware didn't scale for us, use simple software scaler
 	if (scale_width != *width && scale_height != *height) {
 	    if (write_header) {
-		n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n",
-		    scale_width, scale_height);
+			n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n",
+				scale_width, scale_height);
 	    }
 	    rgb = malloc(scale_width * scale_height * 3 + n);
 	    if (!rgb) {
-		Error(_("video: out of memory\n"));
-		free(data);
-		return NULL;
+			Error(_("video: out of memory\n"));
+			free(data);
+			return NULL;
 	    }
 	    *size = scale_width * scale_height * 3 + n;
 	    memcpy(rgb, buf, n);	// header
@@ -4579,23 +4522,23 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 	    scale_y = (double)*height / scale_height;
 
 	    src_y = 0.0;
-	    for (y = 0; y < scale_height; y++) {
-		int o;
+		for (y = 0; y < scale_height; y++) {
+			int o;
 
-		src_x = 0.0;
-		o = (int)src_y **width;
+			src_x = 0.0;
+			o = (int)src_y **width;
 
-		for (x = 0; x < scale_width; x++) {
-		    i = 4 * (o + (int)src_x);
+			for (x = 0; x < scale_width; x++) {
+				i = 4 * (o + (int)src_x);
 
-		    rgb[n + (x + y * scale_width) * 3 + 0] = data[i + 2];
-		    rgb[n + (x + y * scale_width) * 3 + 1] = data[i + 1];
-		    rgb[n + (x + y * scale_width) * 3 + 2] = data[i + 0];
+				rgb[n + (x + y * scale_width) * 3 + 0] = data[i + 2];
+				rgb[n + (x + y * scale_width) * 3 + 1] = data[i + 1];
+				rgb[n + (x + y * scale_width) * 3 + 2] = data[i + 0];
 
-		    src_x += scale_x;
-		}
+				src_x += scale_x;
+			}
 
-		src_y += scale_y;
+			src_y += scale_y;
 	    }
 
 	    *width = scale_width;
@@ -4604,21 +4547,21 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 	    // grabed image of correct size convert BGRA -> RGB
 	} else {
 	    if (write_header) {
-		n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", *width,
-		    *height);
+			n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", *width,
+				*height);
 	    }
 	    rgb = malloc(*width * *height * 3 + n);
 	    if (!rgb) {
-		Error(_("video: out of memory\n"));
-		free(data);
-		return NULL;
+			Error(_("video: out of memory\n"));
+			free(data);
+			return NULL;
 	    }
 	    memcpy(rgb, buf, n);	// header
 
 	    for (i = 0; i < *size / 4; ++i) {	// convert bgra -> rgb
-		rgb[n + i * 3 + 0] = data[i * 4 + 2];
-		rgb[n + i * 3 + 1] = data[i * 4 + 1];
-		rgb[n + i * 3 + 2] = data[i * 4 + 0];
+			rgb[n + i * 3 + 0] = data[i * 4 + 2];
+			rgb[n + i * 3 + 1] = data[i * 4 + 1];
+			rgb[n + i * 3 + 2] = data[i * 4 + 0];
 	    }
 
 	    *size = *width * *height * 3 + n;
@@ -4652,11 +4595,11 @@ uint8_t *VideoGrabService(int *size, int *width, int *height)
 
 #ifdef USE_GRAB
     if (VideoUsedModule->GrabOutput) {
-	return VideoUsedModule->GrabOutput(size, width, height);
+		return VideoUsedModule->GrabOutput(size, width, height);
     } else
 #endif
     {
-	Warning(_("softhddev: grab unsupported\n"));
+		Warning(_("softhddev: grab unsupported\n"));
     }
 
     (void)size;

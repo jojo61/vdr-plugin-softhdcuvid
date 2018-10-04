@@ -31,7 +31,7 @@ char fragment[] = {"\
 #version 330\n\
 #define texture1D texture\n\
 #define texture3D texture\n\
-out vec4 out_color;\n\
+layout(location = 0) out vec4 out_color;\n\
 in vec2 texcoord0;\n\
 in vec2 texcoord1;\n\
 in vec2 texcoord2;\n\
@@ -64,7 +64,7 @@ char fragment_bt2100[] = {"\
 #version 330\n\
 #define texture1D texture\n\
 #define texture3D texture\n\
-out vec4 out_color;\n\
+layout(location = 0) out vec4 out_color;\n\
 in vec2 texcoord0;\n\
 in vec2 texcoord1;\n\
 in vec2 texcoord2;\n\
@@ -292,21 +292,31 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     return gl_prog; 
 }
 
-static void render_pass_quad()
+static void render_pass_quad(int flip)
 {
     struct vertex va[4];
     int n;
     const struct gl_vao_entry *e;
 	// uhhhh what a hack
-    va[0].position.x = (float) -1.0;
-    va[0].position.y = (float)  1.0;
-    va[1].position.x = (float) -1.0;
-    va[1].position.y = (float) -1.0;
-    va[2].position.x = (float)  1.0;
-    va[2].position.y = (float)  1.0;
-    va[3].position.x = (float)  1.0;
-    va[3].position.y = (float) -1.0;
-
+	if (!flip ) {
+		va[0].position.x = (float) -1.0;
+		va[0].position.y = (float)  1.0;
+		va[1].position.x = (float) -1.0;
+		va[1].position.y = (float) -1.0;
+		va[2].position.x = (float)  1.0;
+		va[2].position.y = (float)  1.0;
+		va[3].position.x = (float)  1.0;
+		va[3].position.y = (float) -1.0;
+	} else {
+		va[0].position.x = (float) -1.0;
+		va[0].position.y = (float) -1.0;
+		va[1].position.x = (float) -1.0;
+		va[1].position.y = (float)  1.0;
+		va[2].position.x = (float)  1.0;
+		va[2].position.y = (float) -1.0;
+		va[3].position.x = (float)  1.0;
+		va[3].position.y = (float)  1.0;
+	}
     va[0].texcoord[0].x = (float) 0.0;
     va[0].texcoord[0].y = (float) 0.0;
     va[0].texcoord[1].x = (float) 0.0;
@@ -338,14 +348,11 @@ static void render_pass_quad()
                                 sizeof(struct vertex), (void *)(intptr_t)e->offset);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-   
+	
 	// draw quad
    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     for ( n = 0; vertex_vao[n].name; n++) 
       glDisableVertexAttribArray(n); 
-
-
-
 }
 
 
