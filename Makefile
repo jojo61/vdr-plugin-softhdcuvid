@@ -18,6 +18,9 @@ OSS ?= 1
     # support OPENGLOSD 
 OPENGLOSD=1
 
+	# use DPMS
+SCREENSAVER=1
+
 OPENGL=1
     # use ffmpeg libswresample
 #SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
@@ -160,11 +163,11 @@ _CFLAGS += $(shell pkg-config --cflags libavcodec)
 LIBS += $(shell pkg-config --libs libavcodec)
 
 
-#ifeq ($(SCREENSAVER),1)
-#CONFIG += -DUSE_SCREENSAVER
-#_CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
-#LIBS += $(shell pkg-config --libs xcb-screensaver xcb-dpms)
-#endif
+ifeq ($(SCREENSAVER),1)
+CONFIG += -DUSE_SCREENSAVER
+_CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
+LIBS += $(shell pkg-config --libs xcb-screensaver xcb-dpms)
+endif
 ifeq ($(SWRESAMPLE),1)
 CONFIG += -DUSE_SWRESAMPLE
 _CFLAGS += $(shell pkg-config --cflags libswresample)
