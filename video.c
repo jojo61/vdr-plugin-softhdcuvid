@@ -1981,14 +1981,17 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
 Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
-//	pthread_mutex_lock(&VideoLockMutex);
+	if (decoder == CuvidDecoders[0])
+  		pthread_mutex_lock(&VideoLockMutex);
 
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
     }
-//	pthread_mutex_unlock(&VideoLockMutex);
+	if (decoder == CuvidDecoders[0])
+  		pthread_mutex_unlock(&VideoLockMutex);
+
 #if 0	
     if (decoder->cuda_ctx) {
         cuCtxDestroy (decoder->cuda_ctx);   
