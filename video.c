@@ -1763,8 +1763,6 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
-	
-    glDeleteBuffers(1,(GLuint *)&vao_buffer);
 
 	if (decoder->cuda_ctx) {
     	checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));	
@@ -1778,9 +1776,14 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	
 	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
-	if (gl_prog)
-		glDeleteProgram(gl_prog);
-	gl_prog = 0;
+	
+	if (decoder == CuvidDecoders[0]) {   // only wenn last decoder closes
+		Debug(3,"Last decoder closes\n");
+    	glDeleteBuffers(1,(GLuint *)&vao_buffer);
+		if (gl_prog)
+			glDeleteProgram(gl_prog);
+		gl_prog = 0;
+	}
 	
     for (i = 0; i < decoder->SurfaceFreeN; ++i) {
 		decoder->SurfacesFree[i] = -1;
@@ -1978,13 +1981,14 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
 Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
-	pthread_mutex_lock(&VideoLockMutex);
+//	pthread_mutex_lock(&VideoLockMutex);
+
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
 	GlxCheck();
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
     }
-	pthread_mutex_unlock(&VideoLockMutex);
+//	pthread_mutex_unlock(&VideoLockMutex);
 #if 0	
     if (decoder->cuda_ctx) {
         cuCtxDestroy (decoder->cuda_ctx);   
@@ -4673,22 +4677,22 @@ static void X11SuspendScreenSaver(xcb_connection_t * connection, int suspend)
     query_extension_reply =
 	xcb_get_extension_data(connection, &xcb_screensaver_id);
     if (query_extension_reply && query_extension_reply->present) {
-	xcb_screensaver_query_version_cookie_t cookie;
-	xcb_screensaver_query_version_reply_t *reply;
+		xcb_screensaver_query_version_cookie_t cookie;
+		xcb_screensaver_query_version_reply_t *reply;
 
-	Debug(3, "video: screen saver extension present\n");
+		Debug(3, "video: screen saver extension present\n");
 
-	cookie =
-	    xcb_screensaver_query_version_unchecked(connection,
-	    XCB_SCREENSAVER_MAJOR_VERSION, XCB_SCREENSAVER_MINOR_VERSION);
-	reply = xcb_screensaver_query_version_reply(connection, cookie, NULL);
-	if (reply
-	    && (reply->server_major_version >= XCB_SCREENSAVER_MAJOR_VERSION)
-	    && (reply->server_minor_version >= XCB_SCREENSAVER_MINOR_VERSION)
-	    ) {
-	    xcb_screensaver_suspend(connection, suspend);
-	}
-	free(reply);
+		cookie =
+			xcb_screensaver_query_version_unchecked(connection,
+			XCB_SCREENSAVER_MAJOR_VERSION, XCB_SCREENSAVER_MINOR_VERSION);
+		reply = xcb_screensaver_query_version_reply(connection, cookie, NULL);
+		if (reply
+			&& (reply->server_major_version >= XCB_SCREENSAVER_MAJOR_VERSION)
+			&& (reply->server_minor_version >= XCB_SCREENSAVER_MINOR_VERSION)
+			) {
+			xcb_screensaver_suspend(connection, suspend);
+		}
+		free(reply);
     }
 }
 
@@ -4703,32 +4707,32 @@ static int X11HaveDPMS(xcb_connection_t * connection)
     const xcb_query_extension_reply_t *query_extension_reply;
 
     if (have_dpms != -1) {		// already checked
-	return have_dpms;
+		return have_dpms;
     }
 
     have_dpms = 0;
     query_extension_reply = xcb_get_extension_data(connection, &xcb_dpms_id);
     if (query_extension_reply && query_extension_reply->present) {
-	xcb_dpms_get_version_cookie_t cookie;
-	xcb_dpms_get_version_reply_t *reply;
-	int major;
-	int minor;
+		xcb_dpms_get_version_cookie_t cookie;
+		xcb_dpms_get_version_reply_t *reply;
+		int major;
+		int minor;
 
-	Debug(3, "video: dpms extension present\n");
+		Debug(3, "video: dpms extension present\n");
 
-	cookie =
-	    xcb_dpms_get_version_unchecked(connection, XCB_DPMS_MAJOR_VERSION,
-	    XCB_DPMS_MINOR_VERSION);
-	reply = xcb_dpms_get_version_reply(connection, cookie, NULL);
-	// use locals to avoid gcc warning
-	major = XCB_DPMS_MAJOR_VERSION;
-	minor = XCB_DPMS_MINOR_VERSION;
-	if (reply && (reply->server_major_version >= major)
-	    && (reply->server_minor_version >= minor)
-	    ) {
-	    have_dpms = 1;
-	}
-	free(reply);
+		cookie =
+			xcb_dpms_get_version_unchecked(connection, XCB_DPMS_MAJOR_VERSION,
+			XCB_DPMS_MINOR_VERSION);
+		reply = xcb_dpms_get_version_reply(connection, cookie, NULL);
+		// use locals to avoid gcc warning
+		major = XCB_DPMS_MAJOR_VERSION;
+		minor = XCB_DPMS_MINOR_VERSION;
+		if (reply && (reply->server_major_version >= major)
+			&& (reply->server_minor_version >= minor)
+			) {
+			have_dpms = 1;
+		}
+		free(reply);
     }
     return have_dpms;
 }
