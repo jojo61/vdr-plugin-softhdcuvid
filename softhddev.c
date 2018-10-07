@@ -1830,6 +1830,7 @@ int VideoPollInput(VideoStream * stream)
 		atomic_set(&stream->PacketsFilled, 0);
 		stream->PacketRead = stream->PacketWrite;
 		// FIXME: ->Decoder already checked
+		Debug(3,"Clear buffer request\n");
 		if (stream->Decoder) {
 			CodecVideoFlushBuffers(stream->Decoder);
 			VideoResetStart(stream->HwDecoder);
@@ -1876,6 +1877,7 @@ int VideoDecodeInput(VideoStream * stream)
 		// FIXME: ->Decoder already checked
 		if (stream->Decoder) {
 			CodecVideoFlushBuffers(stream->Decoder);
+			Debug(3,"Clear buffer request\n");
 			VideoResetStart(stream->HwDecoder);
 		}
 		stream->ClearBuffers = 0;
@@ -2487,6 +2489,7 @@ uint8_t *GrabImage(int *size, int jpeg, int quality, int width, int height)
 */
 int SetPlayMode(int play_mode)
 {
+	Debug(3,"Set Playmode %d\n",play_mode);
     switch (play_mode) {
 	case 0:			// audio/video from decoder
 	    // tell video parser we get new stream
