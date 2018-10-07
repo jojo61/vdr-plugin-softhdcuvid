@@ -279,7 +279,7 @@ typedef struct _video_module_
     void (*const ResetStart) (const VideoHwDecoder *);
     void (*const SetTrickSpeed) (const VideoHwDecoder *, int);
     uint8_t *(*const GrabOutput)(int *, int *, int *);
-    void (*const GetStats) (VideoHwDecoder *, int *, int *, int *, int *);
+    void (*const GetStats) (VideoHwDecoder *, int *, int *, int *, int *, float *);
     void (*const SetBackground) (uint32_t);
     void (*const SetVideoMode) (void);
     void (*const ResetAutoCrop) (void);
@@ -1624,6 +1624,7 @@ typedef struct _cuvid_decoder_
     int FramesDropped;			///< number of frames dropped
     int FrameCounter;			///< number of frames decoded
     int FramesDisplayed;		///< number of frames displayed
+	float Frameproc;				/// Time to process frame
 } CuvidDecoder;
 
 static CuvidDecoder *CuvidDecoders[2];	///< open decoder streams
@@ -3062,15 +3063,18 @@ static void CuvidDisplayFrame(void)
 {
 
 	uint64_t first_time, diff, akt_time;
-	static uint64_t last_time;
+	static uint64_t last_time = 0;
 	int i;
 	static unsigned int Count;
 	int filled;
 	CuvidDecoder *decoder;
 
-//	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);	
+	CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+//	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
+	last_time = GetusTicks();
 	glClear(GL_COLOR_BUFFER_BIT);
 	//
 	//	Render videos into output
@@ -3100,6 +3104,7 @@ static void CuvidDisplayFrame(void)
 		}
 	}
 	//
+	   
 	//	add osd to surface
 	//
 	if (OsdShown) {		
@@ -3219,12 +3224,13 @@ static void CuvidSetTrickSpeed(CuvidDecoder * decoder, int speed)
 ///	@param[out] count	number of decoded frames
 ///
 void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped,
-	int *dropped, int *counter)
+	int *dropped, int *counter, float *frametime)
 {
 	*missed = decoder->FramesMissed;
 	*duped = decoder->FramesDuped;
 	*dropped = decoder->FramesDropped;
 	*counter = decoder->FrameCounter;
+	*frametime = decoder->Frameproc;
 }
 
 ///
@@ -3612,7 +3618,7 @@ static const VideoModule CuvidModule = {
     .SetTrickSpeed = (void (*const) (const VideoHwDecoder *, int))CuvidSetTrickSpeed,
     .GrabOutput = CuvidGrabOutputSurface,
     .GetStats = (void (*const) (VideoHwDecoder *, int *, int *, int *,
-	    int *))CuvidGetStats,
+	    int *, float *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
     .SetVideoMode = CuvidSetVideoMode,
   //  .ResetAutoCrop = CuvidResetAutoCrop,
@@ -3783,7 +3789,7 @@ static const VideoModule NoopModule = {
 	(void (*const) (const VideoHwDecoder *, int))NoopSetTrickSpeed,
     .GrabOutput = NoopGrabOutputSurface,
     .GetStats = (void (*const) (VideoHwDecoder *, int *, int *, int *,
-	    int *))NoopGetStats,
+	    int *, float *))NoopGetStats,
 #endif
     .SetBackground = NoopSetBackground,
     .SetVideoMode = NoopVoid,
@@ -4625,9 +4631,9 @@ uint8_t *VideoGrabService(int *size, int *width, int *height)
 ///	@param[out] count	number of decoded frames
 ///
 void VideoGetStats(VideoHwDecoder * hw_decoder, int *missed, int *duped,
-    int *dropped, int *counter)
+    int *dropped, int *counter, float *frametime)
 {
-    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter);
+    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter, frametime);
 }
 
 ///

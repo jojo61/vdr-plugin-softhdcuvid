@@ -959,9 +959,7 @@ inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag,
 {
     cOsdItem *item;
 
-    item =
-	new cMenuEditBoolItem(cString::sprintf("* %s", label), &flag,
-	msg ? msg : tr("show"), tr("hide"));
+    item = new cMenuEditBoolItem(cString::sprintf("* %s", label), &flag,msg ? msg : tr("show"), tr("hide"));
 
     return item;
 }
@@ -1011,10 +1009,8 @@ void cMenuSetupSoft::Create(void)
     Add(CollapsedItem(tr("General"), General));
 
     if (General) {
-	Add(new cMenuEditBoolItem(tr("Make primary device"), &MakePrimary,
-		trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Hide main menu entry"),
-		&HideMainMenuEntry, trVDR("no"), trVDR("yes")));
+	Add(new cMenuEditBoolItem(tr("Make primary device"), &MakePrimary,	trVDR("no"), trVDR("yes")));
+	Add(new cMenuEditBoolItem(tr("Hide main menu entry"),&HideMainMenuEntry, trVDR("no"), trVDR("yes")));
 	//
 	//	osd
 	//
@@ -1030,12 +1026,9 @@ void cMenuSetupSoft::Create(void)
 	//	suspend
 	//
 	Add(SeparatorItem(tr("Suspend")));
-	Add(new cMenuEditBoolItem(tr("Detach from main menu entry"),
-		&DetachFromMainMenu, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Suspend closes video+audio"),
-		&SuspendClose, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Suspend stops x11"), &SuspendX11,
-		trVDR("no"), trVDR("yes")));
+	Add(new cMenuEditBoolItem(tr("Detach from main menu entry"),&DetachFromMainMenu, trVDR("no"), trVDR("yes")));
+	Add(new cMenuEditBoolItem(tr("Suspend closes video+audio"),	&SuspendClose, trVDR("no"), trVDR("yes")));
+	Add(new cMenuEditBoolItem(tr("Suspend stops x11"), &SuspendX11,	trVDR("no"), trVDR("yes")));
     }
     //
     //	video
@@ -1113,12 +1106,9 @@ void cMenuSetupSoft::Create(void)
 	//  auto-crop
 	//
 	Add(SeparatorItem(tr("Auto-crop")));
-	Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"),
-		&AutoCropInterval, 0, 200, tr("off")));
-	Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"),
-		&AutoCropDelay, 0, 200));
-	Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"),
-		&AutoCropTolerance, 0, 32));
+	Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"),	&AutoCropInterval, 0, 200, tr("off")));
+	Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"),	&AutoCropDelay, 0, 200));
+	Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"),	&AutoCropTolerance, 0, 32));
     }
     //
     //	audio
@@ -1126,36 +1116,21 @@ void cMenuSetupSoft::Create(void)
     Add(CollapsedItem(tr("Audio"), Audio));
 
     if (Audio) {
-	Add(new cMenuEditIntItem(tr("Audio/Video delay (ms)"), &AudioDelay,
-		-1000, 1000));
-	Add(new cMenuEditStraItem(tr("Audio drift correction"), &AudioDrift, 4,
-		audiodrift));
-	Add(new cMenuEditBoolItem(tr("Pass-through default"),
-		&AudioPassthroughDefault, trVDR("off"), trVDR("on")));
-	Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"),
-		&AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"),
-		&AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"),
-		&AudioPassthroughEAC3, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"),
-		&AudioDownmix, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Volume control"), &AudioSoftvol,
-		tr("Hardware"), tr("Software")));
-	Add(new cMenuEditBoolItem(tr("Enable normalize volume"),
-		&AudioNormalize, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditIntItem(tr("  Max normalize factor (/1000)"),
-		&AudioMaxNormalize, 0, 10000));
-	Add(new cMenuEditBoolItem(tr("Enable volume compression"),
-		&AudioCompression, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditIntItem(tr("  Max compression factor (/1000)"),
-		&AudioMaxCompression, 0, 10000));
-	Add(new cMenuEditIntItem(tr("Reduce stereo volume (/1000)"),
-		&AudioStereoDescent, 0, 1000));
-	Add(new cMenuEditIntItem(tr("Audio buffer size (ms)"),
-		&AudioBufferTime, 0, 1000));
-	Add(new cMenuEditBoolItem(tr("Enable automatic AES"), &AudioAutoAES,
-		trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditIntItem(tr("Audio/Video delay (ms)"), &AudioDelay,	-1000, 1000));
+		Add(new cMenuEditStraItem(tr("Audio drift correction"), &AudioDrift, 4,	audiodrift));
+		Add(new cMenuEditBoolItem(tr("Pass-through default"), &AudioPassthroughDefault, trVDR("off"), trVDR("on")));
+		Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"), &AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"),&AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"),&AudioPassthroughEAC3, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"),	&AudioDownmix, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditBoolItem(tr("Volume control"), &AudioSoftvol,tr("Hardware"), tr("Software")));
+		Add(new cMenuEditBoolItem(tr("Enable normalize volume"),&AudioNormalize, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditIntItem(tr("  Max normalize factor (/1000)"),&AudioMaxNormalize, 0, 10000));
+		Add(new cMenuEditBoolItem(tr("Enable volume compression"),	&AudioCompression, trVDR("no"), trVDR("yes")));
+		Add(new cMenuEditIntItem(tr("  Max compression factor (/1000)"),&AudioMaxCompression, 0, 10000));
+		Add(new cMenuEditIntItem(tr("Reduce stereo volume (/1000)"),&AudioStereoDescent, 0, 1000));
+		Add(new cMenuEditIntItem(tr("Audio buffer size (ms)"),&AudioBufferTime, 0, 1000));
+		Add(new cMenuEditBoolItem(tr("Enable automatic AES"), &AudioAutoAES,trVDR("no"), trVDR("yes")));
     }
 #ifdef USE_PIP
     //
@@ -1163,33 +1138,23 @@ void cMenuSetupSoft::Create(void)
     //
     Add(CollapsedItem(tr("Picture-In-Picture"), Pip));
     if (Pip) {
-	// FIXME: predefined modes/custom mode
-	Add(new cMenuEditIntItem(tr("Pip X (%)"), &PipX, 0, 100));
-	Add(new cMenuEditIntItem(tr("Pip Y (%)"), &PipY, 0, 100));
-	Add(new cMenuEditIntItem(tr("Pip Width (%)"), &PipWidth, 0, 100));
-	Add(new cMenuEditIntItem(tr("Pip Height (%)"), &PipHeight, 0, 100));
-	Add(new cMenuEditIntItem(tr("Video X (%)"), &PipVideoX, 0, 100));
-	Add(new cMenuEditIntItem(tr("Video Y (%)"), &PipVideoY, 0, 100));
-	Add(new cMenuEditIntItem(tr("Video Width (%)"), &PipVideoWidth, 0,
-		100));
-	Add(new cMenuEditIntItem(tr("Video Height (%)"), &PipVideoHeight, 0,
-		100));
-	Add(new cMenuEditIntItem(tr("Alternative Pip X (%)"), &PipAltX, 0,
-		100));
-	Add(new cMenuEditIntItem(tr("Alternative Pip Y (%)"), &PipAltY, 0,
-		100));
-	Add(new cMenuEditIntItem(tr("Alternative Pip Width (%)"), &PipAltWidth,
-		0, 100));
-	Add(new cMenuEditIntItem(tr("Alternative Pip Height (%)"),
-		&PipAltHeight, 0, 100));
-	Add(new cMenuEditIntItem(tr("Alternative Video X (%)"), &PipAltVideoX,
-		0, 100));
-	Add(new cMenuEditIntItem(tr("Alternative Video Y (%)"), &PipAltVideoY,
-		0, 100));
-	Add(new cMenuEditIntItem(tr("Alternative Video Width (%)"),
-		&PipAltVideoWidth, 0, 100));
-	Add(new cMenuEditIntItem(tr("Alternative Video Height (%)"),
-		&PipAltVideoHeight, 0, 100));
+		// FIXME: predefined modes/custom mode
+		Add(new cMenuEditIntItem(tr("Pip X (%)"), &PipX, 0, 100));
+		Add(new cMenuEditIntItem(tr("Pip Y (%)"), &PipY, 0, 100));
+		Add(new cMenuEditIntItem(tr("Pip Width (%)"), &PipWidth, 0, 100));
+		Add(new cMenuEditIntItem(tr("Pip Height (%)"), &PipHeight, 0, 100));
+		Add(new cMenuEditIntItem(tr("Video X (%)"), &PipVideoX, 0, 100));
+		Add(new cMenuEditIntItem(tr("Video Y (%)"), &PipVideoY, 0, 100));
+		Add(new cMenuEditIntItem(tr("Video Width (%)"), &PipVideoWidth, 0,100));
+		Add(new cMenuEditIntItem(tr("Video Height (%)"), &PipVideoHeight, 0,100));
+		Add(new cMenuEditIntItem(tr("Alternative Pip X (%)"), &PipAltX, 0,100));
+		Add(new cMenuEditIntItem(tr("Alternative Pip Y (%)"), &PipAltY, 0,100));
+		Add(new cMenuEditIntItem(tr("Alternative Pip Width (%)"), &PipAltWidth,	0, 100));
+		Add(new cMenuEditIntItem(tr("Alternative Pip Height (%)"),&PipAltHeight, 0, 100));
+		Add(new cMenuEditIntItem(tr("Alternative Video X (%)"), &PipAltVideoX,0, 100));
+		Add(new cMenuEditIntItem(tr("Alternative Video Y (%)"), &PipAltVideoY,0, 100));
+		Add(new cMenuEditIntItem(tr("Alternative Video Width (%)"),	&PipAltVideoWidth, 0, 100));
+		Add(new cMenuEditIntItem(tr("Alternative Video Height (%)"),&PipAltVideoHeight, 0, 100));
     }
 #endif
 
@@ -1225,22 +1190,22 @@ eOSState cMenuSetupSoft::ProcessKey(eKeys key)
     state = cMenuSetupPage::ProcessKey(key);
 
     if (key != kNone) {
-	// update menu only, if something on the structure has changed
-	// this is needed because VDR menus are evil slow
-	if (old_general != General || old_video != Video || old_audio != Audio
+		// update menu only, if something on the structure has changed
+		// this is needed because VDR menus are evil slow
+		if (old_general != General || old_video != Video || old_audio != Audio
 #ifdef USE_PIP
-	    || old_pip != Pip
+			|| old_pip != Pip
 #endif
-	    || old_osd_size != OsdSize) {
-	    Create();			// update menu
-	} else {
-	    for (i = 0; i < RESOLUTIONS; ++i) {
-		if (old_resolution_shown[i] != ResolutionShown[i]) {
-		    Create();		// update menu
-		    break;
+			|| old_osd_size != OsdSize) {
+			Create();			// update menu
+		} else {
+			for (i = 0; i < RESOLUTIONS; ++i) {
+				if (old_resolution_shown[i] != ResolutionShown[i]) {
+					Create();		// update menu
+					break;
+				}
+			}
 		}
-	    }
-	}
     }
 
     return state;
@@ -1443,27 +1408,27 @@ void cMenuSetupSoft::Store(void)
     VideoSetHue(ConfigVideoHue);
 
     for (i = 0; i < RESOLUTIONS; ++i) {
-	char buf[128];
+		char buf[128];
 
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
-	SetupStore(buf, ConfigVideoScaling[i] = Scaling[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
-	SetupStore(buf, ConfigVideoDeinterlace[i] = Deinterlace[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
-	    "SkipChromaDeinterlace");
-	SetupStore(buf, ConfigVideoSkipChromaDeinterlace[i] =
-	    SkipChromaDeinterlace[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
-	SetupStore(buf, ConfigVideoInverseTelecine[i] = InverseTelecine[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
-	SetupStore(buf, ConfigVideoDenoise[i] = Denoise[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
-	SetupStore(buf, ConfigVideoSharpen[i] = Sharpen[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
+		SetupStore(buf, ConfigVideoScaling[i] = Scaling[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
+		SetupStore(buf, ConfigVideoDeinterlace[i] = Deinterlace[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
+			"SkipChromaDeinterlace");
+		SetupStore(buf, ConfigVideoSkipChromaDeinterlace[i] =
+			SkipChromaDeinterlace[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
+		SetupStore(buf, ConfigVideoInverseTelecine[i] = InverseTelecine[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
+		SetupStore(buf, ConfigVideoDenoise[i] = Denoise[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
+		SetupStore(buf, ConfigVideoSharpen[i] = Sharpen[i]);
 
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
-	SetupStore(buf, ConfigVideoCutTopBottom[i] = CutTopBottom[i]);
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
-	SetupStore(buf, ConfigVideoCutLeftRight[i] = CutLeftRight[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
+		SetupStore(buf, ConfigVideoCutTopBottom[i] = CutTopBottom[i]);
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
+		SetupStore(buf, ConfigVideoCutLeftRight[i] = CutLeftRight[i]);
     }
     VideoSetScaling(ConfigVideoScaling);
     VideoSetDeinterlace(ConfigVideoDeinterlace);
@@ -1490,18 +1455,18 @@ void cMenuSetupSoft::Store(void)
     // FIXME: can handle more audio state changes here
     // downmix changed reset audio, to get change direct
     if (ConfigAudioDownmix != AudioDownmix) {
-	ResetChannelId();
+		ResetChannelId();
     }
     ConfigAudioPassthrough = (AudioPassthroughPCM ? CodecPCM : 0)
 	| (AudioPassthroughAC3 ? CodecAC3 : 0)
 	| (AudioPassthroughEAC3 ? CodecEAC3 : 0);
     AudioPassthroughState = AudioPassthroughDefault;
     if (AudioPassthroughState) {
-	SetupStore("AudioPassthrough", ConfigAudioPassthrough);
-	CodecSetAudioPassthrough(ConfigAudioPassthrough);
+		SetupStore("AudioPassthrough", ConfigAudioPassthrough);
+		CodecSetAudioPassthrough(ConfigAudioPassthrough);
     } else {
-	SetupStore("AudioPassthrough", -ConfigAudioPassthrough);
-	CodecSetAudioPassthrough(0);
+		SetupStore("AudioPassthrough", -ConfigAudioPassthrough);
+		CodecSetAudioPassthrough(0);
     }
     SetupStore("AudioDownmix", ConfigAudioDownmix = AudioDownmix);
     CodecSetAudioDownmix(ConfigAudioDownmix);
@@ -1735,7 +1700,7 @@ void cSoftReceiver::Activate(bool on)
 		ConfigPipHeight ? (ConfigPipHeight * height) / 100 : height);
 	}
     } else {
-	PipStop();
+		PipStop();
     }
 }
 
@@ -1923,13 +1888,13 @@ static void NewPip(int channel_nr)
 static void TogglePip(void)
 {
     if (PipReceiver) {
-	int attached;
+		int attached;
 
-	attached = PipReceiver->IsAttached();
-	DelPip();
-	if (attached) {			// turn off only if last PIP was on
-	    return;
-	}
+		attached = PipReceiver->IsAttached();
+		DelPip();
+		if (attached) {			// turn off only if last PIP was on
+			return;
+		}
     }
     NewPip(PipChannelNr);
 }
@@ -2072,6 +2037,7 @@ void cSoftHdMenu::Create(void)
     int duped;
     int dropped;
     int counter;
+	float frametime;
 
     current = Current();		// get current menu item index
     Clear();				// clear the menu
@@ -2106,12 +2072,9 @@ void cSoftHdMenu::Create(void)
 #endif
     Add(new cOsdItem(NULL, osUnknown, false));
     Add(new cOsdItem(NULL, osUnknown, false));
-    GetStats(&missed, &duped, &dropped, &counter);
-    Add(new
-	cOsdItem(cString::sprintf(tr
-		(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed,
-		duped, dropped, counter), osUnknown, false));
-
+    GetStats(&missed, &duped, &dropped, &counter, &frametime);
+    Add(new	cOsdItem(cString::sprintf(tr(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed, duped, dropped, counter), osUnknown, false));
+    Add(new	cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
     SetCurrent(Get(current));		// restore selected menu entry
     Display();				// display build menu
 }
