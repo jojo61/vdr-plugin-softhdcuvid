@@ -2383,6 +2383,7 @@ int get_RGB(CuvidDecoder *decoder) {
     GlxCheck();
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteFramebuffers(1,&fb);
 	glDeleteTextures(1,&texture);
 	
 }
@@ -4492,103 +4493,103 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 
 #ifdef USE_GRAB
     if (VideoUsedModule->GrabOutput) {
-	uint8_t *data;
-	uint8_t *rgb;
-	char buf[64];
-	int i;
-	int n;
-	int scale_width;
-	int scale_height;
-	int x;
-	int y;
-	double src_x;
-	double src_y;
-	double scale_x;
-	double scale_y;
+		uint8_t *data;
+		uint8_t *rgb;
+		char buf[64];
+		int i;
+		int n;
+		int scale_width;
+		int scale_height;
+		int x;
+		int y;
+		double src_x;
+		double src_y;
+		double scale_x;
+		double scale_y;
 
-	scale_width = *width;
-	scale_height = *height;
-	n = 0;
-	data = VideoUsedModule->GrabOutput(size, width, height);
-	if (data == NULL)
-	    return NULL;
-
-	if (scale_width <= 0) {
-	    scale_width = *width;
-	}
-	if (scale_height <= 0) {
-	    scale_height = *height;
-	}
-	// hardware didn't scale for us, use simple software scaler
-	if (scale_width != *width && scale_height != *height) {
-	    if (write_header) {
-			n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n",
-				scale_width, scale_height);
-	    }
-	    rgb = malloc(scale_width * scale_height * 3 + n);
-	    if (!rgb) {
-			Error(_("video: out of memory\n"));
-			free(data);
+		scale_width = *width;
+		scale_height = *height;
+		n = 0;
+		data = VideoUsedModule->GrabOutput(size, width, height);
+		if (data == NULL)
 			return NULL;
-	    }
-	    *size = scale_width * scale_height * 3 + n;
-	    memcpy(rgb, buf, n);	// header
 
-	    scale_x = (double)*width / scale_width;
-	    scale_y = (double)*height / scale_height;
+		if (scale_width <= 0) {
+			scale_width = *width;
+		}
+		if (scale_height <= 0) {
+			scale_height = *height;
+		}
+		// hardware didn't scale for us, use simple software scaler
+		if (scale_width != *width && scale_height != *height) {
+			if (write_header) {
+				n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n",
+					scale_width, scale_height);
+			}
+			rgb = malloc(scale_width * scale_height * 3 + n);
+			if (!rgb) {
+				Error(_("video: out of memory\n"));
+				free(data);
+				return NULL;
+			}
+			*size = scale_width * scale_height * 3 + n;
+			memcpy(rgb, buf, n);	// header
 
-	    src_y = 0.0;
-		for (y = 0; y < scale_height; y++) {
-			int o;
+			scale_x = (double)*width / scale_width;
+			scale_y = (double)*height / scale_height;
 
-			src_x = 0.0;
-			o = (int)src_y **width;
+			src_y = 0.0;
+			for (y = 0; y < scale_height; y++) {
+				int o;
 
-			for (x = 0; x < scale_width; x++) {
-				i = 4 * (o + (int)src_x);
+				src_x = 0.0;
+				o = (int)src_y **width;
 
-				rgb[n + (x + y * scale_width) * 3 + 0] = data[i + 2];
-				rgb[n + (x + y * scale_width) * 3 + 1] = data[i + 1];
-				rgb[n + (x + y * scale_width) * 3 + 2] = data[i + 0];
+				for (x = 0; x < scale_width; x++) {
+					i = 4 * (o + (int)src_x);
 
-				src_x += scale_x;
+					rgb[n + (x + y * scale_width) * 3 + 0] = data[i + 2];
+					rgb[n + (x + y * scale_width) * 3 + 1] = data[i + 1];
+					rgb[n + (x + y * scale_width) * 3 + 2] = data[i + 0];
+
+					src_x += scale_x;
+				}
+
+				src_y += scale_y;
 			}
 
-			src_y += scale_y;
-	    }
+			*width = scale_width;
+			*height = scale_height;
 
-	    *width = scale_width;
-	    *height = scale_height;
+			// grabed image of correct size convert BGRA -> RGB
+		} else {
+			if (write_header) {
+				n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", *width,
+					*height);
+			}
+			rgb = malloc(*width * *height * 3 + n);
+			if (!rgb) {
+				Error(_("video: out of memory\n"));
+				free(data);
+				return NULL;
+			}
+			memcpy(rgb, buf, n);	// header
 
-	    // grabed image of correct size convert BGRA -> RGB
-	} else {
-	    if (write_header) {
-			n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", *width,
-				*height);
-	    }
-	    rgb = malloc(*width * *height * 3 + n);
-	    if (!rgb) {
-			Error(_("video: out of memory\n"));
-			free(data);
-			return NULL;
-	    }
-	    memcpy(rgb, buf, n);	// header
+			for (i = 0; i < *size / 4; ++i) {	// convert bgra -> rgb
+				rgb[n + i * 3 + 0] = data[i * 4 + 2];
+				rgb[n + i * 3 + 1] = data[i * 4 + 1];
+				rgb[n + i * 3 + 2] = data[i * 4 + 0];
+			}
 
-	    for (i = 0; i < *size / 4; ++i) {	// convert bgra -> rgb
-			rgb[n + i * 3 + 0] = data[i * 4 + 2];
-			rgb[n + i * 3 + 1] = data[i * 4 + 1];
-			rgb[n + i * 3 + 2] = data[i * 4 + 0];
-	    }
+			*size = *width * *height * 3 + n;
+		}
+		free(data);
 
-	    *size = *width * *height * 3 + n;
-	}
-	free(data);
-
-	return rgb;
+		return rgb;
     } else
 #endif
     {
-	Warning(_("softhddev: grab unsupported\n"));
+		Warning(_("softhddev: grab unsupported\n"));
     }
 
     (void)size;
