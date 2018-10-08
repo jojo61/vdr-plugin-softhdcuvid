@@ -2588,7 +2588,7 @@ void cSoftHdDevice::TrickSpeed(int speed)
 */
 void cSoftHdDevice::Clear(void)
 {
-    dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    dsyslog("[softhddev] vom VDR kommt %s:\n", __FUNCTION__);
 
     cDevice::Clear();
     ::Clear();

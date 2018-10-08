@@ -1353,7 +1353,7 @@ static VideoResolutions VideoResolutionGroup(int width, int height,
     if (height <= 720) {
 	return VideoResolution720p;
     }
-    if (height < 1080) {
+    if (height <= 1080) {
 	return VideoResolutionFake1080i;
     }
     if (width < 1920) {
@@ -1864,7 +1864,11 @@ static void CuvidPrintFrames(const CuvidDecoder * decoder)
 #endif
 }
 
-
+int CuvidTestSurfaces() {
+	if (atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX)
+		return 1;
+	return 0;
+}
 
 ///
 ///	Allocate new CUVID decoder.
@@ -2296,7 +2300,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			Fatal(_("CUVID Init failed\n"));
 		}
 #endif
-		CuvidMessage(2,"no CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
+		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
         ist->active_hwaccel_id = HWACCEL_CUVID;
         ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
         decoder->InputWidth = video_ctx->width;
@@ -2637,35 +2641,35 @@ static void CuvidAutoCrop(CuvidDecoder * decoder)
 
     decoder->AutoCrop->State = next_state;
     if (next_state) {
-	decoder->CropX = VideoCutLeftRight[decoder->Resolution];
-	decoder->CropY =
-	    (next_state ==
-	    16 ? crop16 : crop14) + VideoCutTopBottom[decoder->Resolution];
-	decoder->CropWidth = decoder->InputWidth - decoder->CropX * 2;
-	decoder->CropHeight = decoder->InputHeight - decoder->CropY * 2;
+		decoder->CropX = VideoCutLeftRight[decoder->Resolution];
+		decoder->CropY =
+			(next_state ==
+			16 ? crop16 : crop14) + VideoCutTopBottom[decoder->Resolution];
+		decoder->CropWidth = decoder->InputWidth - decoder->CropX * 2;
+		decoder->CropHeight = decoder->InputHeight - decoder->CropY * 2;
 
-	// FIXME: this overwrites user choosen output position
-	// FIXME: resize kills the auto crop values
-	// FIXME: support other 4:3 zoom modes
-	decoder->OutputX = decoder->VideoX;
-	decoder->OutputY = decoder->VideoY;
-	decoder->OutputWidth = (decoder->VideoHeight * next_state) / 9;
-	decoder->OutputHeight = (decoder->VideoWidth * 9) / next_state;
-	if (decoder->OutputWidth > decoder->VideoWidth) {
-	    decoder->OutputWidth = decoder->VideoWidth;
-	    decoder->OutputY =
-		(decoder->VideoHeight - decoder->OutputHeight) / 2;
-	} else if (decoder->OutputHeight > decoder->VideoHeight) {
-	    decoder->OutputHeight = decoder->VideoHeight;
-	    decoder->OutputX =
-		(decoder->VideoWidth - decoder->OutputWidth) / 2;
-	}
-	Debug(3, "video: aspect output %dx%d %dx%d%+d%+d\n",
-	    decoder->InputWidth, decoder->InputHeight, decoder->OutputWidth,
-	    decoder->OutputHeight, decoder->OutputX, decoder->OutputY);
+		// FIXME: this overwrites user choosen output position
+		// FIXME: resize kills the auto crop values
+		// FIXME: support other 4:3 zoom modes
+		decoder->OutputX = decoder->VideoX;
+		decoder->OutputY = decoder->VideoY;
+		decoder->OutputWidth = (decoder->VideoHeight * next_state) / 9;
+		decoder->OutputHeight = (decoder->VideoWidth * 9) / next_state;
+		if (decoder->OutputWidth > decoder->VideoWidth) {
+			decoder->OutputWidth = decoder->VideoWidth;
+			decoder->OutputY =
+			(decoder->VideoHeight - decoder->OutputHeight) / 2;
+		} else if (decoder->OutputHeight > decoder->VideoHeight) {
+			decoder->OutputHeight = decoder->VideoHeight;
+			decoder->OutputX =
+			(decoder->VideoWidth - decoder->OutputWidth) / 2;
+		}
+		Debug(3, "video: aspect output %dx%d %dx%d%+d%+d\n",
+			decoder->InputWidth, decoder->InputHeight, decoder->OutputWidth,
+			decoder->OutputHeight, decoder->OutputX, decoder->OutputY);
     } else {
-	// sets AutoCrop->Count
-	CuvidUpdateOutput(decoder);
+		// sets AutoCrop->Count
+		CuvidUpdateOutput(decoder);
     }
     decoder->AutoCrop->Count = 0;
 }
@@ -4388,8 +4392,7 @@ void VideoRenderFrame(VideoHwDecoder * hw_decoder,
 	Timestamp2String(frame->pkt_pts), hw_decoder->Cuvid.Closing);
 #endif
     if (frame->repeat_pict && !VideoIgnoreRepeatPict) {
-	Warning(_("video: repeated pict %d found, but not handled\n"),
-	    frame->repeat_pict);
+		Warning(_("video: repeated pict %d found, but not handled\n"), frame->repeat_pict);
     }
     VideoUsedModule->RenderFrame(hw_decoder, video_ctx, frame);
 }

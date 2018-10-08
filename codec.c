@@ -457,6 +457,8 @@ void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
 **	@param decoder	video decoder data
 **	@param avpkt	video packet
 */
+extern int CuvidTestSurfaces();
+
 void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
     AVCodecContext *video_ctx;
@@ -478,9 +480,9 @@ next_part:
 	if (ret1 >= 0) {
 		consumed = 1;
 	}		
-	if (ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) {  // decoder is full 
+	if ((ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) && CuvidTestSurfaces()) { 
 		ret = 0;
-		while (ret >= 0) {    // get frames until empty
+		while ((ret >= 0) && CuvidTestSurfaces()) {    // get frames until empty snd Surfaces avail.
 			
  	       	ret = avcodec_receive_frame(video_ctx, frame);   // get new frame
 			if (ret >= 0) {									// one is avail.
@@ -515,7 +517,7 @@ next_part:
 			}
 		}
 	} else {
-		consumed = 1;
+//		consumed = 1;
 	}
 	
 	if (!consumed) {
