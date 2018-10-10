@@ -1597,13 +1597,12 @@ typedef struct _cuvid_decoder_
 	CUcontext cuda_ctx;
 
 	cudaStream_t stream;		// make my own cuda stream
-	CUdeviceptr dpBackBuffer;
 	CUgraphicsResource cuResource;
     int SurfaceWrite;			///< write pointer
     int SurfaceRead;			///< read pointer
     atomic_t SurfacesFilled;		///< how many of the buffer is used
 	
-	CUarray      cu_array[CODEC_SURFACES_MAX][2];
+	CUarray      		 cu_array[CODEC_SURFACES_MAX][2];
 	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX][2];
 	GLuint gl_textures[CODEC_SURFACES_MAX*2];  // where we will copy the CUDA result
 	
@@ -1735,7 +1734,7 @@ static void CuvidCreateSurfaces(CuvidDecoder * decoder, int width, int height,en
     	decoder->SurfacesNeeded = VIDEO_SURFACES_MAX;
     }
 #endif
-    Debug(3, "video/cuvid: %s: %dx%d * %d cuda_ctx %p\n", __FUNCTION__, width, height, decoder->SurfacesNeeded,decoder->cuda_ctx);
+    Debug(3, "video/cuvid: %s: %dx%d * %d \n", __FUNCTION__, width, height, decoder->SurfacesNeeded);
 
     // allocate only the number of needed surfaces
     decoder->SurfaceFreeN = decoder->SurfacesNeeded;
@@ -1765,15 +1764,13 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 
-	if (decoder->cuda_ctx) {
-    	checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));	
-		for (i=0;i<decoder->SurfacesNeeded;i++) {
-			for (j=0;j<2;j++) {
-				checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
-			}
+	
+	for (i=0;i<decoder->SurfacesNeeded;i++) {
+		for (j=0;j<2;j++) {
+			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
 		}
-    	checkCudaErrors(cuCtxPopCurrent(NULL));
 	}
+
 	
 	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
@@ -1985,7 +1982,7 @@ Debug(3,"Cuvid Clean up\n");
 static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
     int i,n;
-Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
+Debug(3,"cuvid del hw decoder \n");
 	if (decoder == CuvidDecoders[0])
   		pthread_mutex_lock(&VideoLockMutex);
 
@@ -1997,12 +1994,6 @@ Debug(3,"cuvid del hw decoder  cuda_ctx %p\n",decoder->cuda_ctx);
 	if (decoder == CuvidDecoders[0])
   		pthread_mutex_unlock(&VideoLockMutex);
 
-#if 0	
-    if (decoder->cuda_ctx) {
-        cuCtxDestroy (decoder->cuda_ctx);   
-        decoder->cuda_ctx = NULL;
-    }
-#endif
 	glXMakeCurrent(XlibDisplay, None, NULL);
     for (i = 0; i < CuvidDecoderN; ++i) {
 		if (CuvidDecoders[i] == decoder) {
@@ -2086,17 +2077,14 @@ void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {
 	
-    int n,i;
+    int n,i,size;
     CUcontext dummy;
-//	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 	
     glGenBuffers(1,&vao_buffer);
 	GlxCheck();
-	
-    if (decoder->cuda_ctx)
-       checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));
 	
     Debug(3,"video/vdpau: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
 
@@ -2119,17 +2107,16 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
 			SDK_CHECK_ERROR_GL();
 			// register this texture with CUDA
-			if (decoder->cuda_ctx) {
-				checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i*2+n],GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
-				checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
-				checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n],0, 0));
-				checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
-			}
+
+			checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i*2+n],GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
+			checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
+			checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n],0, 0));
+			checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
+
 		}
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
-    if (decoder->cuda_ctx)
-       checkCudaErrors(cuCtxPopCurrent(&dummy));
+
 }
 
 // copy image and process using CUDA
@@ -2138,27 +2125,21 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
     int n,version;
     CUcontext dummy=NULL;
 
-    if (decoder->cuda_ctx)
-      checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));
-
     for (n = 0; n < 2; n++) { // 
         // widthInBytes must account for the chroma plane
         // elements being two samples wide.
         CUDA_MEMCPY2D cpy = {
             .srcMemoryType = CU_MEMORYTYPE_DEVICE,
-            .dstMemoryType = CU_MEMORYTYPE_ARRAY,
+		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
             .srcDevice     = (CUdeviceptr)frame->data[n],
             .srcPitch      = frame->linesize[n],
             .srcY          = 0,
-            .dstArray      = decoder->cu_array[index][n],
+			.dstArray      = decoder->cu_array[index][n],
             .WidthInBytes  = image_width * bytes, 
             .Height        = n==0?image_height:image_height/2 , 
         };
         checkCudaErrors(cuMemcpy2D(&cpy));        
     }
-
-    if (decoder->cuda_ctx)
-       checkCudaErrors(cuCtxPopCurrent(&dummy));
 }
 
 
@@ -2300,6 +2281,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			Fatal(_("CUVID Init failed\n"));
 		}
 #endif
+
 		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
         ist->active_hwaccel_id = HWACCEL_CUVID;
         ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
@@ -2861,7 +2843,7 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
     CUdevice device;
 
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
-	
+//turn NULL;
 	if (decoder->cuda_ctx) {
 		Debug(3,"schon passiert\n");
 		return NULL;
