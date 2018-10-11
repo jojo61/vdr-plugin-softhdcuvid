@@ -1767,7 +1767,10 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	
 	for (i=0;i<decoder->SurfacesNeeded;i++) {
 		for (j=0;j<2;j++) {
-			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+			if (decoder->cu_res[i][j]) {
+				checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+				decoder->cu_res[i][j] = 0;
+			}
 		}
 	}
 
@@ -2971,16 +2974,16 @@ return;
 
 	// FIXME: what happens with PIP?
 	if (0) {
-	// FIXME: wrong for radio channels
-	output_rect.x0 = decoder->OutputX;	// video output (scale)
-	output_rect.y0 = decoder->OutputY;
-	output_rect.x1 = decoder->OutputX + decoder->OutputWidth;
-	output_rect.y1 = decoder->OutputY + decoder->OutputHeight;
+		// FIXME: wrong for radio channels
+		output_rect.x0 = decoder->OutputX;	// video output (scale)
+		output_rect.y0 = decoder->OutputY;
+		output_rect.x1 = decoder->OutputX + decoder->OutputWidth;
+		output_rect.y1 = decoder->OutputY + decoder->OutputHeight;
 	} else {
-	output_rect.x0 = decoder->VideoX;
-	output_rect.y0 = decoder->VideoY;
-	output_rect.x1 = decoder->VideoWidth;
-	output_rect.y1 = decoder->VideoHeight;
+		output_rect.x0 = decoder->VideoX;
+		output_rect.y0 = decoder->VideoY;
+		output_rect.x1 = decoder->VideoWidth;
+		output_rect.y1 = decoder->VideoHeight;
 	}
 
 	// FIXME: double buffered osd disabled
@@ -3062,6 +3065,7 @@ static void CuvidDisplayFrame(void)
 //	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
 	last_time = GetusTicks();
+	
 	glClear(GL_COLOR_BUFFER_BIT);
 	//
 	//	Render videos into output
@@ -3895,6 +3899,7 @@ void VideoGetOsdSize(int *width, int *height)
 ///
 void VideoSetOsdSize(int width, int height)
 {
+
     if (OsdConfigWidth != width || OsdConfigHeight != height) {
 		VideoOsdExit();
 		OsdConfigWidth = width;
