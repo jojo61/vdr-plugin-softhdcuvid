@@ -1764,12 +1764,13 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 
-	
-	for (i=0;i<decoder->SurfacesNeeded;i++) {
-		for (j=0;j<2;j++) {
-			if (decoder->cu_res[i][j]) {
-				checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
-				decoder->cu_res[i][j] = 0;
+	if (decoder->cuda_ctx) {
+		for (i=0;i<decoder->SurfacesNeeded;i++) {
+			for (j=0;j<2;j++) {
+				if (decoder->cu_res[i][j]) {
+					checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+					decoder->cu_res[i][j] = 0;
+				}
 			}
 		}
 	}
