@@ -1765,6 +1765,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	GlxCheck();
 
 	if (decoder->cuda_ctx) {
+		checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));	
 		for (i=0;i<decoder->SurfacesNeeded;i++) {
 			for (j=0;j<2;j++) {
 				if (decoder->cu_res[i][j]) {
@@ -1773,6 +1774,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 				}
 			}
 		}
+		checkCudaErrors(cuCtxPopCurrent(NULL));	
 	}
 
 	
