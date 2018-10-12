@@ -193,9 +193,13 @@ public:
 * Output Framebuffer Object - holds Vdpau Output Surface which is our "output framebuffer"
 ****************************************************************************************/
 class cOglOutputFb : public cOglFb {
+protected:
+    bool initiated;
 private:
     GLvdpauSurfaceNV surface;
 public:
+	GLuint fb;
+	GLuint texture;
     cOglOutputFb(GLint width, GLint height);
     virtual ~cOglOutputFb(void);
     virtual bool Init(void);

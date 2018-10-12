@@ -505,14 +505,19 @@ void cOglFb::Blit(GLint destX1, GLint destY1, GLint destX2, GLint destY2) {
 ****************************************************************************************/
 cOglOutputFb::cOglOutputFb(GLint width, GLint height) : cOglFb(width, height, width, height) {
 //    surface = 0;
+	initiated = false;
+    fb = 0;
+    texture = 0;
 }
 
 cOglOutputFb::~cOglOutputFb(void) {
 //    glVDPAUUnregisterSurfaceNV(surface);
+	glDeleteTextures(1, &texture);
+    glDeleteFramebuffers(1, &fb);
 }
 
 bool cOglOutputFb::Init(void) {
-
+	initiated = true;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -534,6 +539,8 @@ bool cOglOutputFb::Init(void) {
 
 void cOglOutputFb::BindWrite(void) {
 //    glVDPAUMapSurfacesNV(1, &surface);
+	if (!initiated)
+        Init();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
 }
 
@@ -771,8 +778,8 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
-	
-	glClear(GL_COLOR_BUFFER_BIT);
+
+//	glClear(GL_COLOR_BUFFER_BIT);
     fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
     oFb->Unbind();
 	pthread_mutex_unlock(&OSDMutex);
@@ -790,7 +797,7 @@ bool cOglCmdFill::Execute(void) {
     glm::vec4 col;
     ConvertColor(color, col);
     fb->Bind();
-    glClearColor(col.r, col.g, col.b, col.a);
+	glClearColor(col.r, col.g, col.b, col.a);
     glClear(GL_COLOR_BUFFER_BIT);
     fb->Unbind();
     return true;
@@ -1653,7 +1660,7 @@ void cOglThread::Cleanup(void) {
 	OsdClose();
 
     DeleteVertexBuffers();
-//    delete cOglOsd::oFb;
+    delete cOglOsd::oFb;
 
     cOglOsd::oFb = NULL;
     DeleteShaders();
@@ -1898,6 +1905,8 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     int osdHeight = 0;
 
     VideoGetOsdSize(&osdWidth, &osdHeight);
+//	osdWidth = 1920;
+//	osdHeight = 1080;
 	
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 

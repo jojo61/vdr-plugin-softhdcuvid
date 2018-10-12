@@ -152,6 +152,7 @@ typedef enum
 #include <dynlink_nvcuvid.h>
 #include <cudaGL.h>
 #include <libavutil/hwcontext_cuda.h>
+#include "drvapi_error_string.h"
 // CUDA includes
 #define __DEVICE_TYPES_H__
 #endif
@@ -1665,14 +1666,22 @@ unsigned int num_values;
 int window_width,window_height;
 
 #include "shaders.h"
+////////////////////////////////////////////////////////////////////////////////
+// These are CUDA Helper functions
 
-void checkCudaErrors(CUresult err)
+// This will output the proper CUDA error strings in the event that a CUDA host call returns an error
+#define checkCudaErrors(err)  __checkCudaErrors (err, __FILE__, __LINE__)
+
+// These are the inline versions for all of the SDK helper functions
+inline void __checkCudaErrors(CUresult err, const char *file, const int line)
 {
     if (CUDA_SUCCESS != err)
     {
-        Fatal(_("checkCudaErrors() Driver API error = %04d"), err );
+        CuvidMessage( 2,"checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, line %i.\n", err, getCudaDrvErrorString(err), file, line);
+        exit(EXIT_FAILURE);
     }
 }
+
 //----------------------------------------------------------------------------
 
 ///
@@ -1731,7 +1740,7 @@ static void CuvidCreateSurfaces(CuvidDecoder * decoder, int width, int height,en
 #ifdef DEBUG
     if (!decoder->SurfacesNeeded) {
 		Error(_("video/cuvid: surface needed not set\n")); 
-    	decoder->SurfacesNeeded = VIDEO_SURFACES_MAX;
+    	decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
     }
 #endif
     Debug(3, "video/cuvid: %s: %dx%d * %d \n", __FUNCTION__, width, height, decoder->SurfacesNeeded);
@@ -1764,17 +1773,11 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 
-	if (decoder->cuda_ctx) {
-		checkCudaErrors(cuCtxPushCurrent(decoder->cuda_ctx));	
-		for (i=0;i<decoder->SurfacesNeeded;i++) {
-			for (j=0;j<2;j++) {
-				if (decoder->cu_res[i][j]) {
-					checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
-					decoder->cu_res[i][j] = 0;
-				}
-			}
+	
+	for (i=0;i<decoder->SurfacesNeeded;i++) {
+		for (j=0;j<2;j++) {
+			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));			
 		}
-		checkCudaErrors(cuCtxPopCurrent(NULL));	
 	}
 
 	
@@ -3113,7 +3116,6 @@ static void CuvidDisplayFrame(void)
 		glLoadIdentity();
 		glOrtho(0.0, VideoWindowWidth, VideoWindowHeight, 0.0, -1.0, 1.0);
 		GlxCheck();
-//		printf("osd %d %dx%d\n",OSDtexture,VideoWindowWidth, VideoWindowHeight);
 		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight);
 		pthread_mutex_unlock(&OSDMutex);
 #endif
@@ -3181,6 +3183,7 @@ static int64_t CuvidGetClock(const CuvidDecoder * decoder)
 static void CuvidSetClosing(CuvidDecoder * decoder)
 {
 	decoder->Closing = 1;
+	OsdShown = 0;
 }
 
 ///
@@ -5077,8 +5080,10 @@ void VideoSetVideoMode( __attribute__ ((unused))
 		return;				// same size nothing todo
     }
 #ifdef USE_OPENGLOSD
-    if (VideoEventCallback)
+    if (VideoEventCallback) {
         VideoEventCallback();
+		Debug(3,"call back set video mode %d %d\n",width,height);
+}
 #endif	
     VideoOsdExit();  
 
