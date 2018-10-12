@@ -590,8 +590,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 	VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
 
     display_aspect_ratio = av_mul_q(input_aspect_ratio, display_aspect_ratio);
-    Debug(3, "video: aspect %d:%d\n", display_aspect_ratio.num,
-	display_aspect_ratio.den);
+    Debug(3, "video: aspect %d:%d Resolution %d\n", display_aspect_ratio.num,	display_aspect_ratio.den, resolution);
 
     *crop_x = VideoCutLeftRight[resolution];
     *crop_y = VideoCutTopBottom[resolution];
@@ -1354,7 +1353,7 @@ static VideoResolutions VideoResolutionGroup(int width, int height,
     if (height <= 720) {
 	return VideoResolution720p;
     }
-    if (height <= 1080) {
+    if (height < 1080) {
 	return VideoResolutionFake1080i;
     }
     if (width < 1920) {
@@ -2361,7 +2360,7 @@ int get_RGB(CuvidDecoder *decoder) {
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, fb);
 	
-	render_pass_quad(1);	
+	render_pass_quad(1,0.0,0.0);	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
 	
@@ -2614,8 +2613,7 @@ static void CuvidAutoCrop(CuvidDecoder * decoder)
 	decoder->InputAspect.num, decoder->InputAspect.den, crop14, crop16,
 	decoder->AutoCrop->Y1, decoder->InputHeight - decoder->AutoCrop->Y2);
 
-    Debug(3, "video: crop aspect %d -> %d\n", decoder->AutoCrop->State,
-	next_state);
+    Debug(3, "video: crop aspect %d -> %d\n", decoder->AutoCrop->State,	next_state);
 
     switch (decoder->AutoCrop->State) {
 	case 16:
@@ -2894,6 +2892,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	int w = decoder->InputWidth;
 	int h = decoder->InputHeight;
 	int y;
+	float xcropf, ycropf;
 	GLint texLoc;
 	
 	size_t nSize = 0;
@@ -2921,6 +2920,9 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	video_src_rect.x1 = decoder->CropX + decoder->CropWidth;
 	video_src_rect.y1 = decoder->CropY + decoder->CropHeight;
 
+	xcropf = (float) decoder->CropX / (float) decoder->InputWidth;
+	ycropf = (float) decoder->CropY / (float) decoder->InputHeight;
+	
 	dst_video_rect.x0 = decoder->OutputX;	// video output (scale)
 	dst_video_rect.y0 = decoder->OutputY;
 	dst_video_rect.x1 = decoder->OutputX + decoder->OutputWidth;
@@ -2949,7 +2951,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D,decoder->gl_textures[current*2+1]);	
 	
-	render_pass_quad(0);
+	render_pass_quad(0, xcropf, ycropf);
 	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);

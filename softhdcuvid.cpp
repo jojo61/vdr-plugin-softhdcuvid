@@ -995,7 +995,7 @@ void cMenuSetupSoft::Create(void)
 	"None", "PCM", "AC-3", "PCM + AC-3"
     };
     static const char *const resolution[RESOLUTIONS] = {
-	"576i", "720p", "fake 1080i", "1080i" ,"UHD"
+	"576", "720", "fake 1080", "1080" ,"UHD"
     };
     int current;
     int i;
@@ -1045,6 +1045,7 @@ void cMenuSetupSoft::Create(void)
 	Add(new cMenuEditStraItem(trVDR("16:9+other video display format"),
 		&VideoOtherDisplayFormat, 3, video_display_formats_16_9));
 
+#if 0
 	// FIXME: switch config gray/color configuration
 	Add(new cMenuEditIntItem(tr("Video background color (RGB)"),
 		(int *)&Background, 0, 0x00FFFFFF));
@@ -1052,6 +1053,7 @@ void cMenuSetupSoft::Create(void)
 		(int *)&BackgroundAlpha, 0, 0xFF));
 	Add(new cMenuEditBoolItem(tr("Use studio levels (vdpau only)"),
 		&StudioLevels, trVDR("no"), trVDR("yes")));
+#endif
 	Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode,
 		trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync,
@@ -1060,7 +1062,7 @@ void cMenuSetupSoft::Create(void)
 		&BlackPicture, trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Clear decoder on channel switch"),
 		&ClearOnSwitch, trVDR("no"), trVDR("yes")));
-
+#if 0
 	Add(new cMenuEditIntItem(tr("Brightness (-1000..1000) (vdpau)"),
 		&Brightness, -1000, 1000, tr("min"), tr("max")));
 	Add(new cMenuEditIntItem(tr("Contrast (0..10000) (vdpau)"), &Contrast,
@@ -1069,39 +1071,37 @@ void cMenuSetupSoft::Create(void)
 		&Saturation, 0, 10000, tr("min"), tr("max")));
 	Add(new cMenuEditIntItem(tr("Hue (-3141..3141) (vdpau)"), &Hue, -3141,
 		3141, tr("min"), tr("max")));
-
+#endif
 	for (i = 0; i < RESOLUTIONS; ++i) {
 	    cString msg;
 
 	    // short hidden informations
-	    msg =
-		cString::sprintf("%s,%s%s%s%s,...", scaling_short[Scaling[i]],
-		deinterlace_short[Deinterlace[i]],
-		SkipChromaDeinterlace[i] ? ",skip" : "",
-		InverseTelecine[i] ? ",ITC" : "", Denoise[i] ? ",DN" : "");
+	    msg = cString::sprintf("show");
 	    Add(CollapsedItem(resolution[i], ResolutionShown[i], msg));
 
 	    if (ResolutionShown[i]) {
-		Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], 4,
-			scaling));
-		Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],
-			6, deinterlace));
-		Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"),
-			&SkipChromaDeinterlace[i], trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"),
-			&InverseTelecine[i], trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditIntItem(tr("Denoise (0..1000) (vdpau)"),
-			&Denoise[i], 0, 1000, tr("off"), tr("max")));
-		Add(new cMenuEditIntItem(tr("Sharpen (-1000..1000) (vdpau)"),
-			&Sharpen[i], -1000, 1000, tr("blur max"),
-			tr("sharpen max")));
-
-		Add(new cMenuEditIntItem(tr("Cut top and bottom (pixel)"),
-			&CutTopBottom[i], 0, 250));
-		Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"),
-			&CutLeftRight[i], 0, 250));
+#if 0
+			Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], 4,
+				scaling));
+			Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],
+				6, deinterlace));
+			Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"),
+				&SkipChromaDeinterlace[i], trVDR("no"), trVDR("yes")));
+			Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"),
+				&InverseTelecine[i], trVDR("no"), trVDR("yes")));
+			Add(new cMenuEditIntItem(tr("Denoise (0..1000) (vdpau)"),
+				&Denoise[i], 0, 1000, tr("off"), tr("max")));
+			Add(new cMenuEditIntItem(tr("Sharpen (-1000..1000) (vdpau)"),
+				&Sharpen[i], -1000, 1000, tr("blur max"),
+				tr("sharpen max")));
+#endif
+			Add(new cMenuEditIntItem(tr("Cut top and bottom (pixel)"),
+				&CutTopBottom[i], 0, 250));
+			Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"),
+				&CutLeftRight[i], 0, 250));
 	    }
 	}
+#ifdef USE_AUTOCROP
 	//
 	//  auto-crop
 	//
@@ -1109,6 +1109,7 @@ void cMenuSetupSoft::Create(void)
 	Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"),	&AutoCropInterval, 0, 200, tr("off")));
 	Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"),	&AutoCropDelay, 0, 200));
 	Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"),	&AutoCropTolerance, 0, 32));
+#endif
     }
     //
     //	audio

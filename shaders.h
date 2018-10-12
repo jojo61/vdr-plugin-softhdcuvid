@@ -169,7 +169,13 @@ struct vertex_pt {
     float x, y;
 };
 
+struct vertex_pi {
+    GLint x, y;
+};
+
 #define TEXUNIT_VIDEO_NUM 6
+
+
 struct vertex {
     struct vertex_pt position;
     struct vertex_pt texcoord[TEXUNIT_VIDEO_NUM];
@@ -185,7 +191,6 @@ static const struct gl_vao_entry vertex_vao[] = {
     {"texcoord5", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[5])},
     {0}
 };
-
 
 
 static void compile_attach_shader(GLuint program, 
@@ -292,7 +297,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     return gl_prog; 
 }
 
-static void render_pass_quad(int flip)
+static void render_pass_quad(int flip, float xcrop, float ycrop)
 {
     struct vertex va[4];
     int n;
@@ -317,24 +322,26 @@ static void render_pass_quad(int flip)
 		va[3].position.x = (float)  1.0;
 		va[3].position.y = (float)  1.0;
 	}
-    va[0].texcoord[0].x = (float) 0.0;
-    va[0].texcoord[0].y = (float) 0.0;
-    va[0].texcoord[1].x = (float) 0.0;
-    va[0].texcoord[1].y = (float) 0.0;
-    va[1].texcoord[0].x = (float) 0.0;
-    va[1].texcoord[0].y = (float) 1.0;
-    va[1].texcoord[1].x = (float) 0.0;
-    va[1].texcoord[1].y = (float) 1.0;
-    va[2].texcoord[0].x = (float) 1.0;
-    va[2].texcoord[0].y = (float) 0.0;
-    va[2].texcoord[1].x = (float) 1.0;
-    va[2].texcoord[1].y = (float) 0.0;
-    va[3].texcoord[0].x = (float) 1.0;
-    va[3].texcoord[0].y = (float) 1.0;
-    va[3].texcoord[1].x = (float) 1.0;
-    va[3].texcoord[1].y = (float) 1.0;
 
+    va[0].texcoord[0].x = (float) 0.0 + xcrop;
+    va[0].texcoord[0].y = (float) 0.0 + ycrop;  // abgeschnitten von links oben
+    va[0].texcoord[1].x = (float) 0.0 + xcrop;
+    va[0].texcoord[1].y = (float) 0.0 + ycrop;  // abgeschnitten von links oben
+    va[1].texcoord[0].x = (float) 0.0 + xcrop;
+    va[1].texcoord[0].y = (float) 1.0 - ycrop;  // abgeschnitten links unten 1.0 - Wert
+    va[1].texcoord[1].x = (float) 0.0 + xcrop;
+    va[1].texcoord[1].y = (float) 1.0 - ycrop;  // abgeschnitten links unten 1.0 - Wert
+    va[2].texcoord[0].x = (float) 1.0 - xcrop;
+    va[2].texcoord[0].y = (float) 0.0 + ycrop;  // abgeschnitten von rechts oben
+    va[2].texcoord[1].x = (float) 1.0 - xcrop;
+    va[2].texcoord[1].y = (float) 0.0 + ycrop;  // abgeschnitten von rechts oben
+    va[3].texcoord[0].x = (float) 1.0 - xcrop;
+    va[3].texcoord[0].y = (float) 1.0 - ycrop;  // abgeschnitten von rechts unten 1.0 - wert
+    va[3].texcoord[1].x = (float) 1.0 - xcrop;
+    va[3].texcoord[1].y = (float) 1.0 - ycrop;  // abgeschnitten von rechts unten 1.0 - wert
 
+	
+	
     glBindBuffer(GL_ARRAY_BUFFER, vao_buffer);
     glBufferData(GL_ARRAY_BUFFER, 4  * sizeof(struct vertex), va, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
