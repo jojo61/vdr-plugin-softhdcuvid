@@ -779,7 +779,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     fb->BindRead();
     oFb->BindWrite();
 
-//	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
     fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
     oFb->Unbind();
 	pthread_mutex_unlock(&OSDMutex);
