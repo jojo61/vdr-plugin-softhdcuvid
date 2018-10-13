@@ -3068,8 +3068,9 @@ static void CuvidDisplayFrame(void)
 	CuvidDecoder *decoder;
 
 
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);	
-	CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	if (CuvidDecoderN)
+		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
 //	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
 	last_time = GetusTicks();
