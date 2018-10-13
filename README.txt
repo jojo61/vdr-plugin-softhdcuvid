@@ -53,7 +53,7 @@ The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested wit
 
 Unfortunatly FFMEG has a bug with deinterlacing cuda frames. So you have to patch the file in libavcodec/cuviddec.c
 
-Somewhere near line 860 depending on your release:
+Somewhere near line 860 and 1066 depending on your release:
 old:
      ctx->frame_queue = av_fifo_alloc(ctx->nb_surfaces * sizeof(CuvidParsedFrame));
 

@@ -541,10 +541,7 @@ void CodecVideoFlushBuffers(VideoDecoder * decoder)
 	frame = decoder->Frame;
 	
     if (decoder->VideoCtx) {
-		while (avcodec_receive_frame(decoder->VideoCtx,frame) >= 0) {
-			usleep(1);
-		}
-//		avcodec_flush_buffers(decoder->VideoCtx);
+		avcodec_flush_buffers(decoder->VideoCtx);
     }
 }
 
