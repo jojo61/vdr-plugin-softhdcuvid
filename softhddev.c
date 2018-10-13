@@ -1426,8 +1426,8 @@ static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const v
 
     if (avpkt->stream_index + size >= avpkt->size) {
 
-		Warning(_("video: packet buffer too small for %d\n"),
-			avpkt->stream_index + size);
+//		Warning(_("video: packet buffer too small for %d\n"),
+//			avpkt->stream_index + size);
 
 		// new + grow reserves FF_INPUT_BUFFER_PADDING_SIZE
 		av_grow_packet(avpkt, ((size + VIDEO_BUFFER_SIZE / 2)
@@ -2624,7 +2624,7 @@ void Clear(void)
     // wait for empty buffers
     // FIXME: without softstart sync VideoDecode isn't called.
     for (i = 0; MyVideoStream->ClearBuffers && i < 20; ++i) {
-		usleep(1 * 1000);
+		usleep(1 * 100);
     }
     Debug(3, "[softhddev]%s: %dms buffers %d\n", __FUNCTION__, i,
 	VideoGetBuffers(MyVideoStream));
@@ -2703,7 +2703,7 @@ void StillPicture(const uint8_t * data, int size)
 #ifdef STILL_DEBUG
     fprintf(stderr, "still-picture\n");
 #endif
-    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 8 : 10);	++i) {
+    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 8 : 8);	++i) {
 		const uint8_t *split;
 		int n;
 
