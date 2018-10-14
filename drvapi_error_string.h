@@ -22,13 +22,13 @@
 typedef struct
 {
     char const *error_string;
-    int  error_id;
+    unsigned int  error_id;
 } s_CudaErrorStr;
 
 /**
  * Error codes
  */
-static s_CudaErrorStr sCudaDrvErrorString[] =
+s_CudaErrorStr sCudaDrvErrorString[] =
 {
     /**
      * The API call returned with no errors. In the case of query calls, this

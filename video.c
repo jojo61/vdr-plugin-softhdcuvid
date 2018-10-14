@@ -508,7 +508,7 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
     } else {
 		duration = interlaced ? 40 : 20;	// 50Hz -> 20ms default
     }
-    Debug(4, "video: %d/%d %" PRIx64 " -> %d\n", video_ctx->framerate.den,	video_ctx->framerate.num, av_frame_get_pkt_duration(frame), duration);
+//    Debug(4, "video: %d/%d %" PRIx64 " -> %d\n", video_ctx->framerate.den,	video_ctx->framerate.num, av_frame_get_pkt_duration(frame), duration);
 
 
     // update video clock
@@ -552,7 +552,8 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
 		}
     }
 }
-static int CuvidMessage(int level, const char *format, ...);
+
+int CuvidMessage(int level, const char *format, ...);
 ///
 ///	Update output for new size or aspect ratio.
 ///
@@ -1128,7 +1129,9 @@ static void GlxInit(void)
     int glx_GLX_MESA_swap_control;
     int glx_GLX_SGI_swap_control;
     int glx_GLX_SGI_video_sync;
-
+	GLXFBConfig *fbc;
+	int redSize, greenSize, blueSize;
+	
     if (!glXQueryVersion(XlibDisplay, &major, &minor)) {
 		Error(_("video/glx: no GLX support\n"));
 		GlxEnabled = 0;
@@ -1173,7 +1176,7 @@ static void GlxInit(void)
     // create glx context
     glXMakeCurrent(XlibDisplay, None, NULL);
 	
-	GLXFBConfig *fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList10,&fbcount);   // try 10 Bit 
+	fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList10,&fbcount);   // try 10 Bit 
 	if (fbc==NULL) { 
 		fbc = glXChooseFBConfig(XlibDisplay, DefaultScreen(XlibDisplay),attributeList,&fbcount); // fall back to 8 Bit
 		if (fbc==NULL)
@@ -1182,8 +1185,6 @@ static void GlxInit(void)
 
 	vi = glXGetVisualFromFBConfig(XlibDisplay, fbc[0]); 
 	
-
-	int redSize, greenSize, blueSize;
 	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_RED_SIZE, &redSize); 
 	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_GREEN_SIZE, &greenSize); 
 	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize); 
@@ -1665,21 +1666,7 @@ unsigned int num_values;
 int window_width,window_height;
 
 #include "shaders.h"
-////////////////////////////////////////////////////////////////////////////////
-// These are CUDA Helper functions
 
-// This will output the proper CUDA error strings in the event that a CUDA host call returns an error
-#define checkCudaErrors(err)  __checkCudaErrors (err, __FILE__, __LINE__)
-
-// These are the inline versions for all of the SDK helper functions
-inline void __checkCudaErrors(CUresult err, const char *file, const int line)
-{
-    if (CUDA_SUCCESS != err)
-    {
-        CuvidMessage( 2,"checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, line %i.\n", err, getCudaDrvErrorString(err), file, line);
-        exit(EXIT_FAILURE);
-    }
-}
 
 //----------------------------------------------------------------------------
 
@@ -1694,7 +1681,7 @@ inline void __checkCudaErrors(CUresult err, const char *file, const int line)
 ///
 ///	@returns true, if message shown
 ///
-static int CuvidMessage(int level, const char *format, ...)
+int CuvidMessage(int level, const char *format, ...)
 {
     if (SysLogLevel > level || DebugLevel > level) {
 	static const char *last_format;
@@ -1721,6 +1708,21 @@ static int CuvidMessage(int level, const char *format, ...)
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// These are CUDA Helper functions
+
+// This will output the proper CUDA error strings in the event that a CUDA host call returns an error
+#define checkCudaErrors(err)  __checkCudaErrors (err, __FILE__, __LINE__)
+
+// These are the inline versions for all of the SDK helper functions
+inline void __checkCudaErrors(CUresult err, const char *file, const int line)
+{
+    if (CUDA_SUCCESS != err)
+    {
+        CuvidMessage( 2,"checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, line %i.\n", err, getCudaDrvErrorString(err), file, line);
+        exit(EXIT_FAILURE);
+    }
+}
 //	Surfaces -------------------------------------------------------------
 
 void
@@ -2313,13 +2315,16 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 #ifdef USE_GRAB
 
 int get_RGB(CuvidDecoder *decoder) {
-	uint8_t *base = decoder->grabbase;;
-	int width = decoder->grabwidth;
-	int height = decoder->grabheight;
+	uint8_t *base;
+	int width;
+	int height;
 	GLuint fb,texture;
 	int current,i;
 	GLint texLoc;
-		
+	
+	base = decoder->grabbase;
+	width = decoder->grabwidth;
+	height = decoder->grabheight;		
 	glGenTextures(1, &texture);
 	GlxCheck();
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -3422,11 +3427,13 @@ static void CuvidSyncDisplayFrame(void)
 static void CuvidSyncRenderFrame(CuvidDecoder * decoder,
 	const AVCodecContext * video_ctx, const AVFrame * frame)
 {
+#if 0
 	// FIXME: temp debug
 	if (0 && frame->pkt_pts != (int64_t) AV_NOPTS_VALUE) {
 		Debug(3, "video: render frame pts %s\n",
 		Timestamp2String(frame->pkt_pts));
 	}
+#endif
 #ifdef DEBUG
 	if (!atomic_read(&decoder->SurfacesFilled)) {
 		Debug(4, "video: new stream frame %dms\n", GetMsTicks() - VideoSwitch);

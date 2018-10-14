@@ -196,13 +196,15 @@ static const struct gl_vao_entry vertex_vao[] = {
 static void compile_attach_shader(GLuint program, 
                                   GLenum type, const char *source) 
 { 
- 
-    GLuint shader = glCreateShader(type); 
+    GLuint shader;
+	GLint status, log_length;
+	
+    shader = glCreateShader(type); 
     glShaderSource(shader, 1, &source, NULL); 
     glCompileShader(shader); 
-    GLint status = 0; 
+    status = 0; 
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status); 
-    GLint log_length = 0; 
+    log_length = 0; 
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length); 
 Debug(3,"compile Status %d loglen %d\n",status,log_length); 
 
@@ -213,10 +215,12 @@ Debug(3,"compile Status %d loglen %d\n",status,log_length);
 
 static void link_shader(GLuint program)
 {
+	GLint status,log_length;
+	
     glLinkProgram(program);
-    GLint status = 0;
+    status = 0;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
-    GLint log_length = 0;
+    log_length = 0;
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
 Debug(3,"Link Status %d loglen %d\n",status,log_length); 
 
