@@ -1872,9 +1872,12 @@ static void CuvidPrintFrames(const CuvidDecoder * decoder)
 }
 
 int CuvidTestSurfaces() {
-	if (atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX)
-		return 1;
-	return 0;
+	if (CuvidDecoders[0] != NULL) {
+		if (atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX)
+			return 1;
+		return 0;
+	} else
+		return 0;
 }
 
 ///
@@ -4842,7 +4845,7 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual,
 	XCB_WINDOW_CLASS_INPUT_OUTPUT, visual,
 	XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK |
 	XCB_CW_COLORMAP, values);
-
+	Debug(3,"Create Window at %d,%d\n",VideoWindowX,VideoWindowY);
     // define only available with xcb-utils-0.3.8
 #ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
     // FIXME: utf _NET_WM_NAME
@@ -4939,8 +4942,7 @@ const char *VideoGetDriverName(void)
 ///
 int VideoSetGeometry(const char *geometry)
 {
-    XParseGeometry(geometry, &VideoWindowX, &VideoWindowY, &VideoWindowWidth,
-	&VideoWindowHeight);
+    XParseGeometry(geometry, &VideoWindowX, &VideoWindowY, &VideoWindowWidth, &VideoWindowHeight);
 
     return 0;
 }
