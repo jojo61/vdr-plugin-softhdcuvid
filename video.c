@@ -279,7 +279,7 @@ typedef struct _video_module_
     void (*const SetClosing) (const VideoHwDecoder *);
     void (*const ResetStart) (const VideoHwDecoder *);
     void (*const SetTrickSpeed) (const VideoHwDecoder *, int);
-    uint8_t *(*const GrabOutput)(int *, int *, int *);
+    uint8_t *(*const GrabOutput)(int *, int *, int *, int);
     void (*const GetStats) (VideoHwDecoder *, int *, int *, int *, int *, float *);
     void (*const SetBackground) (uint32_t);
     void (*const SetVideoMode) (void);
@@ -799,7 +799,7 @@ static void GlxSetupDecoder(int width, int height, GLuint * textures)
 ///	@param width	window width
 ///	@param height	window height
 ///
-static inline void GlxRenderTexture(GLuint texture, int x, int y, int width, int height)
+static inline void GlxRenderTexture(GLuint texture, int x, int y, int width, int height, int flip)
 {
 	
     glEnable(GL_TEXTURE_2D);
@@ -808,14 +808,25 @@ static inline void GlxRenderTexture(GLuint texture, int x, int y, int width, int
 //    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	// no color
 
     glBegin(GL_QUADS); {
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex2i(x + width, y + height);
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex2i(x, y + height);
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex2i(x, y);
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex2i(x + width, y);
+		if (!flip) {
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(x + width, y + height);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(x, y + height);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(x, y);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(x + width, y);
+		} else {
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex2i(x + width, y);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex2i(x, y);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex2i(x, y+height);
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex2i(x + width, y+height);		
+		}
     }
     glEnd();
 
@@ -2371,7 +2382,24 @@ int get_RGB(CuvidDecoder *decoder) {
 	render_pass_quad(1,0.0,0.0);	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
-	
+	if (OsdShown && decoder->grab == 2) {		
+#ifndef USE_OPENGLOSD
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
+		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, width, height,1);		
+#else
+		pthread_mutex_lock(&OSDMutex);
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );	
+		glViewport(0, 0, width, height);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0.0, width, height, 0.0, -1.0, 1.0);
+		GlxCheck();
+		GlxRenderTexture(OSDtexture, 0,0, width, height,1);
+		pthread_mutex_unlock(&OSDMutex);
+#endif
+//		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	}
 	Debug(3,"Read pixels %d %d\n",width,height);
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -2393,7 +2421,7 @@ int get_RGB(CuvidDecoder *decoder) {
 ///	@param ret_width[in,out]	width of output
 ///	@param ret_height[in,out]	height of output
 ///
-static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int *ret_height)
+static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int *ret_height, int mitosd)
 {
     int surface,i;
 
@@ -2473,7 +2501,10 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 		decoder->grabbase = base;
 		decoder->grabwidth = width;
 		decoder->grabheight = height;
-		decoder->grab = 1;
+		if (mitosd)
+			decoder->grab = 2;
+		else
+			decoder->grab = 1;
 		
 		while(decoder->grab) {
 			usleep(1000);				// wait for data
@@ -2502,14 +2533,13 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 ///	@param ret_width[in,out]	width of output
 ///	@param ret_height[in,out]	height of output
 ///
-static uint8_t *CuvidGrabOutputSurface(int *ret_size, int *ret_width,
-    int *ret_height)
+static uint8_t *CuvidGrabOutputSurface(int *ret_size, int *ret_width,  int *ret_height, int mitosd)
 {
     uint8_t *img;
 
 //    pthread_mutex_lock(&CuvidGrabMutex);
 //	pthread_mutex_lock(&VideoLockMutex);
-    img = CuvidGrabOutputSurfaceLocked(ret_size, ret_width, ret_height);
+    img = CuvidGrabOutputSurfaceLocked(ret_size, ret_width, ret_height, mitosd);
 //	pthread_mutex_unlock(&VideoLockMutex);
 //    pthread_mutex_unlock(&CuvidGrabMutex);
     return img;
@@ -3118,7 +3148,7 @@ static void CuvidDisplayFrame(void)
 	if (OsdShown) {		
 #ifndef USE_OPENGLOSD
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight);		
+		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight,0);		
 #else
 		pthread_mutex_lock(&OSDMutex);
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );	
@@ -3127,7 +3157,7 @@ static void CuvidDisplayFrame(void)
 		glLoadIdentity();
 		glOrtho(0.0, VideoWindowWidth, VideoWindowHeight, 0.0, -1.0, 1.0);
 		GlxCheck();
-		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight);
+		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight,0);
 		pthread_mutex_unlock(&OSDMutex);
 #endif
 //		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
@@ -4516,7 +4546,7 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 		scale_width = *width;
 		scale_height = *height;
 		n = 0;
-		data = VideoUsedModule->GrabOutput(size, width, height);
+		data = VideoUsedModule->GrabOutput(size, width, height, 1);
 		if (data == NULL)
 			return NULL;
 
@@ -4618,7 +4648,7 @@ uint8_t *VideoGrabService(int *size, int *width, int *height)
 
 #ifdef USE_GRAB
     if (VideoUsedModule->GrabOutput) {
-		return VideoUsedModule->GrabOutput(size, width, height);
+		return VideoUsedModule->GrabOutput(size, width, height, 0);
     } else
 #endif
     {
@@ -5091,6 +5121,7 @@ void VideoSetVideoMode( __attribute__ ((unused))
     if ((unsigned)width == VideoWindowWidth	&& (unsigned)height == VideoWindowHeight) {
 		return;				// same size nothing todo
     }
+
 #ifdef USE_OPENGLOSD
     if (VideoEventCallback) {
         VideoEventCallback();

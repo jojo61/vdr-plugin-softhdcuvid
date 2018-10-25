@@ -326,8 +326,8 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
 		}
-#if 0
-		if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 7 ,0) < 0) { 
+#if 1
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 9 ,0) < 0) { 
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option surfces to video codec!\n"));
 		}
