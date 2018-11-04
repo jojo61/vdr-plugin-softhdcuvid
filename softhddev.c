@@ -1830,7 +1830,7 @@ int VideoPollInput(VideoStream * stream)
 		atomic_set(&stream->PacketsFilled, 0);
 		stream->PacketRead = stream->PacketWrite;
 		// FIXME: ->Decoder already checked
-		Debug(3,"Clear buffer request\n");
+		Debug(3,"Clear buffer request in Poll\n");
 		if (stream->Decoder) {
 			CodecVideoFlushBuffers(stream->Decoder);
 			VideoResetStart(stream->HwDecoder);
@@ -1877,7 +1877,7 @@ int VideoDecodeInput(VideoStream * stream)
 		// FIXME: ->Decoder already checked
 		if (stream->Decoder) {
 			CodecVideoFlushBuffers(stream->Decoder);
-			Debug(3,"Clear buffer request\n");
+			Debug(3,"Clear buffer request in Decode\n");
 			VideoResetStart(stream->HwDecoder);
 		}
 		stream->ClearBuffers = 0;
@@ -1889,6 +1889,7 @@ int VideoDecodeInput(VideoStream * stream)
     }
 
     filled = atomic_read(&stream->PacketsFilled);
+//	printf("Packets in Decode %d\n",filled);
     if (!filled) {
 		return -1;
     }
@@ -2216,6 +2217,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
     }
     // hard limit buffer full: needed for replay
     if (atomic_read(&stream->PacketsFilled) >= VIDEO_PACKET_MAX - 10) {
+		Debug(3, "video: video buffer full\n");
 		return 0;
     }
 #ifdef USE_SOFTLIMIT

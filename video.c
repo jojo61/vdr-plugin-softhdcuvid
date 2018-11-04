@@ -1,3 +1,4 @@
+
 ///
 ///	@file video.c	@brief Video module
 ///
@@ -38,13 +39,14 @@
 ///	@todo FIXME: use vaErrorStr for all VA-API errors.
 ///
 
+//#define PLACEBO
+
 #define USE_XLIB_XCB			///< use xlib/xcb backend
 #define noUSE_SCREENSAVER		///< support disable screensaver
 //#define USE_AUTOCROP			///< compile auto-crop support
 #define USE_GRAB			///< experimental grab code
 //#define USE_GLX			///< outdated GLX code
 #define USE_DOUBLEBUFFER		///< use GLX double buffers
-//#define USE_VAAPI				///< enable vaapi support
 #define USE_CUVID				///< enable cuvid support
 //#define USE_BITMAP			///< use cuvid bitmap surface
 //#define AV_INFO				///< log a/v sync informations
@@ -134,13 +136,9 @@ typedef enum
 #include <GL/glx.h>
 // only for gluErrorString
 #include <GL/glu.h>
-
 #include <GL/glut.h>
 #include <GL/freeglut_ext.h>
-
 #endif
-
-
 
 #ifdef CUVID
 //#define CUDA_API_PER_THREAD_DEFAULT_STREAM
@@ -148,14 +146,23 @@ typedef enum
 #include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT 
 #include <libavutil/hwcontext.h>
 #include <cuda.h>
+//#include <dynlink_cuda.h>
 #include <cuda_runtime_api.h>
-#include <dynlink_nvcuvid.h>
+//#include <dynlink_nvcuvid.h>
 #include <cudaGL.h>
 #include <libavutil/hwcontext_cuda.h>
 #include "drvapi_error_string.h"
 // CUDA includes
 #define __DEVICE_TYPES_H__
 #endif
+
+#ifdef PLACEBO
+#include <vulkan/vulkan.h>
+#include <libplacebo/context.h>
+#include <libplacebo/vulkan.h>
+#include <libplacebo/renderer.h>
+#endif
+
 
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
@@ -171,7 +178,7 @@ typedef enum
 #define AV_CODEC_ID_VC1 CODEC_ID_VC1
 #define AV_CODEC_ID_WMV3 CODEC_ID_WMV3
 #endif
-#include <libavcodec/vaapi.h>
+
 #include <libavutil/pixdesc.h>
 #include <libavutil/hwcontext.h>
 
@@ -1553,6 +1560,12 @@ static void AutoCropDetect(AutoCropCtx * autocrop, int width, int height,
 
 #ifdef USE_CUVID
 
+struct ext_buf {
+    int fd;
+    CUexternalMemory mem;
+    CUdeviceptr buf;
+};
+
 ///
 ///	CUVID decoder
 ///
@@ -1606,7 +1619,7 @@ typedef struct _cuvid_decoder_
     int SurfacesFree[CODEC_SURFACES_MAX];
     /// video surface ring buffer
     int SurfacesRb[VIDEO_SURFACES_MAX];
-	CUcontext cuda_ctx;
+//	CUcontext cuda_ctx;
 
 	cudaStream_t stream;		// make my own cuda stream
 	CUgraphicsResource cuResource;
@@ -1614,9 +1627,17 @@ typedef struct _cuvid_decoder_
     int SurfaceRead;			///< read pointer
     atomic_t SurfacesFilled;		///< how many of the buffer is used
 	
-	CUarray      		 cu_array[CODEC_SURFACES_MAX][2];
-	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX][2];
-	GLuint gl_textures[CODEC_SURFACES_MAX*2];  // where we will copy the CUDA result
+	CUarray      		 cu_array[CODEC_SURFACES_MAX+1][2];
+	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX+1][2];
+	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
+	
+#ifdef PLACEBO
+	const struct pl_image      pl_images[CODEC_SURFACES_MAX+1];    // images für Placebo chain
+	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
+	struct pl_buf		 *pl_buf_Y,*pl_buf_UV;				 // buffer for Texture upload
+	struct ext_buf			 ebuf[2];							 // for managing vk buffer
+#endif
+	
 	
     int SurfaceField;			///< current displayed field
     int TrickSpeed;			///< current trick speed
@@ -1641,6 +1662,21 @@ typedef struct _cuvid_decoder_
 static CuvidDecoder *CuvidDecoders[2];	///< open decoder streams
 static int CuvidDecoderN;		///< number of decoder streams
 
+#ifdef PLACEBO
+struct priv {
+	const struct pl_gpu      *gpu;
+	const struct pl_vulkan *vk;
+	struct pl_context_params context;
+	struct pl_context  *ctx;	
+	struct pl_renderer *renderer;
+	const struct pl_swapchain *swapchain;
+	struct pl_render_target r_target;
+	struct pl_render_params r_params;
+	struct pl_tex      final_fbo;
+};
+struct priv *p;
+#endif
+//CUcontext cuda_ctx;
 GLuint vao_buffer;  // 
 //GLuint vao_vao[4];  // 
 GLuint gl_shader=0,gl_prog = 0,gl_fbo=0;      // shader programm
@@ -1752,7 +1788,7 @@ static void CuvidCreateSurfaces(CuvidDecoder * decoder, int width, int height,en
 #ifdef DEBUG
     if (!decoder->SurfacesNeeded) {
 		Error(_("video/cuvid: surface needed not set\n")); 
-    	decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
+    	decoder->SurfacesNeeded = VIDEO_SURFACES_MAX;
     }
 #endif
     Debug(3, "video/cuvid: %s: %dx%d * %d \n", __FUNCTION__, width, height, decoder->SurfacesNeeded);
@@ -1788,14 +1824,25 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	
 	for (i=0;i<decoder->SurfacesNeeded;i++) {
 		for (j=0;j<2;j++) {
+#ifdef PLACEBO
+			pl_tex_destroy(p->gpu,&decoder->pl_tex_in[i][j]);
+#else
 			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));			
+#endif
 		}
 	}
-
-	
+#ifdef PLACEBO
+// Never ever close the FD this will corrupt cuda
+//	if (decoder->pl_buf_Y->handles.fd > 0)
+//		close(decoder->pl_buf_Y->handles.fd);
+//	if (decoder->pl_buf_UV->handles.fd > 0)
+//		close(decoder->pl_buf_UV->handles.fd);
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y);
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV);
+#else
 	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
-	
+
 	if (decoder == CuvidDecoders[0]) {   // only wenn last decoder closes
 		Debug(3,"Last decoder closes\n");
     	glDeleteBuffers(1,(GLuint *)&vao_buffer);
@@ -1803,6 +1850,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 			glDeleteProgram(gl_prog);
 		gl_prog = 0;
 	}
+#endif	
 	
     for (i = 0; i < decoder->SurfaceFreeN; ++i) {
 		decoder->SurfacesFree[i] = -1;
@@ -1912,7 +1960,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
     }
 	
     if (i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) {
-		Fatal("codec: can't allocate HW video codec context err &d",i);
+		Fatal("codec: can't allocate HW video codec context err %04x",i);
     }
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
 	
@@ -1970,7 +2018,6 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 static void CuvidCleanup(CuvidDecoder * decoder)
 {
     int i,n=0;
-    CUcontext dummy;
 
 Debug(3,"Cuvid Clean up\n");
 	
@@ -2018,7 +2065,7 @@ Debug(3,"cuvid del hw decoder \n");
 	if (decoder == CuvidDecoders[0])
   		pthread_mutex_unlock(&VideoLockMutex);
 
-	glXMakeCurrent(XlibDisplay, None, NULL);
+//	glXMakeCurrent(XlibDisplay, None, NULL);
     for (i = 0; i < CuvidDecoderN; ++i) {
 		if (CuvidDecoders[i] == decoder) {
 			CuvidDecoders[i] = NULL;
@@ -2097,6 +2144,179 @@ void SDK_CHECK_ERROR_GL() {
     }
 }
 
+
+#ifdef PLACEBO
+void
+createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
+{	
+    int n,i,size;
+	const struct pl_fmt *fmt;
+	struct pl_tex *tex;
+
+	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+	GlxCheck();
+//printf("Create textures and planes %d %d\n",size_x,size_y);	
+    Debug(3,"video/vulkan: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
+  
+	for (i=0;i<anz;i++) {		// number of texture
+		for (n=0;n<2;n++ ) {  	// number of planes
+			bool ok = true;
+			if (PixFmt == AV_PIX_FMT_NV12) {
+				fmt = pl_find_named_fmt(p->gpu, n==0?"r8":"rg8");	// 8 Bit YUV
+				size = 1;
+			} else {
+				fmt = pl_find_named_fmt(p->gpu, n==0?"r16":"rg16");	// 10 Bit YUV
+				size = 2;
+			}
+			decoder->pl_tex_in[i][n] = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+				.w = n==0?size_x:size_x/2,
+				.h = n==0?size_y:size_y/2,
+				.d = 0,
+				.format = fmt,
+				.sampleable = true,
+				.host_writable = true,
+				.sample_mode = PL_TEX_SAMPLE_LINEAR,
+				.address_mode = PL_TEX_ADDRESS_CLAMP,
+				});
+			// make planes for image
+			struct pl_plane *pl = &decoder->pl_images[i].planes[n];
+			pl->texture = decoder->pl_tex_in[i][n];
+			pl->components = n==0?1:2;
+			pl->shift_x = 0.0f;
+			pl->shift_y = 0.0f;
+			if (n==0) {
+				pl->component_mapping[0] = PL_CHANNEL_Y;
+				pl->component_mapping[1] = -1;
+				pl->component_mapping[2] = -1;
+				pl->component_mapping[3] = -1;
+			} else {
+				pl->component_mapping[0] = PL_CHANNEL_U;
+				pl->component_mapping[1] = PL_CHANNEL_V;
+				pl->component_mapping[2] = -1;
+				pl->component_mapping[3] = -1;
+			}
+			if (!ok) {
+				Fatal(_("Unable to create placebo textures"));
+			}
+		}
+		// make image
+		struct pl_image *img = &decoder->pl_images[i];
+		img->signature = i;
+		img->num_planes = 2;
+		img->repr.sys = PL_COLOR_SYSTEM_BT_709;   // overwritten later 
+		img->repr.levels = PL_COLOR_LEVELS_TV;
+		img->repr.alpha = PL_ALPHA_UNKNOWN;
+		img->color.primaries = pl_color_primaries_guess(size_x,size_y);  // Gammut  overwritten later
+		img->color.transfer = PL_COLOR_TRC_BT_1886;						 // overwritten later 
+		img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;				// needs config ???						
+		img->color.sig_peak = 0.0f;										// needs config  ????
+		img->color.sig_avg = 0.0f;										
+		img->width = size_x;
+		img->height = size_y;
+		img->num_overlays = 0;
+	}
+	
+	decoder->pl_buf_Y = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für Y texture upload
+		.type = PL_BUF_TEX_TRANSFER,
+		.size = size_x * size_y * size,
+		.host_mapped = false,
+		.host_writable = false,
+		.memory_type = PL_BUF_MEM_DEVICE,
+		.ext_handles = PL_HANDLE_FD,
+		});
+	decoder->pl_buf_Y->handles.fd = dup(decoder->pl_buf_Y->handles.fd);		// dup fd
+//	printf("Y  Offset %d  Size  %d  FD %d\n",decoder->pl_buf_Y->handle_offset,decoder->pl_buf_Y->handles.size,decoder->pl_buf_Y->handles.fd);
+
+	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für UV texture upload
+		.type = PL_BUF_TEX_TRANSFER,
+		.size = size_x * size_y * size / 2,
+		.host_mapped = false,
+		.host_writable = false,
+		.memory_type = PL_BUF_MEM_DEVICE,
+		.ext_handles = PL_HANDLE_FD,
+		});
+//	decoder->pl_buf_UV->handles.fd = dup(decoder->pl_buf_UV->handles.fd);	// dup fd  not need use the first FD
+	decoder->pl_buf_UV->handles.fd = -1;
+//	printf("UV Offset %d  Size  %d  FD %d\n",decoder->pl_buf_UV->handle_offset,decoder->pl_buf_UV->handles.size,decoder->pl_buf_UV->handles.fd);
+	
+	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc = {
+		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
+		.handle.fd   = decoder->pl_buf_Y->handles.fd,
+		.size = decoder->pl_buf_Y->handles.size,   // image_width * image_height * bytes,
+		.flags = 0,
+	};
+	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[0].mem, &ext_desc));	// Import Memory segment
+
+	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc = {
+		.offset = decoder->pl_buf_Y->handle_offset,
+		.size = size_x * size_y * size,
+		.flags = 0,
+	};
+	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[0].buf, decoder->ebuf[0].mem, &buf_desc)); // get Pointer
+	
+//	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
+//		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
+//		.handle.fd   = decoder->pl_buf_UV->handles.fd,
+//		.size = decoder->pl_buf_UV->handles.size,   // image_width * image_height * bytes / 2,
+//		.flags = 0,
+//	};
+//	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  Use the first FD
+
+	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc1 = {
+		.offset = decoder->pl_buf_UV->handle_offset,
+		.size = size_x * size_y * size / 2,
+		.flags = 0,
+	};
+	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[1].buf, decoder->ebuf[0].mem, &buf_desc1));	// get pointer
+
+//printf("generate textures %d %d\n",size_x,size_y);
+}
+
+
+// copy image and process using CUDA
+void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
+{
+    int n;
+ 
+	struct ext_buf ebuf[2];
+//printf("Upload buf to texture for frame %d in size %d-%d\n",index,image_width,image_height);	
+	while (pl_buf_poll(p->gpu,decoder->pl_buf_Y, 5000000));   //  5 ms
+	while (pl_buf_poll(p->gpu,decoder->pl_buf_UV, 5000000));
+			
+    for (n = 0; n < 2; n++) { 									//  Copy 2 Planes from Cuda decoder to upload Buffer 
+        // widthInBytes must account for the chroma plane
+        // elements being two samples wide.
+        CUDA_MEMCPY2D cpy = {
+            .srcMemoryType = CU_MEMORYTYPE_DEVICE,
+		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
+            .srcDevice     = (CUdeviceptr)frame->data[n],
+            .srcPitch      = frame->linesize[n],
+            .srcY          = 0,	
+            .WidthInBytes  = image_width * bytes, 
+            .Height        = n==0?image_height:image_height/2 , 
+			.dstMemoryType = CU_MEMORYTYPE_DEVICE,
+            .dstDevice 	   = decoder->ebuf[n].buf,
+            .dstPitch  	   = image_width * bytes,
+        };
+        checkCudaErrors(cuMemcpy2DAsync(&cpy,0));        
+    }
+
+	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {  	// upload Y 
+		.tex = decoder->pl_tex_in[index][0],
+		.buf = decoder->pl_buf_Y,
+	});
+	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {		// upload UV
+		.tex = decoder->pl_tex_in[index][1],
+		.buf = decoder->pl_buf_UV,
+	});
+
+	pl_buf_export(p->gpu,decoder->pl_buf_Y);
+	pl_buf_export(p->gpu,decoder->pl_buf_UV);
+
+//	pl_gpu_finish(p->gpu);
+}
+
+#else
 void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {
@@ -2109,15 +2329,16 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	
     glGenBuffers(1,&vao_buffer);
 	GlxCheck();
+	 // create texture planes
+	glGenTextures(CODEC_SURFACES_MAX*2, decoder->gl_textures);
+	GlxCheck();
 	
     Debug(3,"video/vdpau: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
 
-    // create texture planes
-    glGenTextures(CODEC_SURFACES_MAX*2, decoder->gl_textures);
-	GlxCheck();
+  
 	for (i=0;i<anz;i++) {
 		for (n=0;n<2;n++ ) {   // number of planes
-			
+
 			glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[i*2+n]);
 			GlxCheck();
 			// set basic parameters
@@ -2125,7 +2346,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-					if (PixFmt == AV_PIX_FMT_NV12)
+			if (PixFmt == AV_PIX_FMT_NV12)
 			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R8 :GL_RG8  ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_BYTE , NULL);
 			else
 			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
@@ -2165,6 +2386,7 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
         checkCudaErrors(cuMemcpy2D(&cpy));        
     }
 }
+#endif
 
 
 
@@ -2187,9 +2409,6 @@ static void CuvidSetupOutput(CuvidDecoder * decoder)
 
     window_width = decoder->OutputWidth;
     window_height = decoder->OutputHeight;
-    Debug(3,"video/cuvid: init Surfaces sucessfull\n");
-
-
 }
 
 ///
@@ -2269,9 +2488,6 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		// check supported pixel format with entry point
 		switch (*fmt_idx) {
 			case AV_PIX_FMT_CUDA:
-#ifdef VAAPI
-			case AV_PIX_FMT_VAAPI_VLD:
-#endif
 				break;
 			default:
 				continue;
@@ -2284,22 +2500,22 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		Error(_("video: no valid pixfmt found\n"));
     }
 
-#ifndef VAAPI
+
     if (*fmt_idx != AV_PIX_FMT_CUDA) {
 		Fatal(_("video: no valid profile found\n"));
     }
-#endif
+#
     Debug(3, "video: create decoder 16bit?=%d %dx%d \n",bitformat16, video_ctx->width, video_ctx->height);
 
-
+#if 0
     decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1; 
     decoder->PixFmt = *fmt_idx;
     decoder->InputWidth = 0;
     decoder->InputHeight = 0;
-
+#endif
 
     if (*fmt_idx == AV_PIX_FMT_CUDA  )  {       // HWACCEL used 
-        CuvidCleanup(decoder);
+//        CuvidCleanup(decoder);
 #if 0
 		if (init_cuvid(video_ctx,decoder)) {
 			Fatal(_("CUVID Init failed\n"));
@@ -2309,9 +2525,9 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
         ist->active_hwaccel_id = HWACCEL_CUVID;
         ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
-        decoder->InputWidth = video_ctx->width;
-        decoder->InputHeight = video_ctx->height;
-        decoder->InputAspect = video_ctx->sample_aspect_ratio;
+//        decoder->InputWidth = video_ctx->width;
+//        decoder->InputHeight = video_ctx->height;
+//        decoder->InputAspect = video_ctx->sample_aspect_ratio;
         if (bitformat16) { 
 			decoder->PixFmt = AV_PIX_FMT_YUV420P;     // 10 Bit Planar
 			ist->hwaccel_output_format = AV_PIX_FMT_YUV420P;
@@ -2319,16 +2535,51 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			decoder->PixFmt = AV_PIX_FMT_NV12;        // 8 Bit Planar
 			ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
-        CuvidSetupOutput(decoder);
+//        CuvidSetupOutput(decoder);
         return AV_PIX_FMT_CUDA;
     }
 	Fatal(_("NO Format valid"));
     return *fmt_idx;
 }
 
+#ifdef PLACEBO
+enum queue_type {
+    GRAPHICS,
+    COMPUTE,
+    TRANSFER,
+};
+struct vk_memslice {
+    VkDeviceMemory vkmem;
+    VkDeviceSize offset;
+    VkDeviceSize size;
+    void *priv;
+};
+struct pl_tex_vk {
+    bool held;
+    bool external_img;
+    bool may_invalidate;
+    enum queue_type transfer_queue;
+    VkImageType type;
+    VkImage img;
+    struct vk_memslice mem;
+    // for sampling
+    VkImageView view;
+    VkSampler sampler;
+};
+#endif
+
+
 #ifdef USE_GRAB
 
 int get_RGB(CuvidDecoder *decoder) {
+
+	#ifdef PLACEBO
+	struct pl_render_params render_params = pl_render_default_params;
+	struct pl_render_target target = {0};
+	struct pl_tex_vk *vkp;
+	const struct pl_fmt *fmt; 
+//	struct pl_image *img;
+#endif
 	uint8_t *base;
 	int width;
 	int height;
@@ -2338,7 +2589,8 @@ int get_RGB(CuvidDecoder *decoder) {
 	
 	base = decoder->grabbase;
 	width = decoder->grabwidth;
-	height = decoder->grabheight;		
+	height = decoder->grabheight;
+
 	glGenTextures(1, &texture);
 	GlxCheck();
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -2360,7 +2612,8 @@ int get_RGB(CuvidDecoder *decoder) {
 	}
 	
 	current = decoder->SurfacesRb[decoder->SurfaceRead];
-		
+	
+#ifndef PLACEBO		
 	glViewport(0,0,width, height);
 
 	if (gl_prog == 0)
@@ -2382,6 +2635,50 @@ int get_RGB(CuvidDecoder *decoder) {
 	render_pass_quad(1,0.0,0.0);	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
+	
+#else
+		
+	fmt = pl_find_named_fmt(p->gpu,"rgba8");
+	target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+				.w = width,
+				.h = height,
+				.d = 0,
+				.format = fmt,
+				.sampleable = true,
+				.renderable = true,
+//				.host_writable = true,
+				.sample_mode = PL_TEX_SAMPLE_LINEAR,
+				.address_mode = PL_TEX_ADDRESS_CLAMP,
+	});
+	target.dst_rect.x0 = 0;
+	target.dst_rect.y0 = height;
+	target.dst_rect.x1= width;
+	target.dst_rect.y1= 0;
+	target.repr.sys = PL_COLOR_SYSTEM_RGB;
+	target.repr.levels = PL_COLOR_LEVELS_PC;
+	target.repr.alpha = PL_ALPHA_UNKNOWN;
+	target.repr.bits.sample_depth = 8;
+	target.repr.bits.color_depth = 8;
+	target.repr.bits.bit_shift =0;
+	target.color.primaries = PL_COLOR_PRIM_BT_709;
+	target.color.transfer = PL_COLOR_TRC_BT_1886;
+	target.color.light = PL_COLOR_LIGHT_DISPLAY;
+	target.color.sig_peak = 0;
+	target.color.sig_avg = 0;
+		
+//	render_params.upscaler = &pl_filter_catmull_rom;
+	
+	if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
+        Fatal(_("Failed rendering frame!\n"));
+    }
+	pl_gpu_finish(p->gpu);
+
+	vkp = target.fbo->priv;
+    glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, 0,0,width, height, 0,0,1,1,0);
+	
+	pl_tex_destroy(p->gpu,&target.fbo);
+#endif	
+	
 	if (OsdShown && decoder->grab == 2) {		
 #ifndef USE_OPENGLOSD
 		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
@@ -2840,9 +3137,10 @@ printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_
 	//
 	if ( // decoder->PixFmt != video_ctx->pix_fmt
 	     video_ctx->width != decoder->InputWidth
+		|| decoder->ColorSpace != frame->colorspace
 	    || video_ctx->height != decoder->InputHeight) {
-Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->pix_fmt ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
-//	    decoder->PixFmt = video_ctx->pix_fmt;
+Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->PixFmt,video_ctx->pix_fmt ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
+
 	    decoder->InputWidth = video_ctx->width;
 	    decoder->InputHeight = video_ctx->height;
 	    CuvidCleanup(decoder);
@@ -2866,9 +3164,38 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->p
 		if (surface == -1)     // no free surfaces
 			return;
 		
+
+#if 0   // old copy via host ram
+		{
+			AVFrame *output;
+			int t = decoder->PixFmt==AV_PIX_FMT_NV12?1:2;
+			struct pl_rect3d rc1 = {0,0,0,w,h,0};
+			output = av_frame_alloc();
+			av_hwframe_transfer_data(output,frame,0);
+			av_frame_copy_props(output,frame);		
+			bool ok = pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {
+				.tex = decoder->pl_tex_in[surface][0],
+				.stride_w = output->linesize[0] / t,
+				.ptr = output->data[0],
+				.rc.x1 = w,
+				.rc.y1 = h,
+				.rc.z1 = 0,
+			});
+			ok &= pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {
+				.tex = decoder->pl_tex_in[surface][1],
+				.stride_w = (output->linesize[1] / 2) / t,
+				.ptr = output->data[1],
+				.rc.x1 = w/2,					
+				.rc.y1 = h/2,
+				.rc.z1 = 0,
+			});
+
+			av_frame_free(&output);
+		}
+#endif
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
-// printf("put cuda %d ",surface);		
+	
 		CuvidQueueVideoSurface(decoder, surface, 1);
 		return;      
 
@@ -2883,37 +3210,10 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n,",decoder->PixFmt,video_ctx->p
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
-    int ret,n;
-    unsigned int device_count,version;
-    CUdevice device;
-
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
-//turn NULL;
-	if (decoder->cuda_ctx) {
-		Debug(3,"schon passiert\n");
-		return NULL;
-	}
-	
-    checkCudaErrors(cuInit(0)); 
-
-    checkCudaErrors(cuGLGetDevices(&device_count, &device, 1, CU_GL_DEVICE_LIST_ALL));
-
-    if (decoder->cuda_ctx) {
-		cuCtxDestroy (decoder->cuda_ctx);
-        decoder->cuda_ctx = NULL;
-    }
-
-    checkCudaErrors(cuCtxCreate(&decoder->cuda_ctx, (unsigned int) CU_CTX_SCHED_BLOCKING_SYNC, (CUdevice) 0));
-    
-    if (decoder->cuda_ctx == NULL)
-      Fatal(_("Kein Cuda device gefunden"));
-
-    cuCtxGetApiVersion(decoder->cuda_ctx,&version);
-	Debug(3, "***********CUDA API Version %d\n",version);
-
 	return NULL;
-}
 
+}
 
 ///
 ///	Render video surface to output surface.
@@ -2923,6 +3223,17 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 ///
 static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 {
+#ifdef PLACEBO
+	struct pl_render_params render_params = pl_render_default_params;
+	struct pl_render_target target = {0};
+	struct pl_swapchain_frame frame;
+	struct pl_tex_vk *vkp;
+	const struct pl_fmt *fmt; 
+	struct pl_image *img;
+//	SDL_Event evt;
+	bool ok;
+#endif
+	
 	int current;
 	VdpRect video_src_rect;
 	VdpRect dst_rect;
@@ -2969,7 +3280,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	current = decoder->SurfacesRb[decoder->SurfaceRead];
 
 	// Render Progressive frame and simple interlaced
-
+#ifndef PLACEBO
 	y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
 	if (y <0 )
 		y = 0;
@@ -2993,7 +3304,85 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
+#else
+	img = &decoder->pl_images[current];
 
+	switch (decoder->ColorSpace) {
+	case AVCOL_SPC_RGB:
+		img->repr.sys = PL_COLOR_SYSTEM_BT_601; 
+		img->color.primaries = PL_COLOR_PRIM_BT_601_625;
+		img->color.transfer = PL_COLOR_TRC_BT_1886;	
+		img->color.light = PL_COLOR_LIGHT_DISPLAY;
+		break;
+	case AVCOL_SPC_BT709:
+	case AVCOL_SPC_UNSPECIFIED:   //  comes with UHD
+		img->repr.sys = PL_COLOR_SYSTEM_BT_709;
+		img->color.primaries = PL_COLOR_PRIM_BT_709;
+		img->color.transfer = PL_COLOR_TRC_BT_1886;		
+		img->color.light = PL_COLOR_LIGHT_DISPLAY;
+		break;
+	case AVCOL_SPC_BT2020_NCL:
+		img->repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
+		img->color.primaries = PL_COLOR_PRIM_BT_2020;
+		img->color.transfer = PL_COLOR_TRC_HLG;
+		img->color.light = PL_COLOR_LIGHT_SCENE_HLG;
+		break;
+	default:								// fallback
+		img->repr.sys = PL_COLOR_SYSTEM_BT_709;
+		img->color.primaries = PL_COLOR_PRIM_BT_709;
+		img->color.transfer = PL_COLOR_TRC_BT_1886;		
+		img->color.light = PL_COLOR_LIGHT_DISPLAY;
+		break;
+	}
+	img->src_rect.x0 = video_src_rect.x0;
+	img->src_rect.y0 = video_src_rect.y0;
+	img->src_rect.x1 = video_src_rect.x1;
+	img->src_rect.y1 = video_src_rect.y1;
+	
+	fmt = pl_find_named_fmt(p->gpu,"rgba16hf");
+	target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+				.w = decoder->OutputWidth,
+				.h = decoder->OutputHeight,
+				.d = 0,
+				.format = fmt,
+				.sampleable = true,
+				.renderable = true,
+//				.host_writable = true,
+				.sample_mode = PL_TEX_SAMPLE_LINEAR,
+				.address_mode = PL_TEX_ADDRESS_CLAMP,
+	});
+	target.dst_rect.x0 = 0;
+	target.dst_rect.y0 = 0;
+	target.dst_rect.x1= decoder->OutputWidth;
+	target.dst_rect.y1= decoder->OutputHeight;
+	target.repr.sys = PL_COLOR_SYSTEM_RGB;
+	target.repr.levels = PL_COLOR_LEVELS_PC;
+	target.repr.alpha = PL_ALPHA_UNKNOWN;
+	target.repr.bits.sample_depth = 16;
+	target.repr.bits.color_depth = 16;
+	target.repr.bits.bit_shift =0;
+	target.color.primaries = PL_COLOR_PRIM_BT_709;
+	target.color.transfer = PL_COLOR_TRC_BT_1886;
+	target.color.light = PL_COLOR_LIGHT_DISPLAY;
+	target.color.sig_peak = 0;
+	target.color.sig_avg = 0;
+	
+	
+//	render_params.upscaler = &pl_filter_catmull_rom;
+	render_params.upscaler = &pl_filter_robidouxsharp;	
+//printf("Start renderer on frame %d\n",current);	
+	if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
+        Fatal(_("Failed rendering frame!\n"));
+    }
+	pl_gpu_finish(p->gpu);
+//printf("Finish  renderer on frame %d with IN: %d-%d  on image %d-%d\n",current,w,h,decoder->pl_images[current].width,decoder->pl_images[current].height);
+	vkp = target.fbo->priv;
+    glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);
+	
+	pl_tex_destroy(p->gpu,&target.fbo);
+	
+#endif
+	
 	Debug(4, "video/vdpau: yy video surface %p displayed\n", current, decoder->SurfaceRead);
 }
 
@@ -3110,7 +3499,9 @@ static void CuvidDisplayFrame(void)
 	if (CuvidDecoderN)
 		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
 //	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
+
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
+
 	last_time = GetusTicks();
 	
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -3166,6 +3557,7 @@ static void CuvidDisplayFrame(void)
 
 	glXGetVideoSyncSGI (&Count);    // get current frame
 	glXSwapBuffers(XlibDisplay, VideoWindow);
+
 	
 	
 	// FIXME: CLOCK_MONOTONIC_RAW
@@ -3446,6 +3838,7 @@ static void CuvidSyncFrame(void)
 ///
 static void CuvidSyncDisplayFrame(void)
 {
+
 	CuvidDisplayFrame();
 	CuvidSyncFrame();
 }
@@ -3541,6 +3934,7 @@ static void CuvidDisplayHandlerThread(void)
 
 	allfull = 1;
 	decoded = 0;
+	 
 	pthread_mutex_lock(&VideoLockMutex);
 	for (i = 0; i < CuvidDecoderN; ++i) {
 
@@ -3549,7 +3943,6 @@ static void CuvidDisplayHandlerThread(void)
 		// fill frame output ring buffer
 		//
 		filled = atomic_read(&decoder->SurfacesFilled);
-
 //if (filled <= 1 +  2 * decoder->Interlaced) {
 		if (filled < 5) {
 			// FIXME: hot polling
@@ -3573,12 +3966,14 @@ static void CuvidDisplayHandlerThread(void)
 		}
 		decoded = 1;
 	}
+	 
 	pthread_mutex_unlock(&VideoLockMutex);
-
+	 
 	if (!decoded) {			// nothing decoded, sleep
 	// FIXME: sleep on wakeup
 		usleep(1 * 100);
 	}
+
 	// all decoder buffers are full
 	// and display is not preempted
 	// speed up filling display queue, wait on display queue empty
@@ -3593,8 +3988,7 @@ static void CuvidDisplayHandlerThread(void)
 
 	pthread_mutex_lock(&VideoLockMutex);
 	CuvidSyncDisplayFrame();
-	pthread_mutex_unlock(&VideoLockMutex);
-	
+	pthread_mutex_unlock(&VideoLockMutex);	
 }
 
 #else
@@ -4201,14 +4595,60 @@ static void VideoThreadUnlock(void)
 	}
 }
 
+
 ///
 ///	Video render thread.
 ///
 static void *VideoDisplayHandlerThread(void *dummy)
 {
-	prctl(PR_SET_NAME,"cuvid video",0,0,0);
-	
 
+	CUcontext cuda_ctx;
+	 unsigned int device_count,version;
+    CUdevice device;
+	
+	checkCudaErrors(cuInit(0)); 
+
+//    checkCudaErrors(cuGLGetDevices(&device_count, &device, 1, CU_GL_DEVICE_LIST_ALL));
+
+    checkCudaErrors(cuCtxCreate(&cuda_ctx, (unsigned int) CU_CTX_SCHED_BLOCKING_SYNC, (CUdevice) 0));
+    
+    if (cuda_ctx == NULL)
+      Fatal(_("Kein Cuda device gefunden"));
+
+    cuCtxGetApiVersion(cuda_ctx,&version);
+	Debug(3, "***********CUDA API Version %d\n",version);
+	
+#ifdef PLACEBO
+	
+	p = malloc(sizeof(struct priv));
+	if (!p)
+	   Fatal(_("Cant get memory for PLACEBO struct"));
+	
+	p->context.log_cb = &pl_log_simple;
+	p->context.log_level = PL_LOG_WARN;
+	
+    p->ctx = pl_context_create(PL_API_VER, &p->context);
+    if (!p->ctx) {
+        Fatal(_("Failed initializing libplacebo\n"));
+    }
+
+	struct pl_vulkan_params params = pl_vulkan_default_params;
+	params.async_transfer = true,
+    params.async_compute = true,
+    params.queue_count = 8,
+	
+	p->vk = pl_vulkan_create(p->ctx, &params);
+    p->gpu = p->vk->gpu;
+	
+	p->renderer = pl_renderer_create(p->ctx, p->gpu);
+    if (!p->renderer) {
+        Fatal(_("Failed initializing libplacebo renderer\n"));
+    }
+		
+	Debug(3,"Placebo: init ok");
+#endif	
+	
+	prctl(PR_SET_NAME,"cuvid video",0,0,0);
     if (GlxEnabled) {
 		Debug(3, "video/glx: thread context %p <-> %p\n",glXGetCurrentContext(), GlxThreadContext);
 		Debug(3, "video/glx: context %p <-> %p\n", glXGetCurrentContext(),GlxContext);
@@ -4232,7 +4672,13 @@ static void *VideoDisplayHandlerThread(void *dummy)
 
 		VideoUsedModule->DisplayHandlerThread();
     }
-
+	
+#ifdef PLACEBO
+	pl_renderer_destroy(&p->renderer);
+    pl_vulkan_destroy(&p->vk);
+    pl_context_destroy(&p->ctx);
+#endif
+	cuCtxDestroy (cuda_ctx);
     return dummy;
 }
 
