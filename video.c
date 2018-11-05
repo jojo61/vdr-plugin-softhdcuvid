@@ -1633,6 +1633,7 @@ typedef struct _cuvid_decoder_
 	CUarray      		 cu_array[CODEC_SURFACES_MAX+1][2];
 	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX+1][2];
 	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
+	CUcontext cuda_ctx;
 	
 #ifdef PLACEBO
 	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images für Placebo chain
@@ -2303,7 +2304,7 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
             .dstDevice 	   = decoder->ebuf[n].buf,
             .dstPitch  	   = image_width * bytes,
         };
-        checkCudaErrors(cuMemcpy2DAsync(&cpy,0));        
+        checkCudaErrors(cuMemcpy2D(&cpy));        
     }
 
 	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {  	// upload Y 
@@ -2510,37 +2511,40 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 		Fatal(_("video: no valid profile found\n"));
     }
 #
-    Debug(3, "video: create decoder 16bit?=%d %dx%d \n",bitformat16, video_ctx->width, video_ctx->height);
-
-#if 0
-    decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1; 
-    decoder->PixFmt = *fmt_idx;
-    decoder->InputWidth = 0;
-    decoder->InputHeight = 0;
-#endif
-
+    Debug(3, "video: create decoder 16bit?=%d %dx%d old  %d %d\n",bitformat16, video_ctx->width, video_ctx->height,decoder->InputWidth,decoder->InputHeight);
+	
     if (*fmt_idx == AV_PIX_FMT_CUDA  )  {       // HWACCEL used 
-//        CuvidCleanup(decoder);
-#if 0
-		if (init_cuvid(video_ctx,decoder)) {
-			Fatal(_("CUVID Init failed\n"));
-		}
-#endif
-
-		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
-        ist->active_hwaccel_id = HWACCEL_CUVID;
-        ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
-//        decoder->InputWidth = video_ctx->width;
-//        decoder->InputHeight = video_ctx->height;
-//        decoder->InputAspect = video_ctx->sample_aspect_ratio;
-        if (bitformat16) { 
+		//	Check image, format, size
+		// 
+		if (bitformat16) { 
 			decoder->PixFmt = AV_PIX_FMT_YUV420P;     // 10 Bit Planar
 			ist->hwaccel_output_format = AV_PIX_FMT_YUV420P;
         } else {
 			decoder->PixFmt = AV_PIX_FMT_NV12;        // 8 Bit Planar
 			ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
-//        CuvidSetupOutput(decoder);
+				
+		if (   video_ctx->width  != decoder->InputWidth
+			|| video_ctx->height != decoder->InputHeight) {
+			CuvidCleanup(decoder);
+			decoder->InputAspect = video_ctx->sample_aspect_ratio;
+			decoder->InputWidth = video_ctx->width;
+			decoder->InputHeight = video_ctx->height;
+			decoder->Interlaced = 0;
+			
+			decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
+			CuvidSetupOutput(decoder);
+#ifdef PLACEBO     // dont show first frame
+			decoder->newchannel = 1;
+#endif
+		}
+	
+  		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
+        ist->active_hwaccel_id = HWACCEL_CUVID;
+        ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
+ 
+        decoder->InputAspect = video_ctx->sample_aspect_ratio;
+
         return AV_PIX_FMT_CUDA;
     }
 	Fatal(_("NO Format valid"));
@@ -3135,17 +3139,17 @@ printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_
 		CuvidUpdateOutput(decoder);
     }
 #endif
-
+	decoder->Closing = 0;
 	color = frame->colorspace;
 	if (color == AVCOL_SPC_UNSPECIFIED)   // if unknown
 		color = AVCOL_SPC_BT709;
-	
+#if 0	
  	//
 	//	Check image, format, size
 	//
 	if ( // decoder->PixFmt != video_ctx->pix_fmt
 	     video_ctx->width != decoder->InputWidth
-		|| decoder->ColorSpace != color
+//		|| decoder->ColorSpace != color
 	    || video_ctx->height != decoder->InputHeight) {
 Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->colorspace ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
 
@@ -3158,6 +3162,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 		decoder->newchannel = 1;
 #endif
 	}
+#endif
 	//
 	//	Copy data from frame to image
 	//
@@ -3221,7 +3226,35 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
+	
+	int ret,n;
+    unsigned int device_count,version;
+    CUdevice device;
+
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
+//turn NULL;
+	if (decoder->cuda_ctx) {
+		Debug(3,"schon passiert\n");
+		return NULL;
+	}
+	
+    checkCudaErrors(cuInit(0)); 
+
+//    checkCudaErrors(cuGLGetDevices(&device_count, &device, 1, CU_GL_DEVICE_LIST_ALL));
+
+    if (decoder->cuda_ctx) {
+		cuCtxDestroy (decoder->cuda_ctx);
+        decoder->cuda_ctx = NULL;
+    }
+
+    checkCudaErrors(cuCtxCreate(&decoder->cuda_ctx, (unsigned int) CU_CTX_SCHED_BLOCKING_SYNC, (CUdevice) 0));
+    
+    if (decoder->cuda_ctx == NULL)
+      Fatal(_("Kein Cuda device gefunden"));
+
+    cuCtxGetApiVersion(decoder->cuda_ctx,&version);
+	Debug(3, "***********CUDA API Version %d\n",version);
+
 	return NULL;
 
 }
@@ -3359,7 +3392,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 				.format = fmt,
 				.sampleable = true,
 				.renderable = true,
-//				.host_writable = true,
+//				.host_writable = false,
 				.sample_mode = PL_TEX_SAMPLE_LINEAR,
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 	});
@@ -3383,6 +3416,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 //	render_params.upscaler = &pl_filter_catmull_rom;
 	render_params.upscaler = &pl_filter_robidouxsharp;	
 //printf("Start renderer on frame %d\n",current);	
+
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
@@ -3391,11 +3425,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	vkp = target.fbo->priv;
 	if (decoder->newchannel == 1 && current == 0)
 		;
-	else
+	else {
       glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);
+	}
 	if (decoder->newchannel && current)
 		decoder->newchannel = 0;
-	
+
 	pl_tex_destroy(p->gpu,&target.fbo);
 	
 #endif
@@ -3728,16 +3763,16 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 	if (decoder->TrickSpeed) {
 		if (decoder->TrickCounter--) {
 			goto out;
-	}
-	decoder->TrickCounter = decoder->TrickSpeed;
-	goto skip_sync;
+		}
+		decoder->TrickCounter = decoder->TrickSpeed;
+		goto skip_sync;
 	}
 	// at start of new video stream, soft or hard sync video to audio
 	if (!VideoSoftStartSync && decoder->StartCounter < VideoSoftStartFrames
 		&& video_clock != (int64_t) AV_NOPTS_VALUE
 		&& (audio_clock == (int64_t) AV_NOPTS_VALUE
 		|| video_clock > audio_clock + VideoAudioDelay + 120 * 90)) {
-		err = CuvidMessage(4, "video: initial slow down video, frame %d\n",decoder->StartCounter);
+		Debug(4, "video: initial slow down video, frame %d\n",decoder->StartCounter);
 		goto out;
 	}
 
@@ -3753,7 +3788,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		diff = video_clock - audio_clock - VideoAudioDelay;
 		diff = (decoder->LastAVDiff + diff) / 2;
 		decoder->LastAVDiff = diff;
-//printf("diff %d filled %d\n",diff/90,filled);
+
 		if (abs(diff) > 5000 * 90) {	// more than 5s
 			err = CuvidMessage(2, "video: audio/video difference too big\n");
 		} else if (diff > 100 * 90) {
@@ -4626,7 +4661,8 @@ static void *VideoDisplayHandlerThread(void *dummy)
 #ifdef PLACEBO
 	struct pl_vulkan_params params;
 #endif
-	
+
+#if 0
 	
 	checkCudaErrors(cuInit(0)); 
 
@@ -4639,6 +4675,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 
     cuCtxGetApiVersion(cuda_ctx,&version);
 	Debug(3, "***********CUDA API Version %d\n",version);
+#endif
 	
 #ifdef PLACEBO
 	
