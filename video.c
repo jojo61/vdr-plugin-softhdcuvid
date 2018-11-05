@@ -1561,11 +1561,13 @@ static void AutoCropDetect(AutoCropCtx * autocrop, int width, int height,
 
 #ifdef USE_CUVID
 
+#ifdef PLACEBO
 struct ext_buf {
     int fd;
     CUexternalMemory mem;
     CUdeviceptr buf;
 };
+#endif
 
 ///
 ///	CUVID decoder
