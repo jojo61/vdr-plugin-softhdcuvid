@@ -41,7 +41,7 @@ To compile you must have the 'requires' installed.
 
 
 This is a fork of johns original softhddevice work and I reworked ist to support HEVC with CUDA and opengl output.
-Currently I have tested it with a GTX 1050 from NVIDIA. HD and UHD ist working, but SD ist instable.
+Currently I have tested it with a GTX 1050 from NVIDIA. SD, HD and UHD is working.
 
 Current Status NVIDA:
 The CUDA driver supports HEVC with 8 Bit and 10 Bit up to UHD resolution. Opengl is able to output also 10 Bit, but NVIDIA does not support to output 10 Bit via HDMI.
@@ -49,10 +49,11 @@ Only via DisplayPort you can get 10 Bit output to a ompatible screen. This is a 
 
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0 
-The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 9.1
+The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10
 
-Unfortunatly FFMEG has a bug with deinterlacing cuda frames. So you have to patch the file in libavcodec/cuviddec.c
+Unfortunatly older FFMEGs has a bug with deinterlacing cuda frames. Best to get the latest FFMPEG Version.
 
+Otherwise  you have to patch the file in libavcodec/cuviddec.c
 Somewhere near line 860 and 1066 depending on your release:
 old:
      ctx->frame_queue = av_fifo_alloc(ctx->nb_surfaces * sizeof(CuvidParsedFrame));
@@ -60,6 +61,10 @@ old:
 new:
      ctx->frame_queue = av_fifo_alloc((ctx->nb_surfaces + 2 ) * sizeof(CuvidParsedFrame));
 
+This Version supports building with libplacebo. https://github.com/haasn/libplacebo 
+You have to enable it in the Makefile and install libplacebo yourself.
+At the moment this is Work in progress and the used upscaler is hardcoded. This will be changend to be configurable.
+It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
 
 
 
@@ -84,7 +89,7 @@ Install:
 	You can edit Makefile to enable/disable  Alsa / OSS
 	support.  The default is to autodetect as much as possible.
 
-	You have to start vdr with -P 'softhdcuvid -d :0.0  ..<more option>..  -v cuvid'
+	You have to start vdr with -P 'softhdcuvid -d :0.0  ..<more option>.. '
 
 
 Setup:	environment

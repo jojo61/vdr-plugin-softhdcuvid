@@ -18,7 +18,10 @@ OSS ?= 1
     # support OPENGLOSD 
 OPENGLOSD=1
 
-	# use DPMS
+    # use Libplacebo 
+LIBPLACEBO=0
+
+	# use DMPS
 SCREENSAVER=1
 
 OPENGL=1
@@ -67,7 +70,6 @@ TMPDIR ?= /tmp
 
 export CFLAGS	= $(call PKGCFG,cflags) 
 export CXXFLAGS = $(call PKGCFG,cxxflags)
-
 
 ifeq ($(CFLAGS),)
 $(warning CFLAGS not set)
@@ -118,6 +120,9 @@ _CFLAGS += $(shell pkg-config --cflags glew)
 LIBS += $(shell pkg-config --libs glew) 
 _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
+endif
+ifeq ($(LIBPLACEBO),1)
+CONFIG += -DPLACEBO
 endif
 
 #
@@ -189,6 +194,10 @@ _CFLAGS += -I./opengl -I./
 
 LIBS += -L/usr/lib64/opengl/nvidia/lib
 LIBS += -L/usr/local/cuda/lib64
+
+ifeq ($(LIBPLACEBO),1)
+LIBS += -lplacebo
+endif
 
 LIBS += -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid 
 ### Includes and Defines (add further entries here):

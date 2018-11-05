@@ -133,6 +133,7 @@ typedef enum
 #include <GL/glew.h>
 #include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
 #include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT
+//#include <GL/glxew.h>
 #include <GL/glx.h>
 // only for gluErrorString
 #include <GL/glu.h>
@@ -1621,8 +1622,8 @@ typedef struct _cuvid_decoder_
     int SurfacesRb[VIDEO_SURFACES_MAX];
 //	CUcontext cuda_ctx;
 
-	cudaStream_t stream;		// make my own cuda stream
-	CUgraphicsResource cuResource;
+//	cudaStream_t stream;		// make my own cuda stream
+//	CUgraphicsResource cuResource;
     int SurfaceWrite;			///< write pointer
     int SurfaceRead;			///< read pointer
     atomic_t SurfacesFilled;		///< how many of the buffer is used
@@ -1632,9 +1633,9 @@ typedef struct _cuvid_decoder_
 	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
 	
 #ifdef PLACEBO
-	const struct pl_image      pl_images[CODEC_SURFACES_MAX+1];    // images für Placebo chain
+	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images für Placebo chain
 	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
-	struct pl_buf		 *pl_buf_Y,*pl_buf_UV;				 // buffer for Texture upload
+	const struct pl_buf		 *pl_buf_Y,*pl_buf_UV;				 // buffer for Texture upload
 	struct ext_buf			 ebuf[2];							 // for managing vk buffer
 #endif
 	
@@ -1657,6 +1658,7 @@ typedef struct _cuvid_decoder_
     int FrameCounter;			///< number of frames decoded
     int FramesDisplayed;		///< number of frames displayed
 	float Frameproc;				/// Time to process frame
+	int newchannel;
 } CuvidDecoder;
 
 static CuvidDecoder *CuvidDecoders[2];	///< open decoder streams
@@ -1676,7 +1678,7 @@ struct priv {
 };
 struct priv *p;
 #endif
-//CUcontext cuda_ctx;
+
 GLuint vao_buffer;  // 
 //GLuint vao_vao[4];  // 
 GLuint gl_shader=0,gl_prog = 0,gl_fbo=0;      // shader programm
@@ -2149,10 +2151,12 @@ void SDK_CHECK_ERROR_GL() {
 void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {	
-    int n,i,size;
+    int n,i,size=1;
 	const struct pl_fmt *fmt;
 	struct pl_tex *tex;
-
+	struct pl_image *img;
+	struct pl_plane *pl;
+	
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
 //printf("Create textures and planes %d %d\n",size_x,size_y);	
@@ -2179,7 +2183,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 				});
 			// make planes for image
-			struct pl_plane *pl = &decoder->pl_images[i].planes[n];
+			pl = &decoder->pl_images[i].planes[n];
 			pl->texture = decoder->pl_tex_in[i][n];
 			pl->components = n==0?1:2;
 			pl->shift_x = 0.0f;
@@ -2200,7 +2204,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 			}
 		}
 		// make image
-		struct pl_image *img = &decoder->pl_images[i];
+		img = &decoder->pl_images[i];
 		img->signature = i;
 		img->num_planes = 2;
 		img->repr.sys = PL_COLOR_SYSTEM_BT_709;   // overwritten later 
@@ -2224,7 +2228,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.memory_type = PL_BUF_MEM_DEVICE,
 		.ext_handles = PL_HANDLE_FD,
 		});
-	decoder->pl_buf_Y->handles.fd = dup(decoder->pl_buf_Y->handles.fd);		// dup fd
+	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y->handles.fd);		// dup fd
 //	printf("Y  Offset %d  Size  %d  FD %d\n",decoder->pl_buf_Y->handle_offset,decoder->pl_buf_Y->handles.size,decoder->pl_buf_Y->handles.fd);
 
 	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für UV texture upload
@@ -2235,13 +2239,13 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.memory_type = PL_BUF_MEM_DEVICE,
 		.ext_handles = PL_HANDLE_FD,
 		});
-//	decoder->pl_buf_UV->handles.fd = dup(decoder->pl_buf_UV->handles.fd);	// dup fd  not need use the first FD
-	decoder->pl_buf_UV->handles.fd = -1;
+	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV->handles.fd);	// dup fd 
+
 //	printf("UV Offset %d  Size  %d  FD %d\n",decoder->pl_buf_UV->handle_offset,decoder->pl_buf_UV->handles.size,decoder->pl_buf_UV->handles.fd);
 	
 	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc = {
 		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-		.handle.fd   = decoder->pl_buf_Y->handles.fd,
+		.handle.fd   = decoder->ebuf[0].fd,
 		.size = decoder->pl_buf_Y->handles.size,   // image_width * image_height * bytes,
 		.flags = 0,
 	};
@@ -2254,20 +2258,20 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	};
 	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[0].buf, decoder->ebuf[0].mem, &buf_desc)); // get Pointer
 	
-//	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
-//		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-//		.handle.fd   = decoder->pl_buf_UV->handles.fd,
-//		.size = decoder->pl_buf_UV->handles.size,   // image_width * image_height * bytes / 2,
-//		.flags = 0,
-//	};
-//	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  Use the first FD
+	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
+		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
+		.handle.fd   = decoder->ebuf[1].fd,
+		.size = decoder->pl_buf_UV->handles.size,   // image_width * image_height * bytes / 2,
+		.flags = 0,
+	};
+	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  
 
 	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc1 = {
 		.offset = decoder->pl_buf_UV->handle_offset,
 		.size = size_x * size_y * size / 2,
 		.flags = 0,
 	};
-	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[1].buf, decoder->ebuf[0].mem, &buf_desc1));	// get pointer
+	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[1].buf, decoder->ebuf[1].mem, &buf_desc1));	// get pointer
 
 //printf("generate textures %d %d\n",size_x,size_y);
 }
@@ -2288,7 +2292,6 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
         // elements being two samples wide.
         CUDA_MEMCPY2D cpy = {
             .srcMemoryType = CU_MEMORYTYPE_DEVICE,
-		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
             .srcDevice     = (CUdeviceptr)frame->data[n],
             .srcPitch      = frame->linesize[n],
             .srcY          = 0,	
@@ -3109,7 +3112,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 {
     int surface;
     VideoDecoder        *ist = video_ctx->opaque;
-
+	enum AVColorSpace color;
 
     // update aspect ratio changes
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,60,100)
@@ -3131,21 +3134,27 @@ printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_
     }
 #endif
 
-
+	color = frame->colorspace;
+	if (color == AVCOL_SPC_UNSPECIFIED)   // if unknown
+		color = AVCOL_SPC_BT709;
+	
  	//
 	//	Check image, format, size
 	//
 	if ( // decoder->PixFmt != video_ctx->pix_fmt
 	     video_ctx->width != decoder->InputWidth
-		|| decoder->ColorSpace != frame->colorspace
+		|| decoder->ColorSpace != color
 	    || video_ctx->height != decoder->InputHeight) {
-Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->PixFmt,video_ctx->pix_fmt ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
+Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->colorspace ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
 
 	    decoder->InputWidth = video_ctx->width;
 	    decoder->InputHeight = video_ctx->height;
 	    CuvidCleanup(decoder);
 	    decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
 	    CuvidSetupOutput(decoder);
+#ifdef PLACEBO     // dont show first frame
+		decoder->newchannel = 1;
+#endif
 	}
 	//
 	//	Copy data from frame to image
@@ -3155,7 +3164,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->PixFmt,video_ctx->pi
 		int w = decoder->InputWidth;
 		int h = decoder->InputHeight;
 
-		decoder->ColorSpace = frame->colorspace;     // save colorspace
+		decoder->ColorSpace = color;     // save colorspace
 		decoder->trc = frame->color_trc;
 		decoder->color_primaries = frame->color_primaries;
 		
@@ -3304,6 +3313,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
+
 #else
 	img = &decoder->pl_images[current];
 
@@ -3377,7 +3387,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	pl_gpu_finish(p->gpu);
 //printf("Finish  renderer on frame %d with IN: %d-%d  on image %d-%d\n",current,w,h,decoder->pl_images[current].width,decoder->pl_images[current].height);
 	vkp = target.fbo->priv;
-    glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);
+	if (decoder->newchannel == 1 && current == 0)
+		;
+	else
+      glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);
+	if (decoder->newchannel && current)
+		decoder->newchannel = 0;
 	
 	pl_tex_destroy(p->gpu,&target.fbo);
 	
@@ -4606,6 +4621,11 @@ static void *VideoDisplayHandlerThread(void *dummy)
 	 unsigned int device_count,version;
     CUdevice device;
 	
+#ifdef PLACEBO
+	struct pl_vulkan_params params;
+#endif
+	
+	
 	checkCudaErrors(cuInit(0)); 
 
 //    checkCudaErrors(cuGLGetDevices(&device_count, &device, 1, CU_GL_DEVICE_LIST_ALL));
@@ -4631,8 +4651,8 @@ static void *VideoDisplayHandlerThread(void *dummy)
     if (!p->ctx) {
         Fatal(_("Failed initializing libplacebo\n"));
     }
-
-	struct pl_vulkan_params params = pl_vulkan_default_params;
+	
+	memcpy (&params,&pl_vulkan_default_params, sizeof(params));
 	params.async_transfer = true,
     params.async_compute = true,
     params.queue_count = 8,
@@ -4677,6 +4697,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 	pl_renderer_destroy(&p->renderer);
     pl_vulkan_destroy(&p->vk);
     pl_context_destroy(&p->ctx);
+	free(p); 
 #endif
 	cuCtxDestroy (cuda_ctx);
     return dummy;

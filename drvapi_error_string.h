@@ -446,7 +446,7 @@ inline const char *getCudaDrvErrorString(CUresult error_id)
     int index = 0;
 
     while (sCudaDrvErrorString[index].error_id != error_id &&
-           sCudaDrvErrorString[index].error_id != -1)
+           (int)sCudaDrvErrorString[index].error_id != -1)
     {
         index++;
     }
