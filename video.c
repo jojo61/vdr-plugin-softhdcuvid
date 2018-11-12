@@ -1678,6 +1678,7 @@ struct priv {
 	struct pl_render_target r_target;
 	struct pl_render_params r_params;
 	struct pl_tex      final_fbo;
+	VkSemaphore	sig_in;
 };
 struct priv *p;
 #endif
@@ -2535,7 +2536,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
 			CuvidSetupOutput(decoder);
 #ifdef PLACEBO     // dont show first frame
-			decoder->newchannel = 1;
+//			decoder->newchannel = 1;
 #endif
 		}
 	
@@ -2551,33 +2552,6 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
     return *fmt_idx;
 }
 
-#ifdef PLACEBO
-enum queue_type {
-    GRAPHICS,
-    COMPUTE,
-    TRANSFER,
-};
-struct vk_memslice {
-    VkDeviceMemory vkmem;
-    VkDeviceSize offset;
-    VkDeviceSize size;
-    void *priv;
-};
-struct pl_tex_vk {
-    bool held;
-    bool external_img;
-    bool may_invalidate;
-    enum queue_type transfer_queue;
-    VkImageType type;
-    VkImage img;
-    struct vk_memslice mem;
-    // for sampling
-    VkImageView view;
-    VkSampler sampler;
-};
-#endif
-
-
 #ifdef USE_GRAB
 
 int get_RGB(CuvidDecoder *decoder) {
@@ -2585,10 +2559,10 @@ int get_RGB(CuvidDecoder *decoder) {
 	#ifdef PLACEBO
 	struct pl_render_params render_params = pl_render_default_params;
 	struct pl_render_target target = {0};
-	struct pl_tex_vk *vkp;
 	const struct pl_fmt *fmt; 
-//	struct pl_image *img;
+	VkImage Image;
 #endif
+	
 	uint8_t *base;
 	int width;
 	int height;
@@ -2655,7 +2629,6 @@ int get_RGB(CuvidDecoder *decoder) {
 				.format = fmt,
 				.sampleable = true,
 				.renderable = true,
-//				.host_writable = true,
 				.sample_mode = PL_TEX_SAMPLE_LINEAR,
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 	});
@@ -2674,18 +2647,22 @@ int get_RGB(CuvidDecoder *decoder) {
 	target.color.light = PL_COLOR_LIGHT_DISPLAY;
 	target.color.sig_peak = 0;
 	target.color.sig_avg = 0;
-		
-//	render_params.upscaler = &pl_filter_catmull_rom;
 	
+	Image = pl_vulkan_unwrap(p->gpu, target.fbo,0,0);  // GetImage from text
+
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
 	pl_gpu_finish(p->gpu);
-
-	vkp = target.fbo->priv;
-    glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, 0,0,width, height, 0,0,1,1,0);
 	
+	pl_vulkan_hold(p->gpu,target.fbo, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_MEMORY_READ_BIT, p->sig_in);	 // get it for me	
+	glWaitVkSemaphoreNV((GLuint64)p->sig_in);
+    
+    glDrawVkImageNV((GLuint64)Image, 0, 0,0,width, height, 0,0,1,1,0);
+	pl_vulkan_release(p->gpu, target.fbo,0,0,0); // 
 	pl_tex_destroy(p->gpu,&target.fbo);
+	
+	
 #endif	
 	
 	if (OsdShown && decoder->grab == 2) {		
@@ -3273,6 +3250,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	struct pl_swapchain_frame frame;
 	struct pl_tex_vk *vkp;
 	const struct pl_fmt *fmt; 
+	VkImage Image;
 	struct pl_image *img;
 //	SDL_Event evt;
 	bool ok;
@@ -3384,7 +3362,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	img->src_rect.x1 = video_src_rect.x1;
 	img->src_rect.y1 = video_src_rect.y1;
 	
-	fmt = pl_find_named_fmt(p->gpu,"rgba16hf");
+	fmt = pl_find_named_fmt(p->gpu,"rgba8");
 	target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
 				.w = decoder->OutputWidth,
 				.h = decoder->OutputHeight,
@@ -3403,8 +3381,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	target.repr.levels = PL_COLOR_LEVELS_PC;
 	target.repr.alpha = PL_ALPHA_UNKNOWN;
-	target.repr.bits.sample_depth = 16;
-	target.repr.bits.color_depth = 16;
+	target.repr.bits.sample_depth = 8;
+	target.repr.bits.color_depth = 8;
 	target.repr.bits.bit_shift =0;
 	target.color.primaries = PL_COLOR_PRIM_BT_709;
 	target.color.transfer = PL_COLOR_TRC_BT_1886;
@@ -3413,25 +3391,31 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	target.color.sig_avg = 0;
 	
 	
-//	render_params.upscaler = &pl_filter_catmull_rom;
-	render_params.upscaler = &pl_filter_robidouxsharp;	
-//printf("Start renderer on frame %d\n",current);	
+//	render_params.upscaler = &pl_filter_ewa_lanczos;
+	render_params.upscaler = &pl_filter_robidouxsharp;
+	
 
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
 	pl_gpu_finish(p->gpu);
-//printf("Finish  renderer on frame %d with IN: %d-%d  on image %d-%d\n",current,w,h,decoder->pl_images[current].width,decoder->pl_images[current].height);
-	vkp = target.fbo->priv;
-	if (decoder->newchannel == 1 && current == 0)
-		;
-	else {
-      glDrawVkImageNV((GLuint64)(VkImage)vkp->img, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);
+
+//	if (decoder->newchannel == 1 && current == 0)
+//		;
+//	else {
+		Image = pl_vulkan_unwrap(p->gpu, target.fbo,0,0);  // GetImage from texture
+		pl_vulkan_hold(p->gpu,target.fbo, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_MEMORY_READ_BIT, p->sig_in);	 // get it for me	
+		glWaitVkSemaphoreNV((GLuint64)p->sig_in);
+
+    	glDrawVkImageNV((GLuint64)Image, 0, dst_video_rect.x0,dst_video_rect.y0,dst_video_rect.x1, dst_video_rect.y1, 0,0,1,1,0);	
+		GlxCheck();
+		pl_vulkan_release(p->gpu, target.fbo,0,0,0);  // give it back
+#if 0
 	}
 	if (decoder->newchannel && current)
 		decoder->newchannel = 0;
-
-	pl_tex_destroy(p->gpu,&target.fbo);
+#endif
+	pl_tex_destroy(p->gpu,&target.fbo);  // destroy texture
 	
 #endif
 	
@@ -4703,7 +4687,12 @@ static void *VideoDisplayHandlerThread(void *dummy)
     if (!p->renderer) {
         Fatal(_("Failed initializing libplacebo renderer\n"));
     }
-		
+	
+	static const VkSemaphoreCreateInfo sinfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+    vkCreateSemaphore(p->vk->device, &sinfo, NULL, &p->sig_in);
+	
 	Debug(3,"Placebo: init ok");
 #endif	
 	
@@ -4733,6 +4722,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
     }
 	
 #ifdef PLACEBO
+	vkDestroySemaphore(p->vk->device, p->sig_in, NULL);
 	pl_renderer_destroy(&p->renderer);
     pl_vulkan_destroy(&p->vk);
     pl_context_destroy(&p->ctx);

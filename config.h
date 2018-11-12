@@ -19,17 +19,17 @@
 #define LIBPLACEBO_CONFIG_H_
 
 // Increased any time the library changes in a fundamental/major way.
-#define PL_MAJOR_VER 0
+#define PL_MAJOR_VER 1
 
 // Increased any time the API changes. (Note: Does not reset when PL_MAJOR_VER
 // is increased)
-#define PL_API_VER 6
+#define PL_API_VER 7
 
 // Increased any time a fix is made to a given API version.
 #define PL_FIX_VER 0
 
 // Friendly name (`git describe`) for the overall version of the library
-#define PL_VERSION "v0.6.0-44-gaa02132"
+#define PL_VERSION "v1.7.0-rc1"
 
 // Feature tests. These aren't described in further detail, but may be useful
 // for programmers wanting to programmatically check for feature support
