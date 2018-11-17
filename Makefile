@@ -196,7 +196,7 @@ LIBS += -L/usr/lib64/opengl/nvidia/lib
 LIBS += -L/usr/local/cuda/lib64
 
 ifeq ($(LIBPLACEBO),1)
-LIBS += -lplacebo
+LIBS += -lplacebo -lglut
 endif
 
 LIBS += -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid 

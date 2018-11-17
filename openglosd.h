@@ -171,6 +171,7 @@ protected:
 public:
 	GLuint fb;
 	GLuint texture;
+	
     cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHeight);
     virtual ~cOglFb(void);
     bool Initiated(void) { return initiated; }

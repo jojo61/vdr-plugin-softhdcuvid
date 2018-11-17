@@ -46,9 +46,12 @@ extern "C"
 #include <stdint.h>
 #include <libavcodec/avcodec.h>
 #ifndef USE_OPENGLOSD
-#include "audio.h"
-#include "video.h"
-#include "codec.h"
+	#include "audio.h"
+	#include "video.h"
+	#include "codec.h"
+#endif
+#if PLACEBO
+	#include <libplacebo/filters.h>
 #endif
 }
 
@@ -89,6 +92,7 @@ static const char *const Resolution[RESOLUTIONS] = {
     "576i", "720p", "1080i_fake", "1080i", "UHD"
 };
 
+
 static char ConfigMakePrimary;		///< config primary wanted
 static char ConfigHideMainMenuEntry;	///< config hide main menu entry
 static char ConfigDetachFromMainMenu;	///< detach from main menu entry instead of suspend
@@ -107,8 +111,8 @@ static char ConfigVideoBlackPicture;	///< config enable black picture mode
 char ConfigVideoClearOnSwitch;		///< config enable Clear on channel switch
 
 static int ConfigVideoBrightness;	///< config video brightness
-static int ConfigVideoContrast = 1000;	///< config video contrast
-static int ConfigVideoSaturation = 1000;	///< config video saturation
+static int ConfigVideoContrast = 100;	///< config video contrast
+static int ConfigVideoSaturation = 100;	///< config video saturation
 static int ConfigVideoHue;		///< config video hue
 
     /// config deinterlace
@@ -985,9 +989,11 @@ void cMenuSetupSoft::Create(void)
     static const char *const deinterlace_short[] = {
 	"B", "W", "T", "T+S", "S+B", "S+S",
     };
+#ifndef PLACEBO
     static const char *const scaling[] = {
 	"Normal", "Fast", "HQ", "Anamorphic"
     };
+#endif
     static const char *const scaling_short[] = {
 	"N", "F", "HQ", "A"
     };
@@ -1000,6 +1006,19 @@ void cMenuSetupSoft::Create(void)
     int current;
     int i;
 
+#ifdef PLACEBO
+	static int scalers=0;
+	static char *scaling[100];
+	if (scalers == 0) {
+		for (scalers = 0;pl_named_filters[scalers].filter != NULL ; scalers++) {
+			scaling[scalers] = (char*)pl_named_filters[scalers].name;
+			printf("Scaler %s\n",pl_named_filters[scalers].name);
+		}
+		scalers -= 2;
+	}
+#endif	
+	
+	
     current = Current();		// get current menu item index
     Clear();				// clear the menu
 
@@ -1062,15 +1081,15 @@ void cMenuSetupSoft::Create(void)
 		&BlackPicture, trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Clear decoder on channel switch"),
 		&ClearOnSwitch, trVDR("no"), trVDR("yes")));
-#if 0
-	Add(new cMenuEditIntItem(tr("Brightness (-1000..1000) (vdpau)"),
-		&Brightness, -1000, 1000, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Contrast (0..10000) (vdpau)"), &Contrast,
-		0, 10000, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Saturation (0..10000) (vdpau)"),
-		&Saturation, 0, 10000, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Hue (-3141..3141) (vdpau)"), &Hue, -3141,
-		3141, tr("min"), tr("max")));
+#if PLACEBO
+	Add(new cMenuEditIntItem(tr("Brightness (-100..100)"),
+		&Brightness, -100, 100, tr("min"), tr("max")));
+	Add(new cMenuEditIntItem(tr("Contrast (0..100)"), &Contrast,
+		0, 100, tr("min"), tr("max")));
+	Add(new cMenuEditIntItem(tr("Saturation (0..100)"),
+		&Saturation, 0, 100, tr("min"), tr("max")));
+	Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314,
+		314, tr("min"), tr("max")));
 #endif
 	for (i = 0; i < RESOLUTIONS; ++i) {
 	    cString msg;
@@ -1080,9 +1099,10 @@ void cMenuSetupSoft::Create(void)
 	    Add(CollapsedItem(resolution[i], ResolutionShown[i], msg));
 
 	    if (ResolutionShown[i]) {
+#if PLACEBO
+			Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], scalers, scaling));
+#endif
 #if 0
-			Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], 4,
-				scaling));
 			Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],
 				6, deinterlace));
 			Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"),
@@ -1269,16 +1289,16 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     Hue = ConfigVideoHue;
 
     for (i = 0; i < RESOLUTIONS; ++i) {
-	ResolutionShown[i] = 0;
-	Scaling[i] = ConfigVideoScaling[i];
-	Deinterlace[i] = ConfigVideoDeinterlace[i];
-	SkipChromaDeinterlace[i] = ConfigVideoSkipChromaDeinterlace[i];
-	InverseTelecine[i] = ConfigVideoInverseTelecine[i];
-	Denoise[i] = ConfigVideoDenoise[i];
-	Sharpen[i] = ConfigVideoSharpen[i];
+		ResolutionShown[i] = 0;
+		Scaling[i] = ConfigVideoScaling[i];
+		Deinterlace[i] = ConfigVideoDeinterlace[i];
+		SkipChromaDeinterlace[i] = ConfigVideoSkipChromaDeinterlace[i];
+		InverseTelecine[i] = ConfigVideoInverseTelecine[i];
+		Denoise[i] = ConfigVideoDenoise[i];
+		Sharpen[i] = ConfigVideoSharpen[i];
 
-	CutTopBottom[i] = ConfigVideoCutTopBottom[i];
-	CutLeftRight[i] = ConfigVideoCutLeftRight[i];
+		CutTopBottom[i] = ConfigVideoCutTopBottom[i];
+		CutLeftRight[i] = ConfigVideoCutLeftRight[i];
     }
     //
     //	auto-crop

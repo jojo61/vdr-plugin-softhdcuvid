@@ -758,7 +758,7 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
     buffer->Bind();
     if (!fb->BindTexture())
         return false;
-    VertexBuffers[vbTexture]->Bind();
+	VertexBuffers[vbTexture]->Bind();
     VertexBuffers[vbTexture]->SetVertexData(quadVertices);
     VertexBuffers[vbTexture]->DrawArrays();
     VertexBuffers[vbTexture]->Unbind();
@@ -774,17 +774,36 @@ cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputF
     this->y = y;
 }
 
+#ifdef PLACEBO
+//extern "C" { 
+extern 	unsigned char *posd;
+//}
+#endif
+
 bool cOglCmdCopyBufferToOutputFb::Execute(void) {
+	int i;
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
-
 	glClear(GL_COLOR_BUFFER_BIT);
-    fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
-    oFb->Unbind();
+
+#ifdef PLACEBO
+//	if (posd)
+//		free(posd);
+//	posd = MALLOC(unsigned char, (y+fb->Height()) * (x+fb->Width()) * 4);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	if (posd) 
+		glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_BGRA,GL_UNSIGNED_BYTE,posd);
+#else
+	fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
+#endif
+	ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
+
+	oFb->Unbind();
 	pthread_mutex_unlock(&OSDMutex);
-    ActivateOsd(oFb->texture,x, y ,fb->Width(), fb->Height());
-	
+
     return true;
 }
 
@@ -1566,10 +1585,11 @@ extern "C" int GlxInitopengl();
 
 
 
+
 bool cOglThread::InitOpenGL(void) {
 	
 
-#if 0	
+#ifdef PLACEBO	
     const char *displayName = X11DisplayName;
     if (!displayName) {
         displayName = getenv("DISPLAY");
@@ -1577,6 +1597,7 @@ bool cOglThread::InitOpenGL(void) {
             displayName = ":0.0";
         }
     }
+
     dsyslog("[softhddev]OpenGL using display %s", displayName);
 
     int argc = 3;
@@ -1600,11 +1621,11 @@ bool cOglThread::InitOpenGL(void) {
         esyslog("[softhddev]glewInit failed, aborting\n");
         return false;
     }
-#endif
+#else
 
 	if (!GlxInitopengl())
 		return false;
-
+#endif
     VertexBuffers[vbText]->EnableBlending();
     glDisable(GL_DEPTH_TEST);
     return true;
@@ -1666,7 +1687,9 @@ void cOglThread::Cleanup(void) {
     DeleteShaders();
 //    glVDPAUFiniNV();
     cOglFont::Cleanup();
-//    glutExit();
+#ifdef PLACEBO
+    glutExit();
+#endif
 	pthread_mutex_unlock(&OSDMutex);
 }
 
@@ -1909,7 +1932,11 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 //	osdHeight = 1080;
 	
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
-
+#ifdef PLACEBO
+	if (posd)
+		free(posd);
+	posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
+#endif
     //create  output framebuffer
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
@@ -1921,6 +1948,11 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 cOglOsd::~cOglOsd() {
     OsdClose();
     SetActive(false);
+#ifdef PLACEBO
+	if (posd)
+		free(posd);
+	posd = 0;
+#endif
     oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
 }
 
