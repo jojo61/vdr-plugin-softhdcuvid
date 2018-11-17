@@ -114,6 +114,8 @@ static int ConfigVideoBrightness;	///< config video brightness
 static int ConfigVideoContrast = 100;	///< config video contrast
 static int ConfigVideoSaturation = 100;	///< config video saturation
 static int ConfigVideoHue;		///< config video hue
+static int ConfigGamma;			///< config Gamma
+static int ConfigTargetColorSpace; ///< config Target Colrospace
 
     /// config deinterlace
 static int ConfigVideoDeinterlace[RESOLUTIONS];
@@ -866,6 +868,8 @@ class cMenuSetupSoft:public cMenuSetupPage
     int Contrast;
     int Saturation;
     int Hue;
+	int Gamma;
+	int TargetColorSpace;
 
     int ResolutionShown[RESOLUTIONS];
     int Scaling[RESOLUTIONS];
@@ -1003,6 +1007,11 @@ void cMenuSetupSoft::Create(void)
     static const char *const resolution[RESOLUTIONS] = {
 	"576", "720", "fake 1080", "1080" ,"UHD"
     };
+#ifdef PLACEBO
+	static const char *const target_colorspace[] = {
+	"Monitor", "sRGB", "BT709", "HDR-HLG", "HDR10",
+    };
+#endif
     int current;
     int i;
 
@@ -1088,8 +1097,11 @@ void cMenuSetupSoft::Create(void)
 		0, 100, tr("min"), tr("max")));
 	Add(new cMenuEditIntItem(tr("Saturation (0..100)"),
 		&Saturation, 0, 100, tr("min"), tr("max")));
+	Add(new cMenuEditIntItem(tr("Gamma (0..100)"),
+		&Gamma, 0, 100, tr("min"), tr("max")));
 	Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314,
 		314, tr("min"), tr("max")));
+	Add(new cMenuEditStraItem(tr("Monitor Colorspace"), &TargetColorSpace, 5, target_colorspace));	
 #endif
 	for (i = 0; i < RESOLUTIONS; ++i) {
 	    cString msg;
@@ -1287,6 +1299,8 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     Contrast = ConfigVideoContrast;
     Saturation = ConfigVideoSaturation;
     Hue = ConfigVideoHue;
+	Gamma = ConfigGamma;
+	TargetColorSpace = ConfigTargetColorSpace;
 
     for (i = 0; i < RESOLUTIONS; ++i) {
 		ResolutionShown[i] = 0;
@@ -1425,6 +1439,10 @@ void cMenuSetupSoft::Store(void)
     VideoSetContrast(ConfigVideoContrast);
     SetupStore("Saturation", ConfigVideoSaturation = Saturation);
     VideoSetSaturation(ConfigVideoSaturation);
+	SetupStore("Gamma", ConfigGamma = Gamma);
+    VideoSetGamma(ConfigGamma);
+	SetupStore("TargetColorSpace", ConfigTargetColorSpace = TargetColorSpace);
+    VideoSetTargetColor(ConfigTargetColorSpace);
     SetupStore("Hue", ConfigVideoHue = Hue);
     VideoSetHue(ConfigVideoHue);
 
@@ -3236,6 +3254,14 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
     }
     if (!strcasecmp(name, "Saturation")) {
 	VideoSetSaturation(ConfigVideoSaturation = atoi(value));
+	return true;
+    }
+	if (!strcasecmp(name, "Gamma")) {
+	VideoSetGamma(ConfigGamma = atoi(value));
+	return true;
+    }
+	if (!strcasecmp(name, "TargetColorSpace")) {
+	VideoSetTargetColor(ConfigTargetColorSpace = atoi(value));
 	return true;
     }
     if (!strcasecmp(name, "Hue")) {

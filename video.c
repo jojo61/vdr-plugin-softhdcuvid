@@ -425,6 +425,7 @@ static float VideoContrast = 1.0f;
 static float VideoSaturation = 1.0f;
 static float VideoHue = 0.0f;
 static float VideoGamma = 1.0f;
+static int VulkanTargetColorSpace = 0;
 
 static xcb_atom_t WmDeleteWindowAtom;	///< WM delete message atom
 static xcb_atom_t NetWmState;		///< wm-state message atom
@@ -3571,6 +3572,7 @@ static void CuvidDisplayFrame(void)
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
+	static int test;
 
 #endif
 
@@ -3608,8 +3610,26 @@ static void CuvidDisplayFrame(void)
 //	target.repr.bits.color_depth = 16;
 //	target.repr.bits.bit_shift =0;
 	
-	memcpy(&target.color,&pl_color_space_srgb,sizeof(struct pl_color_space));  // make it RGB
-	
+	switch (VulkanTargetColorSpace) {
+		case 0:
+			memcpy(&target.color,&pl_color_space_monitor,sizeof(struct pl_color_space));  
+			break;
+		case 1:
+			memcpy(&target.color,&pl_color_space_srgb,sizeof(struct pl_color_space));  
+			break;	
+		case 2:
+			memcpy(&target.color,&pl_color_space_bt709,sizeof(struct pl_color_space));  
+			break;
+		case 3:
+			memcpy(&target.color,&pl_color_space_bt2020_hlg,sizeof(struct pl_color_space));  
+			break;
+		case 4:
+			memcpy(&target.color,&pl_color_space_hdr10,sizeof(struct pl_color_space));  
+			break;
+		default:
+			memcpy(&target.color,&pl_color_space_monitor,sizeof(struct pl_color_space));  
+			break;
+	}
 
 	
 #endif
@@ -5719,6 +5739,15 @@ void VideoSetSaturation(int saturation)
 void VideoSetGamma(int gamma)
 {
     VideoGamma = (float)gamma / 100.0f;
+}
+	///
+///	Set TargetColorSpace.
+///
+///	@param TargetColorSpace
+///
+void VideoSetTargetColor(int color)
+{
+     VulkanTargetColorSpace = color;
 }
 ///
 ///	Set hue adjustment.

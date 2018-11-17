@@ -118,6 +118,12 @@ extern void VideoSetContrast(int);
     /// Set saturation adjustment.
 extern void VideoSetSaturation(int);
 
+    /// Set Gamm.
+extern void VideoSetGamma(int);
+
+    /// Set ColorSpace.
+extern void VideoSetTargetColor(int);
+
     /// Set hue adjustment.
 extern void VideoSetHue(int);
 
