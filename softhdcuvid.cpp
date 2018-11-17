@@ -1012,7 +1012,7 @@ void cMenuSetupSoft::Create(void)
 	if (scalers == 0) {
 		for (scalers = 0;pl_named_filters[scalers].filter != NULL ; scalers++) {
 			scaling[scalers] = (char*)pl_named_filters[scalers].name;
-			printf("Scaler %s\n",pl_named_filters[scalers].name);
+//			printf("Scaler %s\n",pl_named_filters[scalers].name);
 		}
 		scalers -= 2;
 	}

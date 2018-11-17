@@ -6004,7 +6004,6 @@ void VideoSetScaling(int mode[VideoResolutionMax])
     VideoScaling[2] = mode[2];
     VideoScaling[3] = mode[3];
     VideoScaling[4] = mode[4];
-printf("scaling changed %d %d %d %d %d\n",mode[0],mode[1],mode[2],mode[3],mode[4]);
     VideoSurfaceModesChanged = 1;
 }
 
