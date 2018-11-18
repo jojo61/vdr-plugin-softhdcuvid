@@ -159,10 +159,6 @@ typedef enum
 
 #ifdef PLACEBO
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_vulkan.h>
-#include <SDL2/SDL_image.h>
-
 #define VK_USE_PLATFORM_XCB_KHR
 #include <vulkan/vulkan.h>
 #include <libplacebo/context.h>
