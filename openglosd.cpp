@@ -788,10 +788,6 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 	glClear(GL_COLOR_BUFFER_BIT);
 
 #ifdef PLACEBO
-//	if (posd)
-//		free(posd);
-//	posd = MALLOC(unsigned char, (y+fb->Height()) * (x+fb->Width()) * 4);
-
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 	if (posd) 

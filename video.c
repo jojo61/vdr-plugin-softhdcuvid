@@ -132,7 +132,7 @@ typedef enum
 #ifdef USE_GLX
 #include <GL/glew.h>
 #include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
-#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT
+//#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT
 //#include <GL/glxew.h>
 #include <GL/glx.h>
 // only for gluErrorString
@@ -144,7 +144,7 @@ typedef enum
 #ifdef CUVID
 //#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
-#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT 
+//#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT 
 #include <libavutil/hwcontext.h>
 #include <cuda.h>
 //#include <dynlink_cuda.h>
@@ -3568,7 +3568,7 @@ static void CuvidDisplayFrame(void)
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
-	static int test;
+	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 
 #endif
 
@@ -3599,6 +3599,8 @@ static void CuvidDisplayFrame(void)
 	
 	pl_render_target_from_swapchain(&target, &frame);  // make target frame
 
+	pl_tex_clear(p->gpu,target.fbo,black);				// clear frame
+	
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	target.repr.levels = PL_COLOR_LEVELS_PC;
 	target.repr.alpha = PL_ALPHA_UNKNOWN;
@@ -4434,6 +4436,7 @@ void VideoOsdClear(void)
 
 #ifdef PLACEBO
 	OsdShown = 0;
+
 #else
     VideoThreadLock();
     VideoUsedModule->OsdClear();
@@ -4492,6 +4495,7 @@ void VideoOsdDrawARGB(int xi, int yi, int width, int height, int pitch,
 
 #ifdef USE_OPENGLOSD
 void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize) {
+//printf("OSD open %d %d %d %d\n",x,y,xsize,ysize);
 	OsdShown = 1;
 	OSDfb = texture;
 	OSDtexture = texture;
