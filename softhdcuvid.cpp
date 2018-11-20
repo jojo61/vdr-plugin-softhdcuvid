@@ -1079,9 +1079,10 @@ void cMenuSetupSoft::Create(void)
 		(int *)&Background, 0, 0x00FFFFFF));
 	Add(new cMenuEditIntItem(tr("Video background color (Alpha)"),
 		(int *)&BackgroundAlpha, 0, 0xFF));
-	Add(new cMenuEditBoolItem(tr("Use studio levels (vdpau only)"),
-		&StudioLevels, trVDR("no"), trVDR("yes")));
 #endif
+	Add(new cMenuEditBoolItem(tr("Use studio levels"),
+		&StudioLevels, trVDR("no"), trVDR("yes")));
+
 	Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode,
 		trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync,

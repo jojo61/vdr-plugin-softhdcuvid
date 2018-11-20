@@ -3448,6 +3448,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 		memcpy(&img->color,&pl_color_space_bt709,sizeof(struct pl_color_space));
 //		img->color.primaries = PL_COLOR_PRIM_BT_709;
 //		img->color.transfer = PL_COLOR_TRC_BT_1886;		
+//		img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;
 //		img->color.light = PL_COLOR_LIGHT_DISPLAY;
 		break;
 	case AVCOL_SPC_BT2020_NCL:
@@ -3592,7 +3593,7 @@ static void CuvidDisplayFrame(void)
 	last_time = GetusTicks();
 	if (!p->swapchain)
 		return;
-	
+	usleep(1000);
 	if (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame
 		usleep(10);
 	}
@@ -3602,7 +3603,10 @@ static void CuvidDisplayFrame(void)
 	pl_tex_clear(p->gpu,target.fbo,black);				// clear frame
 	
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
-	target.repr.levels = PL_COLOR_LEVELS_PC;
+	if (VideoStudioLevels)
+		target.repr.levels = PL_COLOR_LEVELS_PC;
+	else
+		target.repr.levels = PL_COLOR_LEVELS_TV;
 	target.repr.alpha = PL_ALPHA_UNKNOWN;
 //	target.repr.bits.sample_depth = 16;
 //	target.repr.bits.color_depth = 16;
