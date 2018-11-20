@@ -1080,9 +1080,10 @@ void cMenuSetupSoft::Create(void)
 	Add(new cMenuEditIntItem(tr("Video background color (Alpha)"),
 		(int *)&BackgroundAlpha, 0, 0xFF));
 #endif
+#ifdef PLACEBO
 	Add(new cMenuEditBoolItem(tr("Use studio levels"),
 		&StudioLevels, trVDR("no"), trVDR("yes")));
-
+#endif
 	Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode,
 		trVDR("no"), trVDR("yes")));
 	Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync,
@@ -3246,19 +3247,31 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
 	return true;
     }
     if (!strcasecmp(name, "Brightness")) {
-	VideoSetBrightness(ConfigVideoBrightness = atoi(value));
+		int i;
+		i = atoi(value);
+		ConfigVideoBrightness = i>100?100:i;
+		VideoSetBrightness(ConfigVideoBrightness);
 	return true;
     }
     if (!strcasecmp(name, "Contrast")) {
-	VideoSetContrast(ConfigVideoContrast = atoi(value));
+		int i;
+		i = atoi(value);
+		ConfigVideoContrast = i>100?100:i;
+		VideoSetContrast(ConfigVideoContrast);
 	return true;
     }
     if (!strcasecmp(name, "Saturation")) {
-	VideoSetSaturation(ConfigVideoSaturation = atoi(value));
+		int i;
+		i = atoi(value);
+		ConfigVideoSaturation = i>100?100:i;
+		VideoSetSaturation(ConfigVideoSaturation);
 	return true;
     }
 	if (!strcasecmp(name, "Gamma")) {
-	VideoSetGamma(ConfigGamma = atoi(value));
+		int i;
+		i = atoi(value);
+		ConfigGamma = i>100?100:i;
+	VideoSetGamma(ConfigGamma);
 	return true;
     }
 	if (!strcasecmp(name, "TargetColorSpace")) {
