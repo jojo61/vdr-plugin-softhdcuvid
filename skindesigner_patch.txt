@@ -1,0 +1,50 @@
+diff -Naur skindesignerold/coreengine/animation.c skindesigner/coreengine/animation.c
+--- skindesignerold/coreengine/animation.c	2018-03-03 09:03:00.000000000 +0100
++++ skindesigner/coreengine/animation.c	2018-11-18 14:56:31.147849032 +0100
+@@ -671,9 +671,9 @@
+         }
+         animLock.Unlock();
+         reactivate = false;
+-        osd->Flush();
+         if (!animActive)
+             break;
++        osd->Flush();
+         Sleep(start);
+     }
+ }
+diff -Naur skindesignerold/coreengine/view.c skindesigner/coreengine/view.c
+--- skindesignerold/coreengine/view.c	2018-03-03 09:03:00.000000000 +0100
++++ skindesigner/coreengine/view.c	2018-11-18 11:59:24.870281811 +0100
+@@ -279,7 +279,7 @@
+             continue;
+         viewElements[i]->Close();
+     }
+-    sdOsd.Flush();
++//    sdOsd.Flush();
+     sdOsd.DeleteOsd();
+ }
+ 
+diff -Naur skindesignerold/coreengine/viewdisplaychannel.c skindesigner/coreengine/viewdisplaychannel.c
+--- skindesignerold/coreengine/viewdisplaychannel.c	2018-03-03 09:03:00.000000000 +0100
++++ skindesigner/coreengine/viewdisplaychannel.c	2018-11-18 12:01:10.460722220 +0100
+@@ -396,7 +396,7 @@
+     if (groupChannelList)
+         groupChannelList->Close();
+ #endif
+-    sdOsd.Flush();
++//    sdOsd.Flush();
+     sdOsd.DeleteOsd();
+ }
+ 
+diff -Naur skindesignerold/coreengine/viewdisplaymenu.c skindesigner/coreengine/viewdisplaymenu.c
+--- skindesignerold/coreengine/viewdisplaymenu.c	2018-03-03 09:03:00.000000000 +0100
++++ skindesigner/coreengine/viewdisplaymenu.c	2018-11-18 12:00:20.301464616 +0100
+@@ -556,7 +556,7 @@
+     }
+     UnScaleTv();
+     ClearVariables();
+-    sdOsd.Flush();
++//    sdOsd.Flush();
+     sdOsd.DeleteOsd();
+ }
+ 

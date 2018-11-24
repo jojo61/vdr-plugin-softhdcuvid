@@ -2197,6 +2197,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	struct pl_tex *tex;
 	struct pl_image *img;
 	struct pl_plane *pl;
+	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 	
 //printf("Create textures and planes %d %d\n",size_x,size_y);	
     Debug(3,"video/vulkan: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
@@ -2265,9 +2266,9 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.host_mapped = false,
 		.host_writable = false,
 		.memory_type = PL_BUF_MEM_DEVICE,
-		.ext_handles = PL_HANDLE_FD,
+		.handle_type = PL_HANDLE_FD,
 		});
-	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y->handles.fd);		// dup fd
+	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y->shared_mem.handle.fd);		// dup fd
 //	printf("Y  Offset %d  Size  %d  FD %d\n",decoder->pl_buf_Y->handle_offset,decoder->pl_buf_Y->handles.size,decoder->pl_buf_Y->handles.fd);
 
 	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für UV texture upload
@@ -2276,22 +2277,22 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.host_mapped = false,
 		.host_writable = false,
 		.memory_type = PL_BUF_MEM_DEVICE,
-		.ext_handles = PL_HANDLE_FD,
+		.handle_type = PL_HANDLE_FD,
 		});
-	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV->handles.fd);	// dup fd 
+	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV->shared_mem.handle.fd);	// dup fd 
 
 //	printf("UV Offset %d  Size  %d  FD %d\n",decoder->pl_buf_UV->handle_offset,decoder->pl_buf_UV->handles.size,decoder->pl_buf_UV->handles.fd);
 	
 	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc = {
 		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
 		.handle.fd   = decoder->ebuf[0].fd,
-		.size = decoder->pl_buf_Y->handles.size,   // image_width * image_height * bytes,
+		.size = decoder->pl_buf_Y->shared_mem.size,   // image_width * image_height * bytes,
 		.flags = 0,
 	};
 	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[0].mem, &ext_desc));	// Import Memory segment
 
 	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc = {
-		.offset = decoder->pl_buf_Y->handle_offset,
+		.offset = decoder->pl_buf_Y->shared_mem.offset,
 		.size = size_x * size_y * size,
 		.flags = 0,
 	};
@@ -2300,13 +2301,13 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
 		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
 		.handle.fd   = decoder->ebuf[1].fd,
-		.size = decoder->pl_buf_UV->handles.size,   // image_width * image_height * bytes / 2,
+		.size = decoder->pl_buf_UV->shared_mem.size,   // image_width * image_height * bytes / 2,
 		.flags = 0,
 	};
 	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  
 
 	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc1 = {
-		.offset = decoder->pl_buf_UV->handle_offset,
+		.offset = decoder->pl_buf_UV->shared_mem.offset,
 		.size = size_x * size_y * size / 2,
 		.flags = 0,
 	};
@@ -3155,7 +3156,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		Debug(3, "video/vdpau: aspect ratio changed\n");
 
 		decoder->InputAspect = frame->sample_aspect_ratio;
-printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_ratio.den);
+//printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_ratio.den);
 		CuvidUpdateOutput(decoder);
     }
 #else
@@ -3297,10 +3298,11 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 ///
 static void CuvidBlackSurface(CuvidDecoder * decoder)
 {
-
+#ifndef PLACEBO
 	VdpRect source_rect;
 	VdpRect output_rect;
 	glClear(GL_COLOR_BUFFER_BIT);
+#endif
 return;
 
 }
@@ -3359,6 +3361,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	VkImage Image;
 	struct pl_image *img;
 	bool ok;
+	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 #endif
 	
 	int current;
@@ -3491,6 +3494,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	colors.gamma = VideoGamma;
 	
 	if (ovl) {
+		pl_tex_clear(p->gpu,target->fbo,black);				// clear frame
 		target->overlays = ovl;
 		target->num_overlays = 1;
 	} else {
@@ -3501,7 +3505,26 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
+#if 0
+	if (1) {	
+		// Source crop
+		img->src_rect.x0 = video_src_rect.x0;
+		img->src_rect.y0 = video_src_rect.y0;
+		img->src_rect.x1 = video_src_rect.x1/2;
+		img->src_rect.y1 = video_src_rect.y1;
 
+		// Video aspect ratio
+		target->dst_rect.x0 = dst_video_rect.x0;
+		target->dst_rect.y0 = dst_video_rect.y0;
+		target->dst_rect.x1 = dst_video_rect.x1/2+dst_video_rect.x0/2;
+		target->dst_rect.y1 = dst_video_rect.y1;
+		render_params.upscaler = NULL;
+		render_params.downscaler = NULL;
+		if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
+    	    Fatal(_("Failed rendering frame!\n"));
+    	}
+	}
+#endif
 #endif
 	
 	Debug(4, "video/vdpau: yy video surface %p displayed\n", current, decoder->SurfaceRead);
@@ -3569,7 +3592,7 @@ static void CuvidDisplayFrame(void)
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
-	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
+
 
 #endif
 
@@ -3586,9 +3609,9 @@ static void CuvidDisplayFrame(void)
 	last_time = GetusTicks();	
 	glClear(GL_COLOR_BUFFER_BIT);
 #else
-	
-//	last_time = GetusTicks();
 	pl_swapchain_swap_buffers(p->swapchain);
+//	last_time = GetusTicks();
+//	pl_swapchain_swap_buffers(p->swapchain);
 //	printf(" Latency %d  Time wait %2.2f\n",pl_swapchain_latency(p->swapchain),(float)(GetusTicks()-last_time)/1000000.0);
 	last_time = GetusTicks();
 	if (!p->swapchain)
@@ -3600,7 +3623,7 @@ static void CuvidDisplayFrame(void)
 	
 	pl_render_target_from_swapchain(&target, &frame);  // make target frame
 
-	pl_tex_clear(p->gpu,target.fbo,black);				// clear frame
+
 	
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	if (VideoStudioLevels)
@@ -3720,8 +3743,10 @@ static void CuvidDisplayFrame(void)
 	
 	if (!pl_swapchain_submit_frame(p->swapchain))
 		Fatal(_("Failed to submit swapchain buffer\n"));
+	
 	if (CuvidDecoderN)
-	CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+
 #else
 	glXGetVideoSyncSGI (&Count);    // get current frame
 	glXSwapBuffers(XlibDisplay, VideoWindow);
@@ -4161,6 +4186,9 @@ static void CuvidDisplayHandlerThread(void)
 	// FIXME: sleep on wakeup
 		usleep(1 * 100);
 	}
+#ifdef PLACEBO
+	usleep(100);
+#endif
 
 	// all decoder buffers are full
 	// and display is not preempted
@@ -4522,6 +4550,7 @@ void VideoGetOsdSize(int *width, int *height)
 {
     *width = 1920;
     *height = 1080;			// unknown default
+
     if (OsdWidth && OsdHeight) {
 		*width = OsdWidth;
 		*height = OsdHeight;
@@ -4789,11 +4818,28 @@ static void VideoThreadUnlock(void)
 }
 #ifdef PLACEBO
 
+void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
+{
+    static const char *prefix[] = {
+        [PL_LOG_FATAL] = "fatal",
+        [PL_LOG_ERR]   = "error",
+        [PL_LOG_WARN]  = "warn",
+        [PL_LOG_INFO]  = "info",
+        [PL_LOG_DEBUG] = "debug",
+        [PL_LOG_TRACE] = "trace",
+    };
+
+    printf("%5s: %s\n", prefix[level], msg);
+}
+	
+	
+	
 void InitPlacebo(){
 
 	struct pl_vulkan_params params;
 	struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
 	VkXcbSurfaceCreateInfoKHR xcbinfo;
+
 	char xcbext[] = {"VK_KHR_xcb_surface"};
 	char surfext[] = {"VK_KHR_surface"};
 
@@ -4805,7 +4851,7 @@ void InitPlacebo(){
 	
 	
 	// Create context
-	p->context.log_cb = &pl_log_simple;
+	p->context.log_cb = &pl_log_intern;
 	p->context.log_level = PL_LOG_WARN;
 	
     p->ctx = pl_context_create(PL_API_VER, &p->context);
@@ -4819,8 +4865,9 @@ void InitPlacebo(){
 	iparams.num_extensions = 2;
 	iparams.extensions = malloc(2 * sizeof(const char *));
 	*iparams.extensions = xcbext;
+	iparams.debug = false;
 	*(iparams.extensions+1) = surfext;
-
+	
 	p->vk_inst = pl_vk_inst_create(p->ctx, &iparams);
 	
 	free(iparams.extensions);
@@ -4835,13 +4882,13 @@ void InitPlacebo(){
 	if (vkCreateXcbSurfaceKHR(p->vk_inst->instance,&xcbinfo,NULL,&p->pSurface) != VK_SUCCESS) {
 		Fatal(_("Failed to create XCB Surface\n"));
 	}
-	
+
 	// create Vulkan device
 	memcpy (&params,&pl_vulkan_default_params, sizeof(params));
 	params.instance = p->vk_inst->instance;
 	params.async_transfer = true;
     params.async_compute = true;
- //   params.queue_count = 8;
+//    params.queue_count = 8;
 	params.surface = p->pSurface;
     params.allow_software = true;
 	
@@ -4883,7 +4930,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 	 unsigned int device_count,version;
     CUdevice device;
 	
-#ifdef PLACEBO
+#ifdef PLACEBO_
 	InitPlacebo();
 #endif
 	
@@ -4912,7 +4959,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 		VideoUsedModule->DisplayHandlerThread();
     }
 	
-#ifdef PLACEBO
+#ifdef PLACEBO_
 	pl_renderer_destroy(&p->renderer);
 //	pl_tex_destroy(p->gpu, &p->final_fbo);
 	pl_swapchain_destroy(&p->swapchain);
@@ -6172,6 +6219,7 @@ void VideoInit(const char *display_name)
 		// if no environment variable, use :0.0 as default display name
 		display_name = ":0.0";
     }
+
     if (!(XlibDisplay = XOpenDisplay(display_name))) {
 		Error(_("video: Can't connect to X11 server on '%s'\n"), display_name);
 		// FIXME: we need to retry connection
@@ -6208,7 +6256,7 @@ void VideoInit(const char *display_name)
     }
     screen = screen_iter.data;
     VideoScreen = screen;
-
+	
     //
     //	Default window size
     //
@@ -6290,7 +6338,9 @@ void VideoInit(const char *display_name)
 
     //xcb_prefetch_maximum_request_length(Connection);
     xcb_flush(Connection);
-
+#ifdef PLACEBO
+	InitPlacebo();
+#endif
     // I would like to start threads here, but this produces:
     // [xcb] Unknown sequence number while processing queue
     // [xcb] Most likely this is a multi-threaded client and XInitThreads
@@ -6326,6 +6376,17 @@ void VideoExit(void)
 		GlxExit();       // delete all contexts
     }
 #endif
+	
+#ifdef PLACEBO
+	pl_renderer_destroy(&p->renderer);
+	pl_swapchain_destroy(&p->swapchain);
+	vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
+	pl_vk_inst_destroy(&p->vk_inst);	
+//    pl_vulkan_destroy(&p->vk);
+    pl_context_destroy(&p->ctx);
+	free(p); 	
+#endif
+	
     //
     //	FIXME: cleanup.
     //
