@@ -68,7 +68,7 @@ It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
 
 In the settings you can enable a correction for Colorblindness. First you have to decide what kind of colorblindness to use. And then the faktor of correction. If the faktor is negativ than the selected type of colorblindness is simulated. If the faktor is positiv then the colors are enhanced to try to correct the deficiency.
 
-Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left ahlf you will see the scaler defined by Scaler Test and on the right side you wil see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
+Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
 
 Good luck
 jojo61
