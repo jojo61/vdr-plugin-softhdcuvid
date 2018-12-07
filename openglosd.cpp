@@ -328,7 +328,7 @@ cOglFont *cOglFont::Get(const char *name, int charHeight) {
     fonts->Add(font);
     return font;
 }
-
+ 
 void cOglFont::Init(void) {
     fonts = new cList<cOglFont>;
     if (FT_Init_FreeType(&ftLib))
@@ -442,8 +442,10 @@ cOglFb::cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHei
 }
 
 cOglFb::~cOglFb(void) {
-    glDeleteTextures(1, &texture);
-    glDeleteFramebuffers(1, &fb);
+	if (texture)
+    	glDeleteTextures(1, &texture);
+	if (fb)
+    	glDeleteFramebuffers(1, &fb);
 }
 
 
@@ -709,7 +711,8 @@ cOglCmdDeleteFb::cOglCmdDeleteFb(cOglFb *fb) : cOglCmd(fb) {
 }
 
 bool cOglCmdDeleteFb::Execute(void) {
-	delete fb;
+	if (fb)
+		delete fb;
     return true;
 }
 

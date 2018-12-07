@@ -45,7 +45,7 @@ Currently I have tested it with a GTX 1050 from NVIDIA. SD, HD and UHD is workin
 
 Current Status NVIDA:
 The CUDA driver supports HEVC with 8 Bit and 10 Bit up to UHD resolution. Opengl is able to output also 10 Bit, but NVIDIA does not support to output 10 Bit via HDMI.
-Only via DisplayPort you can get 10 Bit output to a ompatible screen. This is a restriction from NVIDIA.
+Only via DisplayPort you can get 10 Bit output to a compatible screen. This is a restriction from NVIDIA.
 
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0 
@@ -63,11 +63,12 @@ new:
 
 This Version supports building with libplacebo. https://github.com/haasn/libplacebo 
 You have to enable it in the Makefile and install libplacebo yourself.
-At the moment this is Work in progress and the used upscaler is hardcoded. This will be changend to be configurable.
+At the moment this is Work in progress.
 It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
 
+In the settings you can enable a correction for Colorblindness. First you have to decide what kind of colorblindness to use. And then the faktor of correction. If the faktor is negativ than the selected type of colorblindness is simulated. If the faktor is positiv then the colors are enhanced to try to correct the deficiency.
 
-
+Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left ahlf you will see the scaler defined by Scaler Test and on the right side you wil see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
 
 Good luck
 jojo61
@@ -369,40 +370,5 @@ Requires:
     or
 	kernel support for oss/oss4 or alsa oss emulation
 
-	x11-libs/libva (deprecated)
-		Video Acceleration (VA) API for Linux
-		http://www.freedesktop.org/wiki/Software/vaapi
-	x11-libs/libva-intel-driver
-		HW video decode support for Intel integrated graphics
-		http://www.freedesktop.org/wiki/Software/vaapi
-    or
-	x11-libs/vdpau-video
-		VDPAU Backend for Video Acceleration (VA) API
-		http://www.freedesktop.org/wiki/Software/vaapi
-    or
-	x11-libs/xvba-video
-		XVBA Backend for Video Acceleration (VA) API
-		http://www.freedesktop.org/wiki/Software/vaapi
-
-	x11-libs/libvdpau
-		VDPAU wrapper and trace libraries
-		http://www.freedesktop.org/wiki/Software/VDPAU
-
-	x11-libs/libxcb,
-		X C-language Bindings library
-		http://xcb.freedesktop.org
-	x11-libs/xcb-util,
-	x11-libs/xcb-util-wm,
-	x11-libs/xcb-util-keysyms
-		X C-language Bindings library
-		http://xcb.freedesktop.org
-		Only versions >= 0.3.8 are good supported
-
-	x11-libs/libX11
-		X.Org X11 library
-		http://xorg.freedesktop.org
-
-	GNU Make 3.xx
-		http://www.gnu.org/software/make/make.html
 
 Optional:

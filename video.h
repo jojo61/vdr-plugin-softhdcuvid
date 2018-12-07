@@ -127,6 +127,12 @@ extern void VideoSetTargetColor(int);
     /// Set hue adjustment.
 extern void VideoSetHue(int);
 
+    /// Set Color Blindness.
+extern void VideoSetColorBlindness(int);
+
+    /// Set Color Blindness Faktor
+extern void VideoSetColorBlindnessFaktor(int);
+
     /// Set video output position.
 extern void VideoSetOutputPosition(VideoHwDecoder *, int, int, int, int);
 
@@ -153,6 +159,9 @@ extern void VideoSetInverseTelecine(int[]);
 
     /// Set scaling.
 extern void VideoSetScaling(int[]);
+
+    /// Set scaler test.
+extern void VideoSetScalerTest(int);
 
     /// Set denoise.
 extern void VideoSetDenoise(int[]);

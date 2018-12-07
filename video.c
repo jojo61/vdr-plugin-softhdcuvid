@@ -422,6 +422,9 @@ static float VideoSaturation = 1.0f;
 static float VideoHue = 0.0f;
 static float VideoGamma = 1.0f;
 static int VulkanTargetColorSpace = 0;
+static int VideoScalerTest = 0;
+static int VideoColorBlindness = 0;
+static float VideoColorBlindnessFaktor = 1.0f;
 
 static xcb_atom_t WmDeleteWindowAtom;	///< WM delete message atom
 static xcb_atom_t NetWmState;		///< wm-state message atom
@@ -1700,6 +1703,7 @@ typedef struct priv {
 	const struct pl_vk_inst *vk_inst;
 	struct pl_context  		*ctx;	
 	struct pl_renderer		*renderer;
+	struct pl_renderer		*renderertest;
 	const struct pl_swapchain *swapchain;
 	struct pl_context_params context;
 	struct pl_render_target r_target;
@@ -1876,6 +1880,8 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 //		close(decoder->pl_buf_UV->handles.fd);
 	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y);
 	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV);
+	pl_renderer_destroy(&p->renderer);
+	p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
 	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
@@ -2323,9 +2329,15 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
     int n;
  
 	struct ext_buf ebuf[2];
-//printf("Upload buf to texture for frame %d in size %d-%d\n",index,image_width,image_height);	
-	while (pl_buf_poll(p->gpu,decoder->pl_buf_Y, 5000000));   //  5 ms
-	while (pl_buf_poll(p->gpu,decoder->pl_buf_UV, 5000000));
+//printf("Upload buf to texture for frame %d in size %d-%d\n",index,image_width,image_height);
+	if (decoder->pl_buf_Y)
+		while (pl_buf_poll(p->gpu,decoder->pl_buf_Y, 5000000));   //  5 ms
+	else
+		return;
+	if (decoder->pl_buf_UV)
+		while (pl_buf_poll(p->gpu,decoder->pl_buf_UV, 5000000));
+	else
+		return;
 			
     for (n = 0; n < 2; n++) { 									//  Copy 2 Planes from Cuda decoder to upload Buffer 
         // widthInBytes must account for the chroma plane
@@ -3240,7 +3252,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 #endif
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
-	
+			
 		CuvidQueueVideoSurface(decoder, surface, 1);
 		return;      
 
@@ -3354,8 +3366,10 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 #endif
 {
 #ifdef PLACEBO
-	struct pl_render_params render_params = pl_render_default_params;
+	struct pl_render_params render_params; 
+	struct pl_deband_params deband;
 	struct pl_color_adjustment colors;
+	struct pl_cone_params cone;
 	struct pl_tex_vk *vkp;
 	const struct pl_fmt *fmt; 
 	VkImage Image;
@@ -3437,7 +3451,10 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 
 #else
 	img = &decoder->pl_images[current];
-
+	
+	memcpy(&deband,&pl_deband_default_params,sizeof(deband));
+	memcpy(&render_params,&pl_render_default_params,sizeof(render_params));
+	
 	switch (decoder->ColorSpace) {
 	case AVCOL_SPC_RGB:
 		img->repr.sys = PL_COLOR_SYSTEM_BT_601; 
@@ -3457,6 +3474,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	case AVCOL_SPC_BT2020_NCL:
 		img->repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
 		memcpy(&img->color,&pl_color_space_bt2020_hlg,sizeof(struct pl_color_space));
+		deband.grain = 0.0f;			// no grain in HDR
 //		img->color.primaries = PL_COLOR_PRIM_BT_2020;
 //		img->color.transfer = PL_COLOR_TRC_HLG;
 //		img->color.light = PL_COLOR_LIGHT_SCENE_HLG;
@@ -3470,22 +3488,60 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 		break;
 	}
 	// Source crop
-	img->src_rect.x0 = video_src_rect.x0;
-	img->src_rect.y0 = video_src_rect.y0;
-	img->src_rect.x1 = video_src_rect.x1;
-	img->src_rect.y1 = video_src_rect.y1;
+	if (VideoScalerTest) {								// right side defnied scaler
+		pl_tex_clear(p->gpu,target->fbo,black);				// clear frame
+		img->src_rect.x0 = video_src_rect.x1/2+1;
+		img->src_rect.y0 = video_src_rect.y0;
+		img->src_rect.x1 = video_src_rect.x1;
+		img->src_rect.y1 = video_src_rect.y1;
 
-	// Video aspect ratio
-	target->dst_rect.x0 = dst_video_rect.x0;
-	target->dst_rect.y0 = dst_video_rect.y0;
-	target->dst_rect.x1 = dst_video_rect.x1;
-	target->dst_rect.y1 = dst_video_rect.y1;
+		// Video aspect ratio
+		target->dst_rect.x0 = dst_video_rect.x1/2+dst_video_rect.x0/2+1;
+		target->dst_rect.y0 = dst_video_rect.y0;
+		target->dst_rect.x1 = dst_video_rect.x1;
+		target->dst_rect.y1 = dst_video_rect.y1;
+	} else {
+		img->src_rect.x0 = video_src_rect.x0;
+		img->src_rect.y0 = video_src_rect.y0;
+		img->src_rect.x1 = video_src_rect.x1;
+		img->src_rect.y1 = video_src_rect.y1;
+
+		// Video aspect ratio
+		target->dst_rect.x0 = dst_video_rect.x0;
+		target->dst_rect.y0 = dst_video_rect.y0;
+		target->dst_rect.x1 = dst_video_rect.x1;
+		target->dst_rect.y1 = dst_video_rect.y1;
+	}
+	
+	
+	
+	if (VideoColorBlindness) {
+		switch(VideoColorBlindness) {
+			case 1: memcpy(&cone,&pl_vision_protanomaly,sizeof(cone));
+				break;
+			case 2: memcpy(&cone,&pl_vision_deuteranomaly,sizeof(cone));
+				break;
+			case 3: memcpy(&cone,&pl_vision_tritanomaly,sizeof(cone));
+				break;
+			case 4: memcpy(&cone,&pl_vision_monochromacy,sizeof(cone));
+				break;		
+			default: memcpy(&cone,&pl_vision_normal,sizeof(cone));
+				break;
+		}	
+		cone.strength = VideoColorBlindnessFaktor;
+		render_params.cone_params = &cone;
+	}
+	else {
+		render_params.cone_params = NULL;
+	}
 
 
 //	render_params.upscaler = &pl_filter_ewa_lanczos;
+	
 	render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
 	render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
 	render_params.color_adjustment = &colors;
+	render_params.deband_params = &deband;
 
 	colors.brightness = VideoBrightness;
 	colors.contrast = VideoContrast;
@@ -3505,8 +3561,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
-#if 0
-	if (1) {	
+
+	if (VideoScalerTest) {						// left side internal scaler (bicubic)
 		// Source crop
 		img->src_rect.x0 = video_src_rect.x0;
 		img->src_rect.y0 = video_src_rect.y0;
@@ -3518,13 +3574,20 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 		target->dst_rect.y0 = dst_video_rect.y0;
 		target->dst_rect.x1 = dst_video_rect.x1/2+dst_video_rect.x0/2;
 		target->dst_rect.y1 = dst_video_rect.y1;
-		render_params.upscaler = NULL;
-		render_params.downscaler = NULL;
-		if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
+		render_params.upscaler = pl_named_filters[VideoScalerTest-1].filter;
+		render_params.downscaler = pl_named_filters[VideoScalerTest-1].filter;
+		
+		if (!p->renderertest)
+			p->renderertest = pl_renderer_create(p->ctx, p->gpu);
+		
+		if (!pl_render_image(p->renderertest, &decoder->pl_images[current], target, &render_params)) {
     	    Fatal(_("Failed rendering frame!\n"));
     	}
 	}
-#endif
+	else if (p->renderertest) {
+		pl_renderer_destroy(&p->renderertest);
+		p->renderertest = NULL;
+	}
 #endif
 	
 	Debug(4, "video/vdpau: yy video surface %p displayed\n", current, decoder->SurfaceRead);
@@ -3534,14 +3597,18 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 void make_osd_overlay(int x, int y, int width, int height) {
 	const struct pl_fmt *fmt;
 	struct pl_overlay *pl;
+	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
+	
 	int offset = VideoWindowHeight - (VideoWindowHeight-height-y) - (VideoWindowHeight - y);
 		
 	fmt = pl_find_named_fmt(p->gpu, "rgba8");	// 8 Bit RGB
 	
 	pl = &osdoverlay;
 	
-	if (pl->plane.texture)
+	if (pl->plane.texture) {
+//		pl_tex_clear(p->gpu,pl->plane.texture,black);
 		pl_tex_destroy(p->gpu,&pl->plane.texture);
+	}
 	
 	// make texture for OSD
 	pl->plane.texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
@@ -3551,11 +3618,13 @@ void make_osd_overlay(int x, int y, int width, int height) {
 		.format = fmt,
 		.sampleable = true,
 		.host_writable = true,
+		.blit_dst = true,
 		.sample_mode = PL_TEX_SAMPLE_LINEAR,
 		.address_mode = PL_TEX_ADDRESS_CLAMP,
 	});
 	
 	// make overlay	
+	pl_tex_clear(p->gpu,pl->plane.texture,black);
 	pl->plane.components = 4;
 	pl->plane.shift_x = 0.0f;
 	pl->plane.shift_y = 0.0f;	
@@ -3611,7 +3680,7 @@ static void CuvidDisplayFrame(void)
 #else
 	pl_swapchain_swap_buffers(p->swapchain);
 //	last_time = GetusTicks();
-//	pl_swapchain_swap_buffers(p->swapchain);
+
 //	printf(" Latency %d  Time wait %2.2f\n",pl_swapchain_latency(p->swapchain),(float)(GetusTicks()-last_time)/1000000.0);
 	last_time = GetusTicks();
 	if (!p->swapchain)
@@ -3623,7 +3692,15 @@ static void CuvidDisplayFrame(void)
 	
 	pl_render_target_from_swapchain(&target, &frame);  // make target frame
 
-
+	if (VideoSurfaceModesChanged){
+		pl_renderer_destroy(&p->renderer);
+		p->renderer = pl_renderer_create(p->ctx, p->gpu);
+		if (p->renderertest) {
+			pl_renderer_destroy(&p->renderertest);
+			p->renderertest = NULL;
+		}
+		VideoSurfaceModesChanged = 0;
+	}
 	
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	if (VideoStudioLevels)
@@ -4175,6 +4252,9 @@ static void CuvidDisplayHandlerThread(void)
 					decoder->Closing = -1;
 				}
 			}
+#ifdef PLACEBO
+	usleep(100);
+#endif
 			continue;
 		}
 		decoded = 1;
@@ -4845,7 +4925,7 @@ void InitPlacebo(){
 
 	Debug(3,"Init Placebo\n");
 
-	p = malloc(sizeof(struct priv));
+	p = calloc(1,sizeof(struct priv));
 	if (!p)
 	   Fatal(_("Cant get memory for PLACEBO struct"));
 	
@@ -4959,9 +5039,12 @@ static void *VideoDisplayHandlerThread(void *dummy)
 		VideoUsedModule->DisplayHandlerThread();
     }
 	
-#ifdef PLACEBO_
+#ifdef PLACEBO
 	pl_renderer_destroy(&p->renderer);
-//	pl_tex_destroy(p->gpu, &p->final_fbo);
+	if (p->renderertest) {
+		pl_renderer_destroy(&p->renderertest);
+		p->renderertest = NULL;
+	}
 	pl_swapchain_destroy(&p->swapchain);
     pl_vulkan_destroy(&p->vk);
 	vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
@@ -6126,7 +6209,30 @@ void VideoSetStudioLevels(int onoff)
 {
     VideoStudioLevels = onoff;
 }
-
+///
+///	Set scaler test.
+///
+///	@param onoff	flag on/off
+///
+void VideoSetScalerTest(int onoff)
+{
+    VideoScalerTest = onoff;
+	VideoSurfaceModesChanged = 1;
+}
+	///
+///	Set Color Blindness.
+///
+void VideoSetColorBlindness(int value)
+{
+    VideoColorBlindness = value;;
+}
+///
+///	Set Color Blindness Faktor.
+///
+void VideoSetColorBlindnessFaktor(int value)
+{
+    VideoColorBlindnessFaktor = (float)value / 100.0f + 1.0f;
+}
 ///
 ///	Set background color.
 ///
@@ -6377,13 +6483,25 @@ void VideoExit(void)
     }
 #endif
 	
-#ifdef PLACEBO
+#ifdef PLACEBO_
+
+	pl_gpu_finish(p->gpu); 
+	if (osdoverlay.plane.texture) {
+		pl_tex_destroy(p->gpu,&osdoverlay.plane.texture);
+	}
 	pl_renderer_destroy(&p->renderer);
+	if (p->renderertest) {
+		pl_renderer_destroy(&p->renderertest);
+		p->renderertest = NULL;
+	}
 	pl_swapchain_destroy(&p->swapchain);
 	vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
-	pl_vk_inst_destroy(&p->vk_inst);	
+	pl_vk_inst_destroy(&p->vk_inst);
+printf("1\n");
 //    pl_vulkan_destroy(&p->vk);
+printf("1\n");
     pl_context_destroy(&p->ctx);
+printf("1\n");
 	free(p); 	
 #endif
 	
