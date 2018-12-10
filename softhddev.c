@@ -1022,29 +1022,29 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
     // channel switch: SetAudioChannelDevice: SetDigitalAudioDevice:
 
     if (SkipAudio || !MyAudioDecoder) {	// skip audio
-	return size;
+		return size;
     }
     if (StreamFreezed) {		// stream freezed
-	return 0;
+		return 0;
     }
     if (NewAudioStream) {
-	// this clears the audio ringbuffer indirect, open and setup does it
-	CodecAudioClose(MyAudioDecoder);
-	AudioFlushBuffers();
-	AudioSetBufferTime(ConfigAudioBufferTime);
-	AudioCodecID = AV_CODEC_ID_NONE;
-	AudioChannelID = -1;
-	NewAudioStream = 0;
+		// this clears the audio ringbuffer indirect, open and setup does it
+		CodecAudioClose(MyAudioDecoder);
+		AudioFlushBuffers();
+		AudioSetBufferTime(ConfigAudioBufferTime);
+		AudioCodecID = AV_CODEC_ID_NONE;
+		AudioChannelID = -1;
+		NewAudioStream = 0;
     }
     // hard limit buffer full: don't overrun audio buffers on replay
     if (AudioFreeBytes() < AUDIO_MIN_BUFFER_FREE) {
-	return 0;
+		return 0;
     }
 #ifdef USE_SOFTLIMIT
     // soft limit buffer full
     if (AudioSyncStream && VideoGetBuffers(AudioSyncStream) > 3
 	&& AudioUsedBytes() > AUDIO_MIN_BUFFER_FREE * 2) {
-	return 0;
+		return 0;
     }
 #endif
     // PES header 0x00 0x00 0x01 ID
@@ -1052,8 +1052,8 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
 
     // must be a PES start code
     if (size < 9 || !data || data[0] || data[1] || data[2] != 0x01) {
-	Error(_("[softhddev] invalid PES audio packet\n"));
-	return size;
+		Error(_("[softhddev] invalid PES audio packet\n"));
+		return size;
     }
     n = data[8];			// header size
 
@@ -1067,93 +1067,93 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
     }
 
     if (data[7] & 0x80 && n >= 5) {
-	AudioAvPkt->pts =
-	    (int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 | (data[11] &
-	    0xFE) << 14 | data[12] << 7 | (data[13] & 0xFE) >> 1;
-	//Debug(3, "audio: pts %#012" PRIx64 "\n", AudioAvPkt->pts);
+		AudioAvPkt->pts =
+			(int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 | (data[11] &
+			0xFE) << 14 | data[12] << 7 | (data[13] & 0xFE) >> 1;
+		//Debug(3, "audio: pts %#012" PRIx64 "\n", AudioAvPkt->pts);
     }
     if (0) {				// dts is unused
-	if (data[7] & 0x40) {
-	    AudioAvPkt->dts =
-		(int64_t) (data[14] & 0x0E) << 29 | data[15] << 22 | (data[16]
-		& 0xFE) << 14 | data[17] << 7 | (data[18] & 0xFE) >> 1;
-	    Debug(3, "audio: dts %#012" PRIx64 "\n", AudioAvPkt->dts);
-	}
+		if (data[7] & 0x40) {
+			AudioAvPkt->dts =
+			(int64_t) (data[14] & 0x0E) << 29 | data[15] << 22 | (data[16]
+			& 0xFE) << 14 | data[17] << 7 | (data[18] & 0xFE) >> 1;
+			Debug(3, "audio: dts %#012" PRIx64 "\n", AudioAvPkt->dts);
+		}
     }
 
     p = data + 9 + n;
     n = size - 9 - n;			// skip pes header
     if (n + AudioAvPkt->stream_index > AudioAvPkt->size) {
-	Fatal(_("[softhddev] audio buffer too small\n"));
-	AudioAvPkt->stream_index = 0;
+		Fatal(_("[softhddev] audio buffer too small\n"));
+		AudioAvPkt->stream_index = 0;
     }
 
     if (AudioChannelID != id) {		// id changed audio track changed
-	AudioChannelID = id;
-	AudioCodecID = AV_CODEC_ID_NONE;
-	Debug(3, "audio/demux: new channel id\n");
+		AudioChannelID = id;
+		AudioCodecID = AV_CODEC_ID_NONE;
+		Debug(3, "audio/demux: new channel id\n");
     }
     // Private stream + LPCM ID
     if ((id & 0xF0) == 0xA0) {
-	if (n < 7) {
-	    Error(_("[softhddev] invalid LPCM audio packet %d bytes\n"), size);
-	    return size;
-	}
-	if (AudioCodecID != AV_CODEC_ID_PCM_DVD) {
-	    static int samplerates[] = { 48000, 96000, 44100, 32000 };
-	    int samplerate;
-	    int channels;
-	    int bits_per_sample;
+		if (n < 7) {
+			Error(_("[softhddev] invalid LPCM audio packet %d bytes\n"), size);
+			return size;
+		}
+		if (AudioCodecID != AV_CODEC_ID_PCM_DVD) {
+			static int samplerates[] = { 48000, 96000, 44100, 32000 };
+			int samplerate;
+			int channels;
+			int bits_per_sample;
 
-	    Debug(3, "[softhddev]%s: LPCM %d sr:%d bits:%d chan:%d\n",
-		__FUNCTION__, id, p[5] >> 4, (((p[5] >> 6) & 0x3) + 4) * 4,
-		(p[5] & 0x7) + 1);
-	    CodecAudioClose(MyAudioDecoder);
+			Debug(3, "[softhddev]%s: LPCM %d sr:%d bits:%d chan:%d\n",
+			__FUNCTION__, id, p[5] >> 4, (((p[5] >> 6) & 0x3) + 4) * 4,
+			(p[5] & 0x7) + 1);
+			CodecAudioClose(MyAudioDecoder);
 
-	    bits_per_sample = (((p[5] >> 6) & 0x3) + 4) * 4;
-	    if (bits_per_sample != 16) {
-		Error(_
-		    ("[softhddev] LPCM %d bits per sample aren't supported\n"),
-		    bits_per_sample);
-		// FIXME: handle unsupported formats.
-	    }
-	    samplerate = samplerates[p[5] >> 4];
-	    channels = (p[5] & 0x7) + 1;
+			bits_per_sample = (((p[5] >> 6) & 0x3) + 4) * 4;
+			if (bits_per_sample != 16) {
+			Error(_
+				("[softhddev] LPCM %d bits per sample aren't supported\n"),
+				bits_per_sample);
+			// FIXME: handle unsupported formats.
+			}
+			samplerate = samplerates[p[5] >> 4];
+			channels = (p[5] & 0x7) + 1;
 
-	    // FIXME: ConfigAudioBufferTime + x
-	    AudioSetBufferTime(400);
-	    AudioSetup(&samplerate, &channels, 0);
-	    if (samplerate != samplerates[p[5] >> 4]) {
-		Error(_("[softhddev] LPCM %d sample-rate is unsupported\n"),
-		    samplerates[p[5] >> 4]);
-		// FIXME: support resample
-	    }
-	    if (channels != (p[5] & 0x7) + 1) {
-		Error(_("[softhddev] LPCM %d channels are unsupported\n"),
-		    (p[5] & 0x7) + 1);
-		// FIXME: support resample
-	    }
-	    //CodecAudioOpen(MyAudioDecoder, AV_CODEC_ID_PCM_DVD);
-	    AudioCodecID = AV_CODEC_ID_PCM_DVD;
-	}
+			// FIXME: ConfigAudioBufferTime + x
+			AudioSetBufferTime(400);
+			AudioSetup(&samplerate, &channels, 0);
+			if (samplerate != samplerates[p[5] >> 4]) {
+			Error(_("[softhddev] LPCM %d sample-rate is unsupported\n"),
+				samplerates[p[5] >> 4]);
+			// FIXME: support resample
+			}
+			if (channels != (p[5] & 0x7) + 1) {
+			Error(_("[softhddev] LPCM %d channels are unsupported\n"),
+				(p[5] & 0x7) + 1);
+			// FIXME: support resample
+			}
+			//CodecAudioOpen(MyAudioDecoder, AV_CODEC_ID_PCM_DVD);
+			AudioCodecID = AV_CODEC_ID_PCM_DVD;
+		}
 
-	if (AudioAvPkt->pts != (int64_t) AV_NOPTS_VALUE) {
-	    AudioSetClock(AudioAvPkt->pts);
-	    AudioAvPkt->pts = AV_NOPTS_VALUE;
-	}
-	swab(p + 7, AudioAvPkt->data, n - 7);
-	AudioEnqueue(AudioAvPkt->data, n - 7);
+		if (AudioAvPkt->pts != (int64_t) AV_NOPTS_VALUE) {
+			AudioSetClock(AudioAvPkt->pts);
+			AudioAvPkt->pts = AV_NOPTS_VALUE;
+		}
+		swab(p + 7, AudioAvPkt->data, n - 7);
+		AudioEnqueue(AudioAvPkt->data, n - 7);
 
-	return size;
+		return size;
     }
     // DVD track header
     if ((id & 0xF0) == 0x80 && (p[0] & 0xF0) == 0x80) {
-	p += 4;
-	n -= 4;				// skip track header
-	if (AudioCodecID == AV_CODEC_ID_NONE) {
-	    // FIXME: ConfigAudioBufferTime + x
-	    AudioSetBufferTime(400);
-	}
+		p += 4;
+		n -= 4;				// skip track header
+		if (AudioCodecID == AV_CODEC_ID_NONE) {
+			// FIXME: ConfigAudioBufferTime + x
+			AudioSetBufferTime(400);
+		}
     }
     // append new packet, to partial old data
     memcpy(AudioAvPkt->data + AudioAvPkt->stream_index, p, n);
@@ -1162,73 +1162,73 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
     n = AudioAvPkt->stream_index;
     p = AudioAvPkt->data;
     while (n >= 5) {
-	int r;
-	unsigned codec_id;
+		int r;
+		unsigned codec_id;
 
-	// 4 bytes 0xFFExxxxx Mpeg audio
-	// 3 bytes 0x56Exxx AAC LATM audio
-	// 5 bytes 0x0B77xxxxxx AC-3 audio
-	// 6 bytes 0x0B77xxxxxxxx E-AC-3 audio
-	// 7/9 bytes 0xFFFxxxxxxxxxxx ADTS audio
-	// PCM audio can't be found
-	r = 0;
-	codec_id = AV_CODEC_ID_NONE;	// keep compiler happy
-	if (id != 0xbd && FastMpegCheck(p)) {
-	    r = MpegCheck(p, n);
-	    codec_id = AV_CODEC_ID_MP2;
-	}
-	if (id != 0xbd && !r && FastLatmCheck(p)) {
-	    r = LatmCheck(p, n);
-	    codec_id = AV_CODEC_ID_AAC_LATM;
-	}
-	if ((id == 0xbd || (id & 0xF0) == 0x80) && !r && FastAc3Check(p)) {
-	    r = Ac3Check(p, n);
-	    codec_id = AV_CODEC_ID_AC3;
-	    if (r > 0 && p[5] > (10 << 3)) {
-		codec_id = AV_CODEC_ID_EAC3;
-	    }
-	    /* faster ac3 detection at end of pes packet (no improvemnts)
-	       if (AudioCodecID == codec_id && -r - 2 == n) {
-	       r = n;
-	       }
-	     */
-	}
-	if (id != 0xbd && !r && FastAdtsCheck(p)) {
-	    r = AdtsCheck(p, n);
-	    codec_id = AV_CODEC_ID_AAC;
-	}
-	if (r < 0) {			// need more bytes
-	    break;
-	}
-	if (r > 0) {
-	    AVPacket avpkt[1];
+		// 4 bytes 0xFFExxxxx Mpeg audio
+		// 3 bytes 0x56Exxx AAC LATM audio
+		// 5 bytes 0x0B77xxxxxx AC-3 audio
+		// 6 bytes 0x0B77xxxxxxxx E-AC-3 audio
+		// 7/9 bytes 0xFFFxxxxxxxxxxx ADTS audio
+		// PCM audio can't be found
+		r = 0;
+		codec_id = AV_CODEC_ID_NONE;	// keep compiler happy
+		if (id != 0xbd && FastMpegCheck(p)) {
+			r = MpegCheck(p, n);
+			codec_id = AV_CODEC_ID_MP2;
+		}
+		if (id != 0xbd && !r && FastLatmCheck(p)) {
+			r = LatmCheck(p, n);
+			codec_id = AV_CODEC_ID_AAC_LATM;
+		}
+		if ((id == 0xbd || (id & 0xF0) == 0x80) && !r && FastAc3Check(p)) {
+			r = Ac3Check(p, n);
+			codec_id = AV_CODEC_ID_AC3;
+			if (r > 0 && p[5] > (10 << 3)) {
+			codec_id = AV_CODEC_ID_EAC3;
+			}
+			/* faster ac3 detection at end of pes packet (no improvemnts)
+			   if (AudioCodecID == codec_id && -r - 2 == n) {
+			   r = n;
+			   }
+			 */
+		}
+		if (id != 0xbd && !r && FastAdtsCheck(p)) {
+			r = AdtsCheck(p, n);
+			codec_id = AV_CODEC_ID_AAC;
+		}
+		if (r < 0) {			// need more bytes
+			break;
+		}
+		if (r > 0) {
+			AVPacket avpkt[1];
 
-	    // new codec id, close and open new
-	    if (AudioCodecID != codec_id) {
-		CodecAudioClose(MyAudioDecoder);
-		CodecAudioOpen(MyAudioDecoder, codec_id);
-		AudioCodecID = codec_id;
-	    }
-	    av_init_packet(avpkt);
-	    avpkt->data = (void *)p;
-	    avpkt->size = r;
-	    avpkt->pts = AudioAvPkt->pts;
-	    avpkt->dts = AudioAvPkt->dts;
-	    // FIXME: not aligned for ffmpeg
-	    CodecAudioDecode(MyAudioDecoder, avpkt);
-	    AudioAvPkt->pts = AV_NOPTS_VALUE;
-	    AudioAvPkt->dts = AV_NOPTS_VALUE;
-	    p += r;
-	    n -= r;
-	    continue;
-	}
-	++p;
-	--n;
+			// new codec id, close and open new
+			if (AudioCodecID != codec_id) {
+			CodecAudioClose(MyAudioDecoder);
+			CodecAudioOpen(MyAudioDecoder, codec_id);
+			AudioCodecID = codec_id;
+			}
+			av_init_packet(avpkt);
+			avpkt->data = (void *)p;
+			avpkt->size = r;
+			avpkt->pts = AudioAvPkt->pts;
+			avpkt->dts = AudioAvPkt->dts;
+			// FIXME: not aligned for ffmpeg
+			CodecAudioDecode(MyAudioDecoder, avpkt);
+			AudioAvPkt->pts = AV_NOPTS_VALUE;
+			AudioAvPkt->dts = AV_NOPTS_VALUE;
+			p += r;
+			n -= r;
+			continue;
+		}
+		++p;
+		--n;
     }
 
     // copy remaining bytes to start of packet
     if (n) {
-	memmove(AudioAvPkt->data, p, n);
+		memmove(AudioAvPkt->data, p, n);
     }
     AudioAvPkt->stream_index = n;
 
@@ -1252,31 +1252,31 @@ int PlayTsAudio(const uint8_t * data, int size)
     static TsDemux tsdx[1];
 
     if (SkipAudio || !MyAudioDecoder) {	// skip audio
-	return size;
+		return size;
     }
     if (StreamFreezed) {		// stream freezed
-	return 0;
+		return 0;
     }
     if (NewAudioStream) {
-	// this clears the audio ringbuffer indirect, open and setup does it
-	CodecAudioClose(MyAudioDecoder);
-	AudioFlushBuffers();
-	// max time between audio packets 200ms + 24ms hw buffer
-	AudioSetBufferTime(ConfigAudioBufferTime);
-	AudioCodecID = AV_CODEC_ID_NONE;
-	AudioChannelID = -1;
-	NewAudioStream = 0;
-	PesReset(PesDemuxAudio);
+		// this clears the audio ringbuffer indirect, open and setup does it
+		CodecAudioClose(MyAudioDecoder);
+		AudioFlushBuffers();
+		// max time between audio packets 200ms + 24ms hw buffer
+		AudioSetBufferTime(ConfigAudioBufferTime);
+		AudioCodecID = AV_CODEC_ID_NONE;
+		AudioChannelID = -1;
+		NewAudioStream = 0;
+		PesReset(PesDemuxAudio);
     }
     // hard limit buffer full: don't overrun audio buffers on replay
     if (AudioFreeBytes() < AUDIO_MIN_BUFFER_FREE) {
-	return 0;
+		return 0;
     }
 #ifdef USE_SOFTLIMIT
     // soft limit buffer full
     if (AudioSyncStream && VideoGetBuffers(AudioSyncStream) > 3
 	&& AudioUsedBytes() > AUDIO_MIN_BUFFER_FREE * 2) {
-	return 0;
+		return 0;
     }
 #endif
 
@@ -2680,12 +2680,12 @@ void StillPicture(const uint8_t * data, int size)
 
     // might be called in Suspended Mode
     if (!MyVideoStream->Decoder || MyVideoStream->SkipStream) {
-	return;
+		return;
     }
     // must be a PES start code
     if (size < 9 || !data || data[0] || data[1] || data[2] != 0x01) {
-	Error(_("[softhddev] invalid still video packet\n"));
-	return;
+		Error(_("[softhddev] invalid still video packet\n"));
+		return;
     }
 #ifdef STILL_DEBUG
     InStillPicture = 1;
@@ -2697,15 +2697,15 @@ void StillPicture(const uint8_t * data, int size)
 
 
     if (MyVideoStream->CodecID == AV_CODEC_ID_NONE) {
-	// FIXME: should detect codec, see PlayVideo
-	Error(_("[softhddev] no codec known for still picture\n"));
+		// FIXME: should detect codec, see PlayVideo
+		Error(_("[softhddev] no codec known for still picture\n"));
     }
     // FIXME: can check video backend, if a frame was produced.
     // output for max reference frames
 #ifdef STILL_DEBUG
     fprintf(stderr, "still-picture\n");
 #endif
-    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 8 : 12);	++i) {
+    for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 8 : 8);	++i) {
 		const uint8_t *split;
 		int n;
 
@@ -2715,38 +2715,38 @@ void StillPicture(const uint8_t * data, int size)
 			n = size;
 			// split the I-frame into single pes packets
 			do {
-			int len;
+				int len;
 
 #ifdef DEBUG
-			if (split[0] || split[1] || split[2] != 0x01) {
-				Error(_("[softhddev] invalid still video packet\n"));
-				break;
-			}
+				if (split[0] || split[1] || split[2] != 0x01) {
+					Error(_("[softhddev] invalid still video packet\n"));
+					break;
+				}
 #endif
 
-			len = (split[4] << 8) + split[5];
-			if (!len || len + 6 > n) {
+				len = (split[4] << 8) + split[5];
+				if (!len || len + 6 > n) {
+					if ((split[3] & 0xF0) == 0xE0) {
+						// video only
+						while (!PlayVideo3(MyVideoStream, split, n)) {	// feed remaining bytes
+						}
+					}
+					break;
+				}
 				if ((split[3] & 0xF0) == 0xE0) {
-				// video only
-				while (!PlayVideo3(MyVideoStream, split, n)) {	// feed remaining bytes
+					// video only
+					while (!PlayVideo3(MyVideoStream, split, len + 6)) {	// feed it
+					}
 				}
-				}
-				break;
-			}
-			if ((split[3] & 0xF0) == 0xE0) {
-				// video only
-				while (!PlayVideo3(MyVideoStream, split, len + 6)) {	// feed it
-				}
-			}
-			split += 6 + len;
-			n -= 6 + len;
+				split += 6 + len;
+				n -= 6 + len;
 			} while (n > 6);
 
 			VideoNextPacket(MyVideoStream, MyVideoStream->CodecID);	// terminate last packet
 		} else {			// ES packet
 			if (MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
-			VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
-			MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
+				VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);	// close last stream
+				MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
 			}
 			VideoEnqueue(MyVideoStream, AV_NOPTS_VALUE,AV_NOPTS_VALUE, data, size);
 		}
@@ -2761,11 +2761,10 @@ void StillPicture(const uint8_t * data, int size)
     }
 
     // wait for empty buffers
-    for (i = 0; VideoGetBuffers(MyVideoStream) && i < 30; ++i) {
+    for (i = 0; VideoGetBuffers(MyVideoStream) && i < 50; ++i) {
 		usleep(10 * 1000);
     }
-    Debug(3, "[softhddev]%s: buffers %d %dms\n", __FUNCTION__,
-	VideoGetBuffers(MyVideoStream), i * 10);
+    Debug(3, "[softhddev]%s: buffers %d %dms\n", __FUNCTION__,	VideoGetBuffers(MyVideoStream), i * 10);
 #ifdef STILL_DEBUG
     InStillPicture = 0;
 #endif

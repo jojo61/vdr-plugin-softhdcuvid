@@ -429,6 +429,7 @@ static float VideoColorBlindnessFaktor = 1.0f;
 static xcb_atom_t WmDeleteWindowAtom;	///< WM delete message atom
 static xcb_atom_t NetWmState;		///< wm-state message atom
 static xcb_atom_t NetWmStateFullscreen;	///< fullscreen wm-state message atom
+static xcb_atom_t NetWmStateAbove;
 
 #ifdef DEBUG
 extern uint32_t VideoSwitch;		///< ticks for channel switch
@@ -2203,7 +2204,6 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	struct pl_tex *tex;
 	struct pl_image *img;
 	struct pl_plane *pl;
-	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 	
 //printf("Create textures and planes %d %d\n",size_x,size_y);	
     Debug(3,"video/vulkan: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
@@ -2584,7 +2584,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
 			CuvidSetupOutput(decoder);
 #ifdef PLACEBO     // dont show first frame
-//			decoder->newchannel = 1;
+			decoder->newchannel = 1;
 #endif
 		}
 	
@@ -3146,7 +3146,7 @@ extern void P016ToBgra32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int n
 extern void ResizeNv12(unsigned char *dpDstNv12, int nDstPitch, int nDstWidth, int nDstHeight, unsigned char *dpSrcNv12, int nSrcPitch, int nSrcWidth, int nSrcHeight, unsigned char* dpDstNv12UV);
 extern void ResizeP016(unsigned char *dpDstP016, int nDstPitch, int nDstWidth, int nDstHeight, unsigned char *dpSrcP016, int nSrcPitch, int nSrcWidth, int nSrcHeight, unsigned char* dpDstP016UV);
 extern void cudaLaunchNV12toARGBDrv(uint32_t *d_srcNV12, size_t nSourcePitch,uint32_t *d_dstARGB, size_t nDestPitch,uint32_t width, uint32_t height,CUstream streamID);
-
+void VideoSetAbove();
 ///
 ///	Render a ffmpeg frame.
 ///
@@ -3250,6 +3250,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 			av_frame_free(&output);
 		}
 #endif
+		
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
 			
@@ -3375,9 +3376,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	VkImage Image;
 	struct pl_image *img;
 	bool ok;
-	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 #endif
-	
+	static int last;
 	int current;
 	VdpRect video_src_rect;
 	VdpRect dst_rect;
@@ -3489,7 +3489,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	}
 	// Source crop
 	if (VideoScalerTest) {								// right side defnied scaler
-		pl_tex_clear(p->gpu,target->fbo,black);				// clear frame
+		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});				// clear frame
 		img->src_rect.x0 = video_src_rect.x1/2+1;
 		img->src_rect.y0 = video_src_rect.y0;
 		img->src_rect.x1 = video_src_rect.x1;
@@ -3550,13 +3550,18 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	colors.gamma = VideoGamma;
 	
 	if (ovl) {
-		pl_tex_clear(p->gpu,target->fbo,black);				// clear frame
+		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});				// clear frame
 		target->overlays = ovl;
 		target->num_overlays = 1;
 	} else {
 		target->overlays = 0;
 		target->num_overlays = 0;
 	}
+	
+	if (decoder->newchannel && current == 0 )
+		return;
+	
+	decoder->newchannel = 0;
 	
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
@@ -3606,7 +3611,7 @@ void make_osd_overlay(int x, int y, int width, int height) {
 	pl = &osdoverlay;
 	
 	if (pl->plane.texture) {
-//		pl_tex_clear(p->gpu,pl->plane.texture,black);
+		pl_tex_clear(p->gpu,pl->plane.texture,(float[4]){0});
 		pl_tex_destroy(p->gpu,&pl->plane.texture);
 	}
 	
@@ -3624,7 +3629,7 @@ void make_osd_overlay(int x, int y, int width, int height) {
 	});
 	
 	// make overlay	
-	pl_tex_clear(p->gpu,pl->plane.texture,black);
+	pl_tex_clear(p->gpu,pl->plane.texture,(float[4]){0});
 	pl->plane.components = 4;
 	pl->plane.shift_x = 0.0f;
 	pl->plane.shift_y = 0.0f;	
@@ -3661,7 +3666,7 @@ static void CuvidDisplayFrame(void)
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
-
+	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
 
 #endif
 
@@ -3758,6 +3763,7 @@ static void CuvidDisplayFrame(void)
 		}
 #ifdef PLACEBO
 		if (OsdShown == 1) {  // New OSD opened
+//			VideoSetAbove();
 			pthread_mutex_lock(&OSDMutex);	
 			make_osd_overlay(OSDx,OSDy,OSDxsize,OSDysize);
 			if (posd) {
@@ -3771,11 +3777,12 @@ static void CuvidDisplayFrame(void)
 
 		}
 		if (OsdShown == 2) {	
+//			VideoSetAbove();
 			CuvidMixVideo(decoder, i, &target, &osdoverlay);
-		} else {
+		} else {	
 			CuvidMixVideo(decoder, i, &target, NULL);
 		}
-
+		
 #else
 		CuvidMixVideo(decoder, i);
 #endif
@@ -3966,17 +3973,17 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 
 	// 60Hz: repeat every 5th field
 	if (Video60HzMode && !(decoder->FramesDisplayed % 6)) {
-		if (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock == (int64_t) AV_NOPTS_VALUE) {
+			if (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock == (int64_t) AV_NOPTS_VALUE) {
+				goto out;
+		}
+		// both clocks are known
+		if (audio_clock + VideoAudioDelay <= video_clock + 25 * 90) {
 			goto out;
-	}
-	// both clocks are known
-	if (audio_clock + VideoAudioDelay <= video_clock + 25 * 90) {
-		goto out;
-	}
-	// out of sync: audio before video
-	if (!decoder->TrickSpeed) {
-		goto skip_sync;
-	}
+		}
+		// out of sync: audio before video
+		if (!decoder->TrickSpeed) {
+			goto skip_sync;
+		}
 	}
 	// TrickSpeed
 	if (decoder->TrickSpeed) {
@@ -4007,7 +4014,8 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		diff = video_clock - audio_clock - VideoAudioDelay;
 		diff = (decoder->LastAVDiff + diff) / 2;
 		decoder->LastAVDiff = diff;
-
+//if (abs(diff/90) > 30)
+//  printf("Diff %d\n",diff/90);
 		if (abs(diff) > 5000 * 90) {	// more than 5s
 			err = CuvidMessage(2, "video: audio/video difference too big\n");
 		} else if (diff > 100 * 90) {
@@ -4027,7 +4035,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 			CuvidAdvanceDecoderFrame(decoder);
 	//	    filled = atomic_read(&decoder->SurfacesFilled);
 //			Debug(3,"hinter drop frame filled %d\n",atomic_read(&decoder->SurfacesFilled));
-			decoder->SyncCounter = 1;
+			decoder->SyncCounter = 1;;;
 		}
 #if defined(DEBUG) || defined(AV_INFO)
 		if (!decoder->SyncCounter && decoder->StartCounter < 1000) {
@@ -4273,7 +4281,7 @@ static void CuvidDisplayHandlerThread(void)
 	// all decoder buffers are full
 	// and display is not preempted
 	// speed up filling display queue, wait on display queue empty
-	if (!allfull) {
+	if (!allfull && !decoder->TrickSpeed) {
 		clock_gettime(CLOCK_MONOTONIC, &nowtime);
 		// time for one frame over?
 		if ((nowtime.tv_sec - CuvidFrameTime.tv_sec) * 1000 * 1000 * 1000 +
@@ -5744,7 +5752,15 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual, uint8_
 		NetWmStateFullscreen = reply->atom;
 		free(reply);
     }
-
+	
+    if ((reply =
+	    xcb_intern_atom_reply(Connection, xcb_intern_atom(Connection, 0,
+		    sizeof("_NET_WM_STATE_ABOVE") - 1,
+		    "_NET_WM_STATE_ABOVE"), NULL))) {
+		NetWmStateAbove = reply->atom;
+		free(reply);
+    }
+	
     xcb_map_window(Connection, VideoWindow);
 	xcb_flush(Connection);
 
@@ -6080,7 +6096,8 @@ void VideoSetFullscreen(int onoff)
 			event.data.data32[0] = XCB_EWMH_WM_STATE_REMOVE;
 		}
 		event.data.data32[1] = NetWmStateFullscreen;
-
+		event.data.data32[2] = NetWmStateAbove;
+		
 		xcb_send_event(Connection, XCB_SEND_EVENT_DEST_POINTER_WINDOW,
 			DefaultRootWindow(XlibDisplay),
 			XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
@@ -6090,6 +6107,27 @@ void VideoSetFullscreen(int onoff)
     }
 }
 
+void VideoSetAbove()
+{
+    if (XlibDisplay) {			// needs running connection
+		xcb_client_message_event_t event;
+
+		memset(&event, 0, sizeof(event));
+		event.response_type = XCB_CLIENT_MESSAGE;
+		event.format = 32;
+		event.window = VideoWindow;
+		event.type = NetWmState;
+		event.data.data32[0] = XCB_EWMH_WM_STATE_ADD;
+		event.data.data32[1] = NetWmStateAbove;
+
+		xcb_send_event(Connection, XCB_SEND_EVENT_DEST_POINTER_WINDOW,
+			DefaultRootWindow(XlibDisplay),
+			XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (void *)&event);
+		Debug(3, "video/x11: send fullscreen message %x %x\n",
+			event.data.data32[0], event.data.data32[1]);
+    }
+}
 ///
 ///	Set deinterlace mode.
 ///

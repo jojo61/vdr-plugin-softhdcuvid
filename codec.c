@@ -490,8 +490,9 @@ next_part:
 			if (ret >= 0) {									// one is avail.
 				got_frame = 1;
 			}
-			else
+			else {
 	            got_frame = 0;
+			}
 			
 			if (got_frame) {			// frame completed
 #ifdef FFMPEG_WORKAROUND_ARTIFACTS
@@ -1350,75 +1351,38 @@ void CodecAudioEnqueue(AudioDecoder * audio_decoder, int16_t * data, int count)
 
 int myavcodec_decode_audio3(AVCodecContext *avctx, int16_t *samples,
                                                 int *frame_size_ptr,
-                                                        AVPacket *avpkt)
+                                                AVPacket *avpkt)
 {
-      AVFrame *frame = av_frame_alloc();
-      int ret, got_frame = 0;
+    AVFrame *frame = av_frame_alloc();
+    int ret, got_frame = 0;
   
-      if (!frame)
-          return AVERROR(ENOMEM);
-#if 0
-      if (avctx->get_buffer != avcodec_default_get_buffer) {
-          av_log(avctx, AV_LOG_ERROR, "Custom get_buffer() for use with"
-                                      "avcodec_decode_audio3() detected.ar *) samples Overriding with avcodec_default_get_buffer\n");
-          av_log(avctx, AV_LOG_ERROR, "Please port your application to "
-                                      "avcodec_decode_audio4()\n");
-          avctx->get_buffer = avcodec_default_get_buffer;
-          avctx->release_buffer = avcodec_default_release_buffer;
-      }
-#endif  
-      ret = avcodec_decode_audio4(avctx, frame, &got_frame, avpkt);
+    if (!frame)
+        return AVERROR(ENOMEM);
+ 
+    ret = avcodec_decode_audio4(avctx, frame, &got_frame, avpkt);
   
-      if (ret >= 0 && got_frame) {
-#if 0
-          int ch, plane_size;
-          int planar    = av_sample_fmt_is_planar(avctx->sample_fmt);
-          int data_size = av_samples_get_buffer_size(&plane_size, avctx->channels,
-                                                     frame->nb_samples,
-                                                     avctx->sample_fmt, 1);
-          if (*frame_size_ptr < data_size) {
-              Debug(3, "output buffer size is too small for "
-                                          "the current frame (%d < %d)\n", *frame_size_ptr, data_size);
-              av_frame_free(&frame);
-              return AVERROR(EINVAL);
-          }
-#endif
-#if 1
-	  int i,ch;
-          int planar    = av_sample_fmt_is_planar(avctx->sample_fmt);
-            int data_size = av_get_bytes_per_sample(avctx->sample_fmt);
-            if (data_size < 0) {
-                /* This should not occur, checking just for paranoia */
-                fprintf(stderr, "Failed to calculate data size\n");
-                exit(1);
-            }
-            for (i=0; i<frame->nb_samples; i++)
-                for (ch=0; ch < avctx->channels; ch++) {
-                   memcpy(samples,frame->extended_data[ch]+data_size*i,data_size);
-		   samples = (char *) samples + data_size;
+	if (ret >= 0 && got_frame) {
+		int i,ch;
+		int planar    = av_sample_fmt_is_planar(avctx->sample_fmt);
+		int data_size = av_get_bytes_per_sample(avctx->sample_fmt);
+		if (data_size < 0) {
+			/* This should not occur, checking just for paranoia */
+			fprintf(stderr, "Failed to calculate data size\n");
+			exit(1);
 		}
-#endif
-//Debug(3,"data_size %d nb_samples %d sample_fmt %d  channels %d planar %d\n",data_size,frame->nb_samples,avctx->sample_fmt,avctx->channels,planar);  
-
-#if 0  
-          memcpy(samples, frame->extended_data[0], plane_size);
-//          memcpy(samples, frame->data[0], plane_size);
-
-          if (planar && avctx->channels > 1) {
-              uint8_t *out = ((uint8_t *)samples) + plane_size;
-              for (ch = 1; ch < avctx->channels; ch++) {
-                  memcpy(out, frame->extended_data[ch], plane_size);
-//                  memcpy(out, frame->data[ch], plane_size);
-                  out += plane_size;
-              }
-          }
-#endif
-          *frame_size_ptr = data_size  * avctx->channels * frame->nb_samples; 
-      } else {
-          *frame_size_ptr = 0;
-      }
-      av_frame_free(&frame);
-      return ret;
+		for (i=0; i<frame->nb_samples; i++) {
+			for (ch=0; ch < avctx->channels; ch++) {
+				memcpy(samples,frame->extended_data[ch]+data_size*i,data_size);
+				samples = (char *) samples + data_size;
+			}
+		}  
+		//Debug(3,"data_size %d nb_samples %d sample_fmt %d  channels %d planar %d\n",data_size,frame->nb_samples,avctx->sample_fmt,avctx->channels,planar);
+		*frame_size_ptr = data_size  * avctx->channels * frame->nb_samples; 
+    } else {
+        *frame_size_ptr = 0;
+    }
+    av_frame_free(&frame);
+    return ret;
  }
 
 
@@ -1444,110 +1408,59 @@ void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
     buf_sz = sizeof(buf);
     l = myavcodec_decode_audio3(audio_ctx, buf, &buf_sz, (AVPacket *) avpkt);
     if (avpkt->size != l) {
-	if (l == AVERROR(EAGAIN)) {
-	    Error(_("codec: latm\n"));
-	    return;
-	}
-	if (l < 0) {			// no audio frame could be decompressed
-	    Error(_("codec: error audio data\n"));
-	    return;
-	}
-	Error(_("codec: error more than one frame data\n"));
+		if (l == AVERROR(EAGAIN)) {
+			Error(_("codec: latm\n"));
+			return;
+		}
+		if (l < 0) {			// no audio frame could be decompressed
+			Error(_("codec: error audio data\n"));
+			return;
+		}
+		Error(_("codec: error more than one frame data\n"));
     }
     // update audio clock
     if (avpkt->pts != (int64_t) AV_NOPTS_VALUE) {
-	CodecAudioSetClock(audio_decoder, avpkt->pts);
+		CodecAudioSetClock(audio_decoder, avpkt->pts);
     }
     // FIXME: must first play remainings bytes, than change and play new.
     if (audio_decoder->Passthrough != CodecPassthrough
-	|| audio_decoder->SampleRate != audio_ctx->sample_rate
-	|| audio_decoder->Channels != audio_ctx->channels) {
-	CodecAudioUpdateFormat(audio_decoder);
+		|| audio_decoder->SampleRate != audio_ctx->sample_rate
+		|| audio_decoder->Channels != audio_ctx->channels) {
+			CodecAudioUpdateFormat(audio_decoder);
     }
 
     if (audio_decoder->HwSampleRate && audio_decoder->HwChannels) {
-	// need to resample audio
-	if (audio_decoder->ReSample) {
-	    int16_t outbuf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4 +
-		FF_INPUT_BUFFER_PADDING_SIZE]
-		__attribute__ ((aligned(16)));
-	    int outlen;
+		// need to resample audio
+		if (audio_decoder->ReSample) {
+			int16_t outbuf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4 +
+			FF_INPUT_BUFFER_PADDING_SIZE]
+			__attribute__ ((aligned(16)));
+			int outlen;
 
-	    // FIXME: libav-0.7.2 crash here
-	    outlen =
-		audio_resample(audio_decoder->ReSample, outbuf, buf, buf_sz);
+			// FIXME: libav-0.7.2 crash here
+			outlen = audio_resample(audio_decoder->ReSample, outbuf, buf, buf_sz);
 #ifdef DEBUG
-	    if (outlen != buf_sz) {
-		Debug(3, "codec/audio: possible fixed ffmpeg\n");
-	    }
+			if (outlen != buf_sz) {
+				Debug(3, "codec/audio: possible fixed ffmpeg\n");
+			}
 #endif
-	    if (outlen) {
-		// outlen seems to be wrong in ffmpeg-0.9
-		outlen /= audio_decoder->Channels *
-		    av_get_bytes_per_sample(audio_ctx->sample_fmt);
-		outlen *=
-		    audio_decoder->HwChannels *
-		    av_get_bytes_per_sample(audio_ctx->sample_fmt);
-		Debug(4, "codec/audio: %d -> %d\n", buf_sz, outlen);
-		CodecAudioEnqueue(audio_decoder, outbuf, outlen);
-	    }
-	} else {
-	    if (CodecAudioPassthroughHelper(audio_decoder, avpkt)) {
-		return;
-	    }
-#if 0
-	    //
-	    //	old experimental code
-	    //
-	    if (1) {
-		// FIXME: need to detect dts
-		// copy original data for output
-		// FIXME: buf is sint
-		buf[0] = 0x72;
-		buf[1] = 0xF8;
-		buf[2] = 0x1F;
-		buf[3] = 0x4E;
-		buf[4] = 0x00;
-		switch (avpkt->size) {
-		    case 512:
-			buf[5] = 0x0B;
-			break;
-		    case 1024:
-			buf[5] = 0x0C;
-			break;
-		    case 2048:
-			buf[5] = 0x0D;
-			break;
-		    default:
-			Debug(3,
-			    "codec/audio: dts sample burst not supported\n");
-			buf[5] = 0x00;
-			break;
+			if (outlen) {
+				// outlen seems to be wrong in ffmpeg-0.9
+				outlen /= audio_decoder->Channels *
+					av_get_bytes_per_sample(audio_ctx->sample_fmt);
+				outlen *=
+					audio_decoder->HwChannels *
+					av_get_bytes_per_sample(audio_ctx->sample_fmt);
+				Debug(4, "codec/audio: %d -> %d\n", buf_sz, outlen);
+				CodecAudioEnqueue(audio_decoder, outbuf, outlen);
+			}
+		} else {
+			if (CodecAudioPassthroughHelper(audio_decoder, avpkt)) {
+				return;
+			}
+
+			CodecAudioEnqueue(audio_decoder, buf, buf_sz);
 		}
-		buf[6] = (avpkt->size * 8);
-		buf[7] = (avpkt->size * 8) >> 8;
-		//buf[8] = 0x0B;
-		//buf[9] = 0x77;
-		//printf("%x %x\n", avpkt->data[0],avpkt->data[1]);
-		// swab?
-		memcpy(buf + 8, avpkt->data, avpkt->size);
-		memset(buf + 8 + avpkt->size, 0, buf_sz - 8 - avpkt->size);
-	    } else if (1) {
-		// FIXME: need to detect mp2
-		// FIXME: mp2 passthrough
-		// see softhddev.c version/layer
-		// 0x04 mpeg1 layer1
-		// 0x05 mpeg1 layer23
-		// 0x06 mpeg2 ext
-		// 0x07 mpeg2.5 layer 1
-		// 0x08 mpeg2.5 layer 2
-		// 0x09 mpeg2.5 layer 3
-	    }
-	    // DTS HD?
-	    // True HD?
-#endif
-	    CodecAudioEnqueue(audio_decoder, buf, buf_sz);
-	}
     }
 }
 
