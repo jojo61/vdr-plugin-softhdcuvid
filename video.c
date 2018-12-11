@@ -3562,7 +3562,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 		return;
 	
 	decoder->newchannel = 0;
-	pl_tex_clear(p->gpu,target->fbo,(float[4]){0});
+	
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
@@ -3723,6 +3723,7 @@ static void CuvidDisplayFrame(void)
 //	target.repr.bits.color_depth = 16;
 //	target.repr.bits.bit_shift =0;
 	
+	pl_tex_clear(p->gpu,target.fbo,(float[4]){0});
 	switch (VulkanTargetColorSpace) {
 		case 0:
 			memcpy(&target.color,&pl_color_space_monitor,sizeof(struct pl_color_space));  
