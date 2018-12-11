@@ -2715,10 +2715,10 @@ int get_RGB(CuvidDecoder *decoder) {
 				.sample_mode = PL_TEX_SAMPLE_LINEAR,
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 	});
-	target.dst_rect.x0 = 0;
-	target.dst_rect.y0 = 0;
-	target.dst_rect.x1= width;
-	target.dst_rect.y1= height;
+	target.dst_rect.x0 = decoder->OutputX;
+	target.dst_rect.y0 = decoder->OutputY;
+	target.dst_rect.x1= decoder->OutputX + decoder->OutputWidth;
+	target.dst_rect.y1= decoder->OutputY + decoder->OutputHeight;
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	target.repr.levels = PL_COLOR_LEVELS_PC;
 	target.repr.alpha = PL_ALPHA_UNKNOWN;
@@ -2787,8 +2787,8 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 	
 	//	get real surface size
 #ifdef PLACEBO
-    width = decoder->OutputWidth;
-	height = decoder->OutputHeight;
+    width = decoder->VideoWidth;
+	height = decoder->VideoHeight;
 #else
 	width = decoder->InputWidth;
 	height = decoder->InputHeight;
@@ -3562,7 +3562,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 		return;
 	
 	decoder->newchannel = 0;
-	
+	pl_tex_clear(p->gpu,target->fbo,(float[4]){0});
 	if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
@@ -3683,8 +3683,14 @@ static void CuvidDisplayFrame(void)
 	last_time = GetusTicks();	
 	glClear(GL_COLOR_BUFFER_BIT);
 #else
-	pl_swapchain_swap_buffers(p->swapchain);
-//	last_time = GetusTicks();
+	
+	diff = (GetusTicks()-last_time)/1000000;
+//	printf("Time wait %2.2f \n",(float)(diff));
+	last_time = GetusTicks();
+
+	
+	
+	pl_swapchain_swap_buffers(p->swapchain);  // swap buffers
 
 //	printf(" Latency %d  Time wait %2.2f\n",pl_swapchain_latency(p->swapchain),(float)(GetusTicks()-last_time)/1000000.0);
 	last_time = GetusTicks();
@@ -3752,6 +3758,7 @@ static void CuvidDisplayFrame(void)
 		decoder->StartCounter++;
 
 		filled = atomic_read(&decoder->SurfacesFilled);
+//printf("Filled %d\n",filled);
 		// need 1 frame for progressive, 3 frames for interlaced	
 		if (filled < 1 + 2 * decoder->Interlaced) { 
 			// FIXME: rewrite MixVideo to support less surfaces
