@@ -2612,6 +2612,8 @@ int get_RGB(CuvidDecoder *decoder) {
 	struct pl_render_target target = {0};
 	const struct pl_fmt *fmt; 
 	VkImage Image;
+	int offset,x1,y1,x0,y0;
+	float faktorx,faktory;
 #endif
 	
 	uint8_t *base;
@@ -2702,7 +2704,8 @@ int get_RGB(CuvidDecoder *decoder) {
 	
 	
 #else
-
+	faktorx = (float)width / (float)VideoWindowWidth;
+ 	faktory = (float)height / (float) VideoWindowHeight;
 	fmt = pl_find_named_fmt(p->gpu,"bgra8");
 	target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
 				.w = width,
@@ -2715,10 +2718,10 @@ int get_RGB(CuvidDecoder *decoder) {
 				.sample_mode = PL_TEX_SAMPLE_LINEAR,
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 	});
-	target.dst_rect.x0 = decoder->OutputX;
-	target.dst_rect.y0 = decoder->OutputY;
-	target.dst_rect.x1= decoder->OutputX + decoder->OutputWidth;
-	target.dst_rect.y1= decoder->OutputY + decoder->OutputHeight;
+	target.dst_rect.x0 = (float)decoder->OutputX * faktorx;
+	target.dst_rect.y0 = (float)decoder->OutputY * faktory;
+	target.dst_rect.x1 = (float)(decoder->OutputX + decoder->OutputWidth) * faktorx;
+	target.dst_rect.y1 = (float)(decoder->OutputY + decoder->OutputHeight) * faktory;
 	target.repr.sys = PL_COLOR_SYSTEM_RGB;
 	target.repr.levels = PL_COLOR_LEVELS_PC;
 	target.repr.alpha = PL_ALPHA_UNKNOWN;
@@ -2734,6 +2737,15 @@ int get_RGB(CuvidDecoder *decoder) {
 	if (ovl) {
 		target.overlays = ovl;
 		target.num_overlays = 1;
+		x0 = ovl->rect.x0;
+		y0 = ovl->rect.y0;
+		x1 = ovl->rect.x1;
+		y1 = ovl->rect.y1;
+		ovl->rect.x0 = (float)x0 * faktorx;
+		ovl->rect.y0 = (float)y0 * faktory;
+		ovl->rect.x1 = (float)x1 * faktorx;
+		ovl->rect.y1 = (float)y1 * faktory;
+		
 	} else {
 		target.overlays = 0;
 		target.num_overlays = 0;
@@ -2744,7 +2756,14 @@ int get_RGB(CuvidDecoder *decoder) {
         Fatal(_("Failed rendering frame!\n"));
     }
 	pl_gpu_finish(p->gpu);
-
+	
+	if (ovl) {
+		ovl->rect.x0 = x0;
+		ovl->rect.y0 = y0;
+		ovl->rect.x1 = x1;
+		ovl->rect.y1 = y1;	
+	}
+	
 	pl_tex_download(p->gpu,&(struct pl_tex_transfer_params) {		// download Data
 					.tex = target.fbo,
 					.ptr = base,
@@ -3550,7 +3569,6 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	colors.gamma = VideoGamma;
 	
 	if (ovl) {
-		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});				// clear frame
 		target->overlays = ovl;
 		target->num_overlays = 1;
 	} else {
