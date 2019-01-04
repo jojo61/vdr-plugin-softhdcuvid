@@ -1687,156 +1687,62 @@ static void CodecAudioUpdateFormat(AudioDecoder * audio_decoder)
 **	@param audio_decoder	audio decoder data
 **	@param avpkt		audio packet
 */
+
 void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 {
-    AVCodecContext *audio_ctx;
+    AVCodecContext *audio_ctx = audio_decoder->AudioCtx;
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(56,28,1)
-    AVFrame frame[1];
-#else
-    AVFrame *frame;
-#endif
-    int got_frame;
-    int n,ret;
+    if (audio_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
+	int ret;
+	AVPacket pkt[1];
+	AVFrame *frame = audio_decoder->Frame;
 
-    audio_ctx = audio_decoder->AudioCtx;
-
-    // FIXME: don't need to decode pass-through codecs
-
-    // new AVFrame API
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(56,28,1)
-    avcodec_get_frame_defaults(frame);
-#else
-    frame = audio_decoder->Frame;
-    av_frame_unref(frame);
-#endif
-
-    got_frame = 0;
-#if 0
-    n = avcodec_decode_audio4(audio_ctx, frame, &got_frame,	(AVPacket *) avpkt);
-#else
-//  SUGGESTION
-//  Now that avcodec_decode_audio4 is deprecated and replaced
-//  by 2 calls (receive frame and send packet), this could be optimized
-//  into separate routines or separate threads.
-//  Also now that it always consumes a whole buffer some code
-//  in the caller may be able to be optimized.
-    ret = avcodec_receive_frame(audio_ctx,frame);
-    if (ret == 0)
-        got_frame = 1;
-    if (ret == AVERROR(EAGAIN))
-        ret = 0;
-    if (ret == 0)
-        ret = avcodec_send_packet(audio_ctx, avpkt);
-    if (ret == AVERROR(EAGAIN))
-        ret = 0;
-    else if (ret < 0)
-    {
-//        Debug(3, "codec/audio: audio decode error: %1 (%2)\n",av_make_error_string(error, sizeof(error), ret),got_frame);
-        return;
-    }
-    else
-        ret = avpkt->size;
-    n = ret; //FIXME: why n and not ret??
-#endif
-    if (n != avpkt->size) {
-		if (n == AVERROR(EAGAIN)) {
-			Error(_("codec/audio: latm\n"));
-			return;
-		}
-		if (n < 0) {			// no audio frame could be decompressed
-			Error(_("codec/audio: bad audio frame\n"));
-			return;
-		}
-		Error(_("codec/audio: error more than one frame data\n"));
-    }
-    if (!got_frame) {
-		Error(_("codec/audio: no frame\n"));
-	return;
-    }
-    // update audio clock
-    if (avpkt->pts != (int64_t) AV_NOPTS_VALUE) {
-	CodecAudioSetClock(audio_decoder, avpkt->pts);
-    }
-    // format change
-    if (audio_decoder->Passthrough != CodecPassthrough
-	|| audio_decoder->SampleRate != audio_ctx->sample_rate
-	|| audio_decoder->Channels != audio_ctx->channels) {
-	CodecAudioUpdateFormat(audio_decoder);
-    }
-
-    if (!audio_decoder->HwSampleRate || !audio_decoder->HwChannels) {
-	return;				// unsupported sample format
-    }
-
-    if (CodecAudioPassthroughHelper(audio_decoder, avpkt)) {
-	return;
-    }
-
-    if (0) {
-	char strbuf[32];
-	int data_sz;
-	int plane_sz;
-
-	data_sz =
-	    av_samples_get_buffer_size(&plane_sz, audio_ctx->channels,
-	    frame->nb_samples, audio_ctx->sample_fmt, 1);
-	fprintf(stderr, "codec/audio: sample_fmt %s\n",
-	    av_get_sample_fmt_name(audio_ctx->sample_fmt));
-	av_get_channel_layout_string(strbuf, 32, audio_ctx->channels,
-	    audio_ctx->channel_layout);
-	fprintf(stderr, "codec/audio: layout %s\n", strbuf);
-	fprintf(stderr,
-	    "codec/audio: channels %d samples %d plane %d data %d\n",
-	    audio_ctx->channels, frame->nb_samples, plane_sz, data_sz);
-    }
-#ifdef USE_SWRESAMPLE
-    if (audio_decoder->Resample) {
-	uint8_t outbuf[8192 * 2 * 8];
-	uint8_t *out[1];
-
-	out[0] = outbuf;
-	n = swr_convert(audio_decoder->Resample, out,
-	    sizeof(outbuf) / (2 * audio_decoder->HwChannels),
-	    (const uint8_t **)frame->extended_data, frame->nb_samples);
-	if (n > 0) {
-	    if (!(audio_decoder->Passthrough & CodecPCM)) {
-		CodecReorderAudioFrame((int16_t *) outbuf,
-		    n * 2 * audio_decoder->HwChannels,
-		    audio_decoder->HwChannels);
-	    }
-	    AudioEnqueue(outbuf, n * 2 * audio_decoder->HwChannels);
+	av_frame_unref(frame);
+	*pkt = *avpkt;			// use copy
+	ret = avcodec_send_packet(audio_ctx, pkt);
+	if (ret < 0) {
+	    Debug(3, "codec: sending audio packet failed");
+	    return;
 	}
-	return;
-    }
-#endif
-
-#ifdef USE_AVRESAMPLE
-    if (audio_decoder->Resample) {
-	uint8_t outbuf[8192 * 2 * 8];
-	uint8_t *out[1];
-
-	out[0] = outbuf;
-	n = avresample_convert(audio_decoder->Resample, out, 0,
-	    sizeof(outbuf) / (2 * audio_decoder->HwChannels),
-	    (uint8_t **) frame->extended_data, 0, frame->nb_samples);
-	// FIXME: set out_linesize, in_linesize correct
-	if (n > 0) {
-	    if (!(audio_decoder->Passthrough & CodecPCM)) {
-		CodecReorderAudioFrame((int16_t *) outbuf,
-		    n * 2 * audio_decoder->HwChannels,
-		    audio_decoder->HwChannels);
-	    }
-	    AudioEnqueue(outbuf, n * 2 * audio_decoder->HwChannels);
+	ret = avcodec_receive_frame(audio_ctx, frame);
+	if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
+	    Debug(3, "codec: receiving audio frame failed");
+	    return;
 	}
-	return;
-    }
-#endif
+	if (ret >= 0) {
+	    // update audio clock
+	    if (avpkt->pts != (int64_t) AV_NOPTS_VALUE) {
+		CodecAudioSetClock(audio_decoder, avpkt->pts);
+	    }
+	    // format change
+	    if (audio_decoder->Passthrough != CodecPassthrough || audio_decoder->SampleRate != audio_ctx->sample_rate
+		|| audio_decoder->Channels != audio_ctx->channels) {
+		CodecAudioUpdateFormat(audio_decoder);
+	    }
+	    if (!audio_decoder->HwSampleRate || !audio_decoder->HwChannels) {
+		return;			// unsupported sample format
+	    }
+	    if (CodecAudioPassthroughHelper(audio_decoder, avpkt)) {
+		return;
+	    }
+	    if (audio_decoder->Resample) {
+		uint8_t outbuf[8192 * 2 * 8];
+		uint8_t *out[1];
 
-#ifdef DEBUG
-    // should be never reached
-    fprintf(stderr, "oops\n");
-#endif
+		out[0] = outbuf;
+		ret = swr_convert(audio_decoder->Resample, out, sizeof(outbuf) / (2 * audio_decoder->HwChannels),
+		    (const uint8_t **)frame->extended_data, frame->nb_samples);
+		if (ret > 0) {
+		    if (!(audio_decoder->Passthrough & CodecPCM)) {
+			CodecReorderAudioFrame((int16_t *) outbuf, ret * 2 * audio_decoder->HwChannels,
+			    audio_decoder->HwChannels);
+		    }
+		    AudioEnqueue(outbuf, ret * 2 * audio_decoder->HwChannels);
+		}
+		return;
+	    }
+	}
+    }
 }
 
 #endif
