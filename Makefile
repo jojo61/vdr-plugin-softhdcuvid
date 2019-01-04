@@ -192,7 +192,7 @@ LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
 _CFLAGS += -I/usr/local/cuda/include 
 _CFLAGS += -I./opengl -I./
 
-LIBS += -L/usr/lib64/opengl/nvidia/lib
+LIBS += -L/usr/lib64
 LIBS += -L/usr/local/cuda/lib64
 
 ifeq ($(LIBPLACEBO),1)
