@@ -1444,7 +1444,7 @@ int cOglThread::StoreImage(const cImage &image) {
 
     tColor *argb = MALLOC(tColor, imgSize);
     if (!argb) {
-        esyslog("[softhddev]memory allocation of %d kb for OSD image failed", imgSize  * sizeof(tColor) / 1024);
+        esyslog("[softhddev]memory allocation of %ld kb for OSD image failed", (imgSize  * sizeof(tColor)) / 1024);
         ClearSlot(slot);
         slot = 0;
         return 0;
@@ -1604,6 +1604,7 @@ bool cOglThread::InitOpenGL(void) {
     buffer[0] = strdup("openglosd");
     buffer[1] = strdup("-display");
     buffer[2] = strdup(displayName);
+
     char **argv = buffer;
     glutInit(&argc, argv);
     glutInitDisplayMode (GLUT_SINGLE | GLUT_RGBA | GLUT_ALPHA);
@@ -1614,7 +1615,7 @@ bool cOglThread::InitOpenGL(void) {
     free(buffer[0]);
     free(buffer[1]);
     free(buffer[2]);
-
+	
     GLenum err = glewInit();
     if( err != GLEW_OK) {
         esyslog("[softhddev]glewInit failed, aborting\n");
@@ -2040,7 +2041,7 @@ void cOglOsd::Flush(void) {
     //clear buffer
     //uint64_t start = cTimeMs::Now();
     //dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
-	
+
 
     oglThread->DoCmd(new cOglCmdFill(bFb, clrTransparent));
 

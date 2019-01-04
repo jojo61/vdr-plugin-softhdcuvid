@@ -441,7 +441,7 @@ s_CudaErrorStr sCudaDrvErrorString[] =
 
 // This is just a linear search through the array, since the error_id's are not
 // always ocurring consecutively
-inline const char *getCudaDrvErrorString(CUresult error_id)
+static inline const char *getCudaDrvErrorString(CUresult error_id)
 {
     int index = 0;
 

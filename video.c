@@ -1803,7 +1803,7 @@ int CuvidMessage(int level, const char *format, ...)
 #define checkCudaErrors(err)  __checkCudaErrors (err, __FILE__, __LINE__)
 
 // These are the inline versions for all of the SDK helper functions
-inline void __checkCudaErrors(CUresult err, const char *file, const int line)
+static inline void __checkCudaErrors(CUresult err, const char *file, const int line)
 {
     if (CUDA_SUCCESS != err)
     {
@@ -2190,7 +2190,7 @@ void SDK_CHECK_ERROR_GL() {
     GLenum gl_error = glGetError();
 
     if (gl_error != GL_NO_ERROR) {
-       Fatal(_("video/cuvid: SDL error %d: %d\n"),gl_error);
+       Fatal(_("video/cuvid: SDL error %d\n"),gl_error);
     }
 }
 
