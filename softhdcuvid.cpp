@@ -992,6 +992,7 @@ void cMenuSetupSoft::Create(void)
     static const char *const video_display_formats_16_9[] = {
 	"pan&scan", "pillarbox", "center cut-out",
     };
+#if 0
     static const char *const deinterlace[] = {
 	"Bob", "Weave/None", "Temporal", "TemporalSpatial", "Software Bob",
 	"Software Spatial",
@@ -999,14 +1000,8 @@ void cMenuSetupSoft::Create(void)
     static const char *const deinterlace_short[] = {
 	"B", "W", "T", "T+S", "S+B", "S+S",
     };
-#ifndef PLACEBO
-    static const char *const scaling[] = {
-	"Normal", "Fast", "HQ", "Anamorphic"
-    };
 #endif
-    static const char *const scaling_short[] = {
-	"N", "F", "HQ", "A"
-    };
+
     static const char *const audiodrift[] = {
 	"None", "PCM", "AC-3", "PCM + AC-3"
     };

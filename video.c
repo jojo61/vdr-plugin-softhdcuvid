@@ -393,12 +393,6 @@ static int VideoCutTopBottom[VideoResolutionMax];
     /// Default cut left and right in pixels
 static int VideoCutLeftRight[VideoResolutionMax];
 
-    /// Color space ITU-R BT.601, ITU-R BT.709, ...
-static const VideoColorSpace VideoColorSpaces[VideoResolutionMax] = {
-    VideoColorSpaceBt601, VideoColorSpaceBt709, VideoColorSpaceBt709,
-    VideoColorSpaceBt709,VideoColorSpaceBt709
-};
-
     /// Default scaling mode
 static VideoScalingModes VideoScaling[VideoResolutionMax];
 
@@ -891,10 +885,8 @@ static void GlxUploadOsdTexture(int x, int y, int width, int height,
 ///	@param width	osd width
 ///	@param height	osd height
 ///
-static void GlxOsdInit(int width, int height)
+static void GlxOsdInit(__attribute__((unused))int width, __attribute__((unused))int height)
 {
-    int i;
-
 #ifdef DEBUG
     if (!GlxEnabled) {
 		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
@@ -1666,7 +1658,7 @@ typedef struct _cuvid_decoder_
 	CUcontext cuda_ctx;
 	
 #ifdef PLACEBO
-	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images für Placebo chain
+	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images fï¿½r Placebo chain
 	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
 	const struct pl_buf		 *pl_buf_Y,*pl_buf_UV;				 // buffer for Texture upload
 	struct ext_buf			 ebuf[2];							 // for managing vk buffer
@@ -1854,8 +1846,6 @@ static void CuvidCreateSurfaces(CuvidDecoder * decoder, int width, int height,en
 static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 {
     int i,j;
-	CUcontext dummy;
-    CUdeviceptr d;
 
     Debug(3, "video/cuvid: %s\n", __FUNCTION__);
 	
@@ -2003,7 +1993,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 		return NULL;
     }
 	
-    if (i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) {
+    if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) != 0) {
 		Fatal("codec: can't allocate HW video codec context err %04x",i);
     }
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
@@ -2061,7 +2051,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 ///
 static void CuvidCleanup(CuvidDecoder * decoder)
 {
-    int i,n=0;
+    int i;
 
 Debug(3,"Cuvid Clean up\n");
 	
@@ -2096,7 +2086,7 @@ Debug(3,"Cuvid Clean up\n");
 ///
 static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 {
-    int i,n;
+    int i;
 Debug(3,"cuvid del hw decoder \n");
 	if (decoder == CuvidDecoders[0])
   		pthread_mutex_lock(&VideoLockMutex);
@@ -2130,7 +2120,7 @@ Debug(3,"cuvid del hw decoder \n");
     Error(_("video/cuvid: decoder not in decoder list.\n"));
 }
 
-static int CuvidGlxInit(const char *display_name)
+static int CuvidGlxInit(__attribute__((unused))const char *display_name)
 {
 #ifndef PLACEBO
     GlxEnabled = 1;
@@ -2266,7 +2256,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		img->num_overlays = 0;
 	}
 	
-	decoder->pl_buf_Y = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für Y texture upload
+	decoder->pl_buf_Y = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer fï¿½r Y texture upload
 		.type = PL_BUF_TEX_TRANSFER,
 		.size = size_x * size_y * size,
 		.host_mapped = false,
@@ -2277,7 +2267,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y->shared_mem.handle.fd);		// dup fd
 //	printf("Y  Offset %d  Size  %d  FD %d\n",decoder->pl_buf_Y->handle_offset,decoder->pl_buf_Y->handles.size,decoder->pl_buf_Y->handles.fd);
 
-	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer für UV texture upload
+	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer fï¿½r UV texture upload
 		.type = PL_BUF_TEX_TRANSFER,
 		.size = size_x * size_y * size / 2,
 		.host_mapped = false,
@@ -2376,8 +2366,7 @@ void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {
 	
-    int n,i,size;
-    CUcontext dummy;
+    int n,i;
 
 	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	GlxCheck();
@@ -2422,8 +2411,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 // copy image and process using CUDA
 void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
 {
-    int n,version;
-    CUcontext dummy=NULL;
+    int n;
 
     for (n = 0; n < 2; n++) { // 
         // widthInBytes must account for the chroma plane
@@ -2452,9 +2440,6 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
 ///
 static void CuvidSetupOutput(CuvidDecoder * decoder)
 {
-    uint32_t width;
-    uint32_t height;
-
     // FIXME: need only to create and destroy surfaces for size changes
     //		or when number of needed surfaces changed!
     decoder->Resolution = VideoResolutionGroup(decoder->InputWidth, decoder->InputHeight, decoder->Interlaced);
@@ -2489,26 +2474,6 @@ typedef struct CUVIDContext {
     AVBufferRef *hw_frames_ctx;
     AVFrame *tmp_frame;
 } CUVIDContext;
-
-
-static int cuvid_get_buffer(AVCodecContext *s, AVFrame *frame, int flags)
-{
-    VideoDecoder        *ist = s->opaque;
-    CUVIDContext        *ctx = ist->hwaccel_ctx;
-    int ret;
-
-    if (!ctx->hw_frames_ctx) {
-	Debug(3,"CUDA fail get buffer\n");
-        exit(0);
-    }
-
-    ret = av_hwframe_get_buffer(ctx->hw_frames_ctx, frame, 0);
-    //ret = avcodec_default_get_buffer2(s, frame, flags);
-
-    Debug(3,"CUDA hwframe got buffer %d\n",ret);
-    return ret;
-}
-
 
 ///
 ///	Callback to negotiate the PixelFormat.
@@ -2620,7 +2585,7 @@ int get_RGB(CuvidDecoder *decoder) {
 	int width;
 	int height;
 	GLuint fb,texture;
-	int current,i;
+	int current;
 	GLint texLoc;
 	
 	base = decoder->grabbase;
@@ -2770,10 +2735,8 @@ int get_RGB(CuvidDecoder *decoder) {
 				});
 
 	pl_tex_destroy(p->gpu,&target.fbo);
-
-	
 #endif	
-
+	return 0;
 }
 
 ///
@@ -2785,17 +2748,11 @@ int get_RGB(CuvidDecoder *decoder) {
 ///
 static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int *ret_height, int mitosd)
 {
-    int surface,i;
-
-    int rgba_format;
     uint32_t size;
     uint32_t width;
     uint32_t height;
     uint8_t *base;
-    void *data[1];
-    uint32_t pitches[1];
     VdpRect source_rect;
-    VdpRect output_rect;
 	CuvidDecoder *decoder;
 
 	decoder = CuvidDecoders[0];
@@ -2850,12 +2807,6 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 			source_rect.x0, source_rect.y0, source_rect.x1, source_rect.y1,
 			width, height);
 
-
-		output_rect.x0 = 0;
-		output_rect.y0 = 0;
-		output_rect.x1 = width;
-		output_rect.y1 = height;
-		
 		size = width * height * sizeof(uint32_t);
 		
 		base = malloc(size);
@@ -3177,7 +3128,6 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
     const AVCodecContext * video_ctx, const AVFrame * frame)
 {
     int surface;
-    VideoDecoder        *ist = video_ctx->opaque;
 	enum AVColorSpace color;
 
     // update aspect ratio changes
@@ -3287,10 +3237,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
-	
-	int ret,n;
-    unsigned int device_count,version;
-    CUdevice device;
+    unsigned int version;
 
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
 //turn NULL;
@@ -3328,11 +3275,9 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 ///	@FIXME: render only video area, not fullscreen!
 ///	decoder->Output.. isn't correct setup for radio stations
 ///
-static void CuvidBlackSurface(CuvidDecoder * decoder)
+static void CuvidBlackSurface(__attribute__((unused))CuvidDecoder * decoder)
 {
 #ifndef PLACEBO
-	VdpRect source_rect;
-	VdpRect output_rect;
 	glClear(GL_COLOR_BUFFER_BIT);
 #endif
 return;
@@ -3382,7 +3327,7 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
 #ifdef PLACEBO
 static void CuvidMixVideo(CuvidDecoder * decoder, int level,struct pl_render_target *target, struct pl_overlay *ovl )
 #else
-static void CuvidMixVideo(CuvidDecoder * decoder, int level)
+static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int level)
 #endif
 {
 #ifdef PLACEBO
@@ -3395,26 +3340,23 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	VkImage Image;
 	struct pl_image *img;
 	bool ok;
-#endif
-	static int last;
-	int current;
+
 	VdpRect video_src_rect;
 	VdpRect dst_rect;
 	VdpRect dst_video_rect;
-	int w = decoder->InputWidth;
-	int h = decoder->InputHeight;
+#endif
+
+	int current;
 	int y;
 	float xcropf, ycropf;
 	GLint texLoc;
-	
-	size_t nSize = 0;
-	static uint32_t lasttime = 0;
-		
+
 #ifdef USE_AUTOCROP
 	// FIXME: can move to render frame
 	CuvidCheckAutoCrop(decoder);
 #endif
 
+#ifdef PLACEBO
 	if (level) {
 		dst_rect.x0 = decoder->VideoX;	// video window output (clip)
 		dst_rect.y0 = decoder->VideoY;
@@ -3431,15 +3373,17 @@ static void CuvidMixVideo(CuvidDecoder * decoder, int level)
 	video_src_rect.y0 = decoder->CropY;
 	video_src_rect.x1 = decoder->CropX + decoder->CropWidth;
 	video_src_rect.y1 = decoder->CropY + decoder->CropHeight;
+#endif
 
 	xcropf = (float) decoder->CropX / (float) decoder->InputWidth;
 	ycropf = (float) decoder->CropY / (float) decoder->InputHeight;
 	
+#ifdef PLACEBO
 	dst_video_rect.x0 = decoder->OutputX;	// video output (scale)
 	dst_video_rect.y0 = decoder->OutputY;
 	dst_video_rect.x1 = decoder->OutputX + decoder->OutputWidth;
 	dst_video_rect.y1 = decoder->OutputY + decoder->OutputHeight;
-
+#endif
 	current = decoder->SurfacesRb[decoder->SurfaceRead];
 
 	// Render Progressive frame and simple interlaced
@@ -3674,13 +3618,14 @@ void make_osd_overlay(int x, int y, int width, int height) {
 static void CuvidDisplayFrame(void)
 {
 
-	uint64_t first_time, diff, akt_time;
+	uint64_t first_time;
 	static uint64_t last_time = 0;
 	int i;
 	static unsigned int Count;
 	int filled;
 	CuvidDecoder *decoder;
 #ifdef PLACEBO
+	uint64_t diff;
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
@@ -3981,12 +3926,11 @@ void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped,
 ///
 static void CuvidSyncDecoder(CuvidDecoder * decoder)
 {
-	int err;
 	int filled;
 	int64_t audio_clock;
 	int64_t video_clock;
+	int err = 0;
 
-	err = 0;
 	video_clock = CuvidGetClock(decoder);
 	filled = atomic_read(&decoder->SurfacesFilled);
 
@@ -4356,9 +4300,6 @@ static void CuvidSetOutputPosition(CuvidDecoder * decoder, int x, int y,
 //----------------------------------------------------------------------------
 //	CUVID OSD
 //----------------------------------------------------------------------------
-
-static const uint8_t OsdZeros[4096 * 2160 * 4];	///< 0 for clear osd
-
 
 ///
 ///	CUVID module.
@@ -4798,7 +4739,7 @@ static void VideoEvent(void)
 
 	case MapNotify:
 	    Debug(3, "video/event: MapNotify\n");
-	    // µwm workaround
+	    // ï¿½wm workaround
 	    VideoThreadLock();
 	    xcb_change_window_attributes(Connection, VideoWindow,
 		XCB_CW_CURSOR, &VideoBlankCursor);
@@ -5041,9 +4982,7 @@ static void *VideoDisplayHandlerThread(void *dummy)
 {
 
 	CUcontext cuda_ctx;
-	 unsigned int device_count,version;
-    CUdevice device;
-	
+
 #ifdef PLACEBO_
 	InitPlacebo();
 #endif

@@ -59,6 +59,7 @@
 #define _N(str) str			///< gettext_noop shortcut
 
 #include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
 #include <libavutil/mem.h>
 // support old ffmpeg versions <1.0
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,18,102)
@@ -395,9 +396,6 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 */
 void CodecVideoClose(VideoDecoder *video_decoder)
 {
-	AVCodecContext *video_ctx = video_decoder->VideoCtx;;
-	int ret;
-	AVFrame *frame;
 		
     // FIXME: play buffered data
 	av_frame_free(&video_decoder->Frame);	// callee does checks
@@ -465,12 +463,10 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
     AVCodecContext *video_ctx;
     AVFrame *frame;
-    int used,ret,ret1;
+    int ret,ret1;
     int got_frame;
     int consumed = 0;
-    AVPacket *pkt; 
-	static uint64_t last_time = 0;
-	static uint64_t lastpts = 0;
+    const AVPacket *pkt;
 	
 next_part:
     video_ctx = decoder->VideoCtx;
@@ -529,10 +525,6 @@ next_part:
 }
 
 
-
-
-
-
 /**
 **	Flush the video decoder.
 **
@@ -540,9 +532,6 @@ next_part:
 */
 void CodecVideoFlushBuffers(VideoDecoder * decoder)
 {
-	AVFrame *frame;
-	frame = decoder->Frame;
-	
     if (decoder->VideoCtx) {
 		avcodec_flush_buffers(decoder->VideoCtx);
     }
@@ -1841,7 +1830,9 @@ void CodecInit(void)
 #else
     (void)CodecNoopCallback;
 #endif
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,9,100)
     avcodec_register_all();		// register all formats and codecs
+#endif
 }
 
 /**

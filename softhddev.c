@@ -661,7 +661,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		n = pesdx->Index - pesdx->Skip;
 		while (n >= 5) {
 		    int r;
-		    unsigned codec_id;
+		    unsigned codec_id = AV_CODEC_ID_NONE;
 
 		    // 4 bytes 0xFFExxxxx Mpeg audio
 		    // 5 bytes 0x0B77xxxxxx AC-3 audio
@@ -1687,6 +1687,8 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts,
 **
 **	@param avpkt	ffmpeg a/v packet
 */
+
+#ifndef USE_PIP
 static void FixPacketForFFMpeg(VideoDecoder * vdecoder, AVPacket * avpkt)
 {
     uint8_t *p;
@@ -1746,7 +1748,7 @@ static void FixPacketForFFMpeg(VideoDecoder * vdecoder, AVPacket * avpkt)
 #endif
     CodecVideoDecode(vdecoder, tmp);
 }
-
+#endif
 
 
 /**
@@ -2676,7 +2678,6 @@ void StillPicture(const uint8_t * data, int size)
     // H265 NAL End of Sequence
     static uint8_t seq_end_h265[] = { 0x00, 0x00, 0x00, 0x01, 0x48, 0x01 }; //0x48 = end of seq   0x4a = end of stream
     int i;
-    int old_video_hardware_decoder;
 
     // might be called in Suspended Mode
     if (!MyVideoStream->Decoder || MyVideoStream->SkipStream) {
