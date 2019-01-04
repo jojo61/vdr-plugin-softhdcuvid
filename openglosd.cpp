@@ -1786,7 +1786,11 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
 }
 
 void cOglPixmap::DrawPixel(const cPoint &Point, tColor Color) {
-    esyslog("[softhddev] DrawPixel %d %d color %x not implemented in OpenGl OSD", Point.X(), Point.X(), Color);
+    cRect r(Point.X(), Point.Y(), 1, 1);
+    oglThread->DoCmd(new cOglCmdDrawRectangle(fb, r.X(), r.Y(), r.Width(), r.Height(), Color));
+    
+    SetDirty();
+    MarkDrawPortDirty(r);
 }
 
 void cOglPixmap::DrawBitmap(const cPoint &Point, const cBitmap &Bitmap, tColor ColorFg, tColor ColorBg, bool Overlay) {
