@@ -70,6 +70,8 @@ In the settings you can enable a correction for Colorblindness. First you have t
 
 Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
 
+If your FFMEG supports it then you can enable YADIF in the Makefile and select btween the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer. 
+
 Good luck
 jojo61
 
