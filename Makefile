@@ -166,7 +166,7 @@ ifneq (exists, $(shell pkg-config libavcodec && echo exists))
   $(error ******************************************************************)
 endif
 _CFLAGS += $(shell pkg-config --cflags libavcodec)
-LIBS += $(shell pkg-config --libs libavcodec)
+LIBS += $(shell pkg-config --libs libavcodec libavfilter)
 
 
 ifeq ($(SCREENSAVER),1)
