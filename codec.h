@@ -62,7 +62,9 @@ struct _video_decoder_
      int FirstKeyFrame;                  ///< flag first frame
  //#endif
      AVFrame *Frame;                     ///< decoded video frame
- 
+#ifdef YADIF
+	 int filter;						// flag for yadif filter
+#endif
      /* hwaccel options */
      enum HWAccelID hwaccel_id;
      char  *hwaccel_device;

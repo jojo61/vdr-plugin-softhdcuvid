@@ -160,7 +160,7 @@ static inline uint64_t GetusTicks(void)
     struct timespec tspec;
 
     clock_gettime(CLOCK_MONOTONIC, &tspec);
-    return (tspec.tv_sec * 1000000) + (tspec.tv_nsec) ;
+    return (uint64_t) (tspec.tv_sec * 1000000) + (tspec.tv_nsec) ;
 #else
     struct timeval tval;
 

@@ -61,6 +61,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
 #include <libavutil/mem.h>
+
 // support old ffmpeg versions <1.0
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,18,102)
 #define AVCodecID CodecID
@@ -168,18 +169,18 @@ static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx,
     // this begins to stink, 1.1.2 calls get_format for each frame
     // 1.1.3 has the same version, but works again
     if (decoder->GetFormatDone) {
-	if (decoder->GetFormatDone < 10) {
-	    ++decoder->GetFormatDone;
-	    Error
-		("codec/video: ffmpeg/libav buggy: get_format called again\n");
-	}
-	return *fmt;			// FIXME: this is hack
+		if (decoder->GetFormatDone < 10) {
+			++decoder->GetFormatDone;
+			Error
+			("codec/video: ffmpeg/libav buggy: get_format called again\n");
+		}
+		return *fmt;			// FIXME: this is hack
     }
 #endif
 
     // bug in ffmpeg 1.1.1, called with zero width or height
     if (!video_ctx->width || !video_ctx->height) {
-	Error("codec/video: ffmpeg/libav buggy: width or height zero\n");
+		Error("codec/video: ffmpeg/libav buggy: width or height zero\n");
     }
 
     decoder->GetFormatDone = 1;
@@ -207,13 +208,13 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
     // libav 0.8.5 53.35.0 still needs this
 #endif
     if (!decoder->GetFormatDone) {	// get_format missing
-	enum AVPixelFormat fmts[2];
+		enum AVPixelFormat fmts[2];
 
-	fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
-	Warning(_("codec: buggy libav, use ffmpeg\n"));
-	fmts[0] = video_ctx->pix_fmt;
-	fmts[1] = AV_PIX_FMT_NONE;
-	Codec_get_format(video_ctx, fmts);
+		fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
+		Warning(_("codec: buggy libav, use ffmpeg\n"));
+		fmts[0] = video_ctx->pix_fmt;
+		fmts[1] = AV_PIX_FMT_NONE;
+		Codec_get_format(video_ctx, fmts);
     }
     if (decoder->hwaccel_get_buffer && (AV_PIX_FMT_VDPAU == decoder->hwaccel_pix_fmt || AV_PIX_FMT_CUDA == decoder->hwaccel_pix_fmt)) {
            //Debug(3,"hwaccel get_buffer\n");
@@ -267,7 +268,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 {
     AVCodec *video_codec;
     const char *name;
-	int ret;
+	int ret,deint=2;
 
     Debug(3, "***************codec: Video Open using video codec ID %#06x (%s)\n", codec_id,
 	avcodec_get_name(codec_id));
@@ -321,9 +322,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
+#ifdef YADIF
+	deint = 0;
+#endif
 
 	if (strcmp(decoder->VideoCodec->long_name,"Nvidia CUVID MPEG2VIDEO decoder") == 0) {  // deinterlace for mpeg2 is somehow broken 
-		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) {  // adaptive
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint ,0) < 0) {  // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
 		}
@@ -339,10 +343,16 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		}
 	}
 	else if (strstr(decoder->VideoCodec->long_name,"Nvidia CUVID") != NULL) {
-		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 2 ,0) < 0) { // adaptive
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint ,0) < 0) { // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option deint to video codec!\n"));
 		}
+#if 1
+		if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 13 ,0) < 0) { 
+		  pthread_mutex_unlock(&CodecLockMutex);
+		  Fatal(_("codec: can't set option surfces to video codec!\n"));
+		}
+#endif
 		if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false" ,0) < 0) {
 		  pthread_mutex_unlock(&CodecLockMutex);
 		  Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));
@@ -383,6 +393,9 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 
     // reset buggy ffmpeg/libav flag
     decoder->GetFormatDone = 0;
+#ifdef YADIF
+	decoder->filter = 0;
+#endif
 #ifdef FFMPEG_WORKAROUND_ARTIFACTS
     decoder->FirstKeyFrame = 1;
 #endif
@@ -458,7 +471,10 @@ void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
 **	@param avpkt	video packet
 */
 extern int CuvidTestSurfaces();
-
+#ifdef YADIF
+extern int init_filters(AVCodecContext * dec_ctx,void * decoder,AVFrame *frame);
+extern int push_filters(AVCodecContext * dec_ctx,void * decoder,AVFrame *frame);
+#endif
 void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
     AVCodecContext *video_ctx;
@@ -467,7 +483,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     int got_frame;
     int consumed = 0;
     const AVPacket *pkt;
-	
+
 next_part:
     video_ctx = decoder->VideoCtx;
     frame = decoder->Frame;
@@ -491,6 +507,24 @@ next_part:
 			}
 			
 			if (got_frame) {			// frame completed
+#ifdef YADIF	
+				if (decoder->filter ) {
+					if (decoder->filter == 1) {
+						if (init_filters(video_ctx,decoder->HwDecoder,frame) < 0) {
+							Error(_("video: Init of YADIF Filter failed\n"));
+						}
+						else {
+							Debug(3,"Init YADIF ok\n");
+						}
+						decoder->filter = 2;
+					}
+					if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {  // broken ZDF sends Interlaced flag
+						ret = push_filters(video_ctx,decoder->HwDecoder,frame);
+						av_frame_unref(frame);
+						continue;
+					}
+				}
+#endif			
 #ifdef FFMPEG_WORKAROUND_ARTIFACTS
 				if (!CodecUsePossibleDefectFrames && decoder->FirstKeyFrame) {
 					decoder->FirstKeyFrame++;

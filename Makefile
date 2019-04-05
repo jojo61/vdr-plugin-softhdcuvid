@@ -36,6 +36,7 @@ endif
 
 CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DCUVID			# enable CUVID decoder
+#CONFIG += -DYADIF			# enable yadif_cuda deinterlacer
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
 

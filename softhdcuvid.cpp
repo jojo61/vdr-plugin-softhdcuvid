@@ -992,13 +992,12 @@ void cMenuSetupSoft::Create(void)
     static const char *const video_display_formats_16_9[] = {
 	"pan&scan", "pillarbox", "center cut-out",
     };
-#if 0
+#ifdef YADIF
     static const char *const deinterlace[] = {
-	"Bob", "Weave/None", "Temporal", "TemporalSpatial", "Software Bob",
-	"Software Spatial",
+	"Cuda", "Yadif",
     };
     static const char *const deinterlace_short[] = {
-	"B", "W", "T", "T+S", "S+B", "S+S",
+	"C", "Y",
     };
 #endif
 
@@ -1006,7 +1005,7 @@ void cMenuSetupSoft::Create(void)
 	"None", "PCM", "AC-3", "PCM + AC-3"
     };
     static const char *const resolution[RESOLUTIONS] = {
-	"576", "720", "fake 1080", "1080" ,"UHD"
+	"576i", "720p", "fake 1080", "1080" ,"2160p"
     };
 #ifdef PLACEBO
 	static const char *const target_colorspace[] = {
@@ -1126,12 +1125,15 @@ void cMenuSetupSoft::Create(void)
 	    Add(CollapsedItem(resolution[i], ResolutionShown[i], msg));
 
 	    if (ResolutionShown[i]) {
-#if PLACEBO
+#ifdef PLACEBO
 			Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], scalers, scaling));
 #endif
+#ifdef YADIF
+			if ( i == 0 || i == 2 || i == 3) {
+				Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],2, deinterlace));
+			}
+#endif
 #if 0
-			Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],
-				6, deinterlace));
 			Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"),
 				&SkipChromaDeinterlace[i], trVDR("no"), trVDR("yes")));
 			Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"),
@@ -3319,58 +3321,58 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
     }
 #endif
     for (i = 0; i < RESOLUTIONS; ++i) {
-	char buf[128];
+		char buf[128];
 
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoScaling[i] = atoi(value);
-	    VideoSetScaling(ConfigVideoScaling);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoDeinterlace[i] = atoi(value);
-	    VideoSetDeinterlace(ConfigVideoDeinterlace);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
-	    "SkipChromaDeinterlace");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoSkipChromaDeinterlace[i] = atoi(value);
-	    VideoSetSkipChromaDeinterlace(ConfigVideoSkipChromaDeinterlace);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoInverseTelecine[i] = atoi(value);
-	    VideoSetInverseTelecine(ConfigVideoInverseTelecine);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoDenoise[i] = atoi(value);
-	    VideoSetDenoise(ConfigVideoDenoise);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoSharpen[i] = atoi(value);
-	    VideoSetSharpen(ConfigVideoSharpen);
-	    return true;
-	}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoScaling[i] = atoi(value);
+			VideoSetScaling(ConfigVideoScaling);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoDeinterlace[i] = atoi(value);
+			VideoSetDeinterlace(ConfigVideoDeinterlace);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
+			"SkipChromaDeinterlace");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoSkipChromaDeinterlace[i] = atoi(value);
+			VideoSetSkipChromaDeinterlace(ConfigVideoSkipChromaDeinterlace);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoInverseTelecine[i] = atoi(value);
+			VideoSetInverseTelecine(ConfigVideoInverseTelecine);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoDenoise[i] = atoi(value);
+			VideoSetDenoise(ConfigVideoDenoise);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoSharpen[i] = atoi(value);
+			VideoSetSharpen(ConfigVideoSharpen);
+			return true;
+		}
 
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoCutTopBottom[i] = atoi(value);
-	    VideoSetCutTopBottom(ConfigVideoCutTopBottom);
-	    return true;
-	}
-	snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
-	if (!strcasecmp(name, buf)) {
-	    ConfigVideoCutLeftRight[i] = atoi(value);
-	    VideoSetCutLeftRight(ConfigVideoCutLeftRight);
-	    return true;
-	}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoCutTopBottom[i] = atoi(value);
+			VideoSetCutTopBottom(ConfigVideoCutTopBottom);
+			return true;
+		}
+		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
+		if (!strcasecmp(name, buf)) {
+			ConfigVideoCutLeftRight[i] = atoi(value);
+			VideoSetCutLeftRight(ConfigVideoCutLeftRight);
+			return true;
+		}
     }
 
     if (!strcasecmp(name, "AutoCrop.Interval")) {

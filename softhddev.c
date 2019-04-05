@@ -2219,7 +2219,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
     }
     // hard limit buffer full: needed for replay
     if (atomic_read(&stream->PacketsFilled) >= VIDEO_PACKET_MAX - 10) {
-		Debug(3, "video: video buffer full\n");
+//		Debug(3, "video: video buffer full\n");
 		return 0;
     }
 #ifdef USE_SOFTLIMIT
@@ -2907,7 +2907,7 @@ const char *CommandLineHelp(void)
 	"  -d display\tdisplay of x11 server (fe. :0.0)\n"
 	"  -f\t\tstart with fullscreen window (only with window manager)\n"
 	"  -g geometry\tx11 window geometry wxh+x+y\n"
-	"  -v device\tvideo driver device (va-api, vdpau, noop)\n"
+	"  -v device\tvideo driver device (cuvid)\n"
 	"  -s\t\tstart in suspended mode\n"
 	"  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
 	"  -X args\tX11 server arguments (f.e. -nocursor)\n"
