@@ -511,12 +511,13 @@ next_part:
 				if (decoder->filter ) {
 					if (decoder->filter == 1) {
 						if (init_filters(video_ctx,decoder->HwDecoder,frame) < 0) {
-							Error(_("video: Init of YADIF Filter failed\n"));
+							Fatal(_("video: Init of YADIF Filter failed\n"));
+							decoder->filter = 0;
 						}
 						else {
 							Debug(3,"Init YADIF ok\n");
+							decoder->filter = 2;
 						}
-						decoder->filter = 2;
 					}
 					if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {  // broken ZDF sends Interlaced flag
 						ret = push_filters(video_ctx,decoder->HwDecoder,frame);
