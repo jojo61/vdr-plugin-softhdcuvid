@@ -2679,7 +2679,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
     if (*fmt_idx != AV_PIX_FMT_CUDA) {
 		Fatal(_("video: no valid profile found\n"));
     }
-#
+    if (ist->GetFormatDone)
+		return AV_PIX_FMT_CUDA;
+	ist->GetFormatDone = 1;
+	
     Debug(3, "video: create decoder 16bit?=%d %dx%d old  %d %d\n",bitformat16, video_ctx->width, video_ctx->height,decoder->InputWidth,decoder->InputHeight);
 	
     if (*fmt_idx == AV_PIX_FMT_CUDA  )  {       // HWACCEL used 
@@ -3622,7 +3625,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 	}
 	// Source crop
 	if (VideoScalerTest) {								// right side defnied scaler
-		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});				// clear frame
+//		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});				// clear frame
 		img->src_rect.x0 = video_src_rect.x1/2+1;
 		img->src_rect.y0 = video_src_rect.y0;
 		img->src_rect.x1 = video_src_rect.x1;
@@ -3646,7 +3649,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 		target->dst_rect.y1 = dst_video_rect.y1;
 	}
 	
-	
+	pl_tex_clear(p->gpu,target->fbo,(float[4]){0});
 	
 	if (VideoColorBlindness) {
 		switch(VideoColorBlindness) {
@@ -3878,7 +3881,6 @@ last_time = GetusTicks();
 //	target.repr.bits.sample_depth = 16;
 //	target.repr.bits.color_depth = 16;
 //	target.repr.bits.bit_shift =0;
-//	pl_tex_clear(p->gpu,target.fbo,(float[4]){0});
 	
 	switch (VulkanTargetColorSpace) {
 		case 0:
@@ -4947,8 +4949,7 @@ static void VideoEvent(void)
 	    break;
 	case ConfigureNotify:
 	    //Debug(3, "video/event: ConfigureNotify\n");
-	    VideoSetVideoMode(event.xconfigure.x, event.xconfigure.y,
-		event.xconfigure.width, event.xconfigure.height);
+	    VideoSetVideoMode(event.xconfigure.x, event.xconfigure.y,event.xconfigure.width, event.xconfigure.height);
 	    break;
 	case ButtonPress:
 	    VideoSetFullscreen(-1);

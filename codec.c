@@ -163,28 +163,18 @@ static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx,
     const enum AVPixelFormat *fmt)
 {
     VideoDecoder *decoder;
-
+	enum AVPixelFormat fmt1;
     decoder = video_ctx->opaque;
-#if LIBAVCODEC_VERSION_INT == AV_VERSION_INT(54,86,100)
-    // this begins to stink, 1.1.2 calls get_format for each frame
-    // 1.1.3 has the same version, but works again
-    if (decoder->GetFormatDone) {
-		if (decoder->GetFormatDone < 10) {
-			++decoder->GetFormatDone;
-			Error
-			("codec/video: ffmpeg/libav buggy: get_format called again\n");
-		}
-		return *fmt;			// FIXME: this is hack
-    }
-#endif
 
     // bug in ffmpeg 1.1.1, called with zero width or height
     if (!video_ctx->width || !video_ctx->height) {
 		Error("codec/video: ffmpeg/libav buggy: width or height zero\n");
     }
-
-    decoder->GetFormatDone = 1;
+	
+//	decoder->GetFormatDone = 1;
     return Video_get_format(decoder->HwDecoder, video_ctx, fmt);
+	
+
 }
 
 //static void Codec_free_buffer(void *opaque, uint8_t *data);
