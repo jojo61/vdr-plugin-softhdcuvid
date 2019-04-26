@@ -3693,8 +3693,13 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 		target->num_overlays = 0;
 	}
 	
-	if (decoder->newchannel && current == 0 )
+	if (decoder->newchannel && current == 0 ) {
+		colors.brightness = -1.0f;
+		if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
+		   Debug(3,"Failed rendering frame!\n");
+		}
 		return;
+	}
 	
 	decoder->newchannel = 0;
 	
@@ -3922,13 +3927,9 @@ last_time = GetusTicks();
 		if (filled < 1 + 2 * decoder->Interlaced) { 
 			// FIXME: rewrite MixVideo to support less surfaces
 			if ((VideoShowBlackPicture && !decoder->TrickSpeed) || 
-				(VideoShowBlackPicture && decoder->Closing < -300)) { // || 
-//				(!decoder->TrickSpeed && decoder->newchannel)) {
+				(VideoShowBlackPicture && decoder->Closing < -300)) {  
 				CuvidBlackSurface(decoder);
-#ifdef PLACEBO
-				pl_tex_clear(p->gpu,target.fbo,(float[4]){0});
-#endif
-				CuvidMessage(3, "video/cuvid: black surface displayed\n");
+				CuvidMessage(4, "video/cuvid: black surface displayed\n");
 			}
 			continue;
 		}
@@ -6185,9 +6186,10 @@ void VideoSetVideoMode( __attribute__ ((unused))
 
 #ifdef USE_OPENGLOSD
     if (VideoEventCallback) {
+		sleep(1);
         VideoEventCallback();
 		Debug(3,"call back set video mode %d %d\n",width,height);
-}
+	}
 #endif	
     VideoOsdExit();  
 
