@@ -18,7 +18,7 @@ void ConvertColor(const GLint &colARGB, glm::vec4 &col) {
 * cShader
 ****************************************************************************************/
 
-
+#ifdef CUVID
 const char *rectVertexShader = 
 "#version 330 core \n\
 \
@@ -116,6 +116,106 @@ void main() \
 } \
 ";
 
+#else
+
+const char *rectVertexShader = 
+"\n\
+
+\
+layout (location = 0) in vec2 position; \
+out vec4 rectCol; \
+uniform vec4 inColor; \
+uniform mat4 projection; \
+\
+void main() \
+{ \
+    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
+    rectCol = inColor; \
+} \
+";
+
+const char *rectFragmentShader = 
+"#version 330 core \n\
+\
+in vec4 rectCol; \
+out vec4 color; \
+\
+void main() \
+{ \
+    color = rectCol; \
+} \
+";
+
+const char *textureVertexShader = 
+"\n\
+\
+layout (location = 0) in vec2 position; \
+layout (location = 1) in vec2 texCoords; \
+\
+out vec2 TexCoords; \
+out vec4 alphaValue;\
+\
+uniform mat4 projection; \
+uniform vec4 alpha; \
+\
+void main() \
+{ \
+    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
+    TexCoords = texCoords; \
+    alphaValue = alpha; \
+} \
+";
+
+const char *textureFragmentShader = 
+"\n\
+in vec2 TexCoords; \
+in vec4 alphaValue; \
+out vec4 color; \
+\
+uniform sampler2D screenTexture; \
+\
+void main() \
+{ \
+    color = texture(screenTexture, TexCoords) * alphaValue; \
+} \
+";
+
+const char *textVertexShader = 
+"\n\
+\
+layout (location = 0) in vec2 position; \
+layout (location = 1) in vec2 texCoords; \
+\
+out vec2 TexCoords; \
+out vec4 textColor; \
+\
+uniform mat4 projection; \
+uniform vec4 inColor; \
+\
+void main() \
+{ \
+    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
+    TexCoords = texCoords; \
+    textColor = inColor; \
+} \
+";
+
+const char *textFragmentShader = 
+"\n\
+in vec2 TexCoords; \
+in vec4 textColor; \
+\
+out vec4 color; \
+\
+uniform sampler2D glyphTexture; \
+\
+void main() \
+{  \
+    vec4 sampled = vec4(1.0, 1.0, 1.0, texture(glyphTexture, TexCoords).r); \
+    color = textColor * sampled; \
+} \
+";
+#endif
 static cShader *Shaders[stCount]; 
 
 void cShader::Use(void) {
@@ -1588,7 +1688,7 @@ extern "C" int GlxInitopengl();
 bool cOglThread::InitOpenGL(void) {
 	
 
-#ifdef PLACEBO	
+#ifdef PLACEBO
     const char *displayName = X11DisplayName;
     if (!displayName) {
         displayName = getenv("DISPLAY");

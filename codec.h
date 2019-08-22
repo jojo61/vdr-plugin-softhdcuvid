@@ -61,10 +61,10 @@ struct _video_decoder_
  //#ifdef FFMPEG_WORKAROUND_ARTIFACTS
      int FirstKeyFrame;                  ///< flag first frame
  //#endif
-     AVFrame *Frame;                     ///< decoded video frame
-#ifdef YADIF
-	 int filter;						// flag for yadif filter
-#endif
+//     AVFrame *Frame;                     ///< decoded video frame
+
+	 int filter;						// flag for deint filter
+
      /* hwaccel options */
      enum HWAccelID hwaccel_id;
      char  *hwaccel_device;

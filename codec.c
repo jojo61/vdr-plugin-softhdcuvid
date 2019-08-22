@@ -1,3 +1,4 @@
+
 ///
 ///	@file codec.c	@brief Codec functions
 ///
@@ -200,16 +201,20 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
     if (!decoder->GetFormatDone) {	// get_format missing
 		enum AVPixelFormat fmts[2];
 
-		fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
-		Warning(_("codec: buggy libav, use ffmpeg\n"));
+//		fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
+//		Warning(_("codec: buggy libav, use ffmpeg\n"));
 		fmts[0] = video_ctx->pix_fmt;
 		fmts[1] = AV_PIX_FMT_NONE;
 		Codec_get_format(video_ctx, fmts);
     }
-    if (decoder->hwaccel_get_buffer && (AV_PIX_FMT_VDPAU == decoder->hwaccel_pix_fmt || AV_PIX_FMT_CUDA == decoder->hwaccel_pix_fmt)) {
+#if 0
+    if (decoder->hwaccel_get_buffer && (AV_PIX_FMT_VDPAU == decoder->hwaccel_pix_fmt || 
+										 AV_PIX_FMT_CUDA  == decoder->hwaccel_pix_fmt ||
+									    AV_PIX_FMT_VAAPI == decoder->hwaccel_pix_fmt)) {
            //Debug(3,"hwaccel get_buffer\n");
            return decoder->hwaccel_get_buffer(video_ctx, frame, flags);
     }
+#endif
     //Debug(3, "codec: fallback to default get_buffer\n");
     return avcodec_default_get_buffer2(video_ctx, frame, flags);
 }
@@ -268,6 +273,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     }
   
     name = "NULL";
+#ifdef CUVID
     if (!strcasecmp(VideoGetDriverName(), "cuvid")) {
 		switch (codec_id) {
 		case AV_CODEC_ID_MPEG2VIDEO:
@@ -281,11 +287,11 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 			break;	
 		}
     }
-	
+#endif	
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
 		Debug(3, "codec: decoder found\n");
-    } else {
-		Debug(3,"Decoder %s not supported\n",name);
+    } else if ((video_codec = avcodec_find_decoder(codec_id))==NULL) {
+		Debug(3,"Decoder %s not supported %p\n",name,video_codec);
 		Fatal(_(" No decoder found"));
 	}
 
@@ -309,13 +315,45 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 	decoder->VideoCtx->pkt_timebase.den = 90000;
 	decoder->VideoCtx->framerate.num = 50;
 	decoder->VideoCtx->framerate.den = 1;
+	decoder->VideoCtx->extra_hw_frames = 8;  // VIDEO_SURFACES_MAX +1
 	
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
 #ifdef YADIF
-	deint = 0;
+	deint = 2;
 #endif
+#ifdef VAAPI
+    if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
+        Debug(3,"codec: auto threads enabled");
+        decoder->VideoCtx->thread_count = 0;
+    }
 
+    if (video_codec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+        Debug(3,"codec: supports truncated packets");
+        //decoder->VideoCtx->flags |= CODEC_FLAG_TRUNCATED;
+    }
+    // FIXME: own memory management for video frames.
+    if (video_codec->capabilities & AV_CODEC_CAP_DR1) {
+        Debug(3,"codec: can use own buffer management");
+    }
+    if (video_codec->capabilities & AV_CODEC_CAP_FRAME_THREADS) {
+        Debug(3,"codec: supports frame threads");
+        decoder->VideoCtx->thread_count = 0;
+ //       decoder->VideoCtx->thread_type |= FF_THREAD_FRAME;
+    }
+    if (video_codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
+        Debug(3,"codec: supports slice threads");
+        decoder->VideoCtx->thread_count = 0;
+ //       decoder->VideoCtx->thread_type |= FF_THREAD_SLICE;
+    }
+    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0)<0)
+		Fatal(_("VAAPI Refcounts invalid\n"));
+	decoder->VideoCtx->thread_safe_callbacks = 0;
+#endif
+	
+	
+	
+#ifdef CUVID
 	if (strcmp(decoder->VideoCodec->long_name,"Nvidia CUVID MPEG2VIDEO decoder") == 0) {  // deinterlace for mpeg2 is somehow broken 
 		if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint ,0) < 0) {  // adaptive
 		  pthread_mutex_unlock(&CodecLockMutex);
@@ -348,7 +386,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 		  Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));
 		}
 	}
-
+#endif
 
     if ((ret = avcodec_open2(decoder->VideoCtx, video_codec, NULL)) < 0) {
 		pthread_mutex_unlock(&CodecLockMutex);
@@ -363,24 +401,25 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     //decoder->VideoCtx->debug = FF_DEBUG_STARTCODE;
     //decoder->VideoCtx->err_recognition |= AV_EF_EXPLODE;
 
+//	av_log_set_level(AV_LOG_DEBUG);
+	av_log_set_level(0);
 
 	decoder->VideoCtx->get_format = Codec_get_format;
 	decoder->VideoCtx->get_buffer2 = Codec_get_buffer2;
-	decoder->VideoCtx->thread_count = 1;
-	decoder->VideoCtx->active_thread_type = 0;
+//	decoder->VideoCtx->active_thread_type = 0;
 	decoder->VideoCtx->draw_horiz_band = NULL;
-	if (strstr(decoder->VideoCodec->long_name,"Nvidia CUVID") != NULL) 
-		decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
+	decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
 
 
     //
     //	Prepare frame buffer for decoder
     //
-
+#if 0
     if (!(decoder->Frame = av_frame_alloc())) {
 		Fatal(_("codec: can't allocate video decoder frame buffer\n"));
     }
-
+#endif
+	
     // reset buggy ffmpeg/libav flag
     decoder->GetFormatDone = 0;
 #ifdef YADIF
@@ -401,7 +440,7 @@ void CodecVideoClose(VideoDecoder *video_decoder)
 {
 		
     // FIXME: play buffered data
-	av_frame_free(&video_decoder->Frame);	// callee does checks
+//	av_frame_free(&video_decoder->Frame);	// callee does checks
 
 	Debug(3,"CodecVideoClose\n");
     if (video_decoder->VideoCtx) {
@@ -465,37 +504,100 @@ extern int CuvidTestSurfaces();
 extern int init_filters(AVCodecContext * dec_ctx,void * decoder,AVFrame *frame);
 extern int push_filters(AVCodecContext * dec_ctx,void * decoder,AVFrame *frame);
 #endif
+#ifdef VAAPI
+void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
+{
+    AVCodecContext *video_ctx = decoder->VideoCtx;
+
+    if (video_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+		int ret;
+		AVPacket pkt[1];
+		AVFrame *frame;
+
+		*pkt = *avpkt;			// use copy
+		ret = avcodec_send_packet(video_ctx, pkt);
+		if (ret < 0) {
+			Debug(4,"codec: sending video packet failed");
+			return;
+		}
+		frame = av_frame_alloc();
+		ret = avcodec_receive_frame(video_ctx, frame);
+		if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
+			Debug(4,"codec: receiving video frame failed");
+			av_frame_free(&frame);
+			return;
+		}
+		if (ret >= 0) {
+			if (decoder->filter ) {
+				if (decoder->filter == 1) {
+					if (init_filters(video_ctx,decoder->HwDecoder,frame) < 0) {
+						Debug(3,"video: Init of VAAPI deint Filter failed\n");
+						decoder->filter = 0;
+					}
+					else {
+						Debug(3,"Init VAAPI deint ok\n");
+						decoder->filter = 2;
+					}
+				}
+				if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {  // broken ZDF sends Interlaced flag
+					ret = push_filters(video_ctx,decoder->HwDecoder,frame);
+					return;
+				}
+			}			
+			VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
+		}
+		else {
+			av_frame_free(&frame);
+		}
+    }
+}
+#endif
+#ifdef CUVID 
+
 void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
     AVCodecContext *video_ctx;
-    AVFrame *frame;
+    AVFrame *frame 
+
+;
     int ret,ret1;
     int got_frame;
     int consumed = 0;
+	static uint64_t first_time = 0;
     const AVPacket *pkt;
-
+	
 next_part:
     video_ctx = decoder->VideoCtx;
-    frame = decoder->Frame;
+
     pkt = avpkt;			// use copy
     got_frame = 0;
+	
+//	printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);	
     ret1 = avcodec_send_packet(video_ctx, pkt);
+	
+//	first_time = GetusTicks();
 	
 	if (ret1 >= 0) {
 		consumed = 1;
-	}		
+	}
+
+	if (!CuvidTestSurfaces())
+		usleep(1000);
+
+//printf("send packet to decode %s\n",consumed?"ok":"Full");
+	
 	if ((ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) && CuvidTestSurfaces()) { 
 		ret = 0;
 		while ((ret >= 0) && CuvidTestSurfaces()) {    // get frames until empty snd Surfaces avail.
-			
+			frame = av_frame_alloc();
  	       	ret = avcodec_receive_frame(video_ctx, frame);   // get new frame
 			if (ret >= 0) {									// one is avail.
-				got_frame = 1;
+				got_frame = 1;			
 			}
 			else {
 	            got_frame = 0;
 			}
-			
+//			printf("got %s packet from decoder\n",got_frame?"1":"no");
 			if (got_frame) {			// frame completed
 #ifdef YADIF	
 				if (decoder->filter ) {
@@ -511,12 +613,13 @@ next_part:
 					}
 					if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {  // broken ZDF sends Interlaced flag
 						ret = push_filters(video_ctx,decoder->HwDecoder,frame);
-						av_frame_unref(frame);
+//						av_frame_unref(frame);
 						continue;
 					}
 				}
 #endif			
 #ifdef FFMPEG_WORKAROUND_ARTIFACTS
+
 				if (!CodecUsePossibleDefectFrames && decoder->FirstKeyFrame) {
 					decoder->FirstKeyFrame++;
 					if (frame->key_frame || (decoder->FirstKeyFrame > 3)) {  // key frame is not reliable
@@ -524,21 +627,24 @@ next_part:
 						decoder->FirstKeyFrame = 0;
 						VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);	
 					}
-					av_frame_unref(frame);	
+//					av_frame_unref(frame);	
 				} else {
 					//DisplayPts(video_ctx, frame);
 					VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
-					av_frame_unref(frame);
+//					av_frame_unref(frame);
 				}
 #else
 				//DisplayPts(video_ctx, frame);
 				VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
-				av_frame_unref(frame);
+//				av_frame_unref(frame);
 #endif
-//				printf("got frame\n");
-			} else {				
+			} else {
+				av_frame_free(&frame);
 //				printf("codec: got no frame %d  send %d\n",ret,ret1);
 			}
+		}
+		if (!CuvidTestSurfaces()) {
+			usleep(1000);
 		}
 	} else {
 //		consumed = 1;
@@ -546,9 +652,10 @@ next_part:
 	
 	if (!consumed) {
 		goto next_part;					// try again to stuff decoder
-	}	
-}
+	}
 
+}
+#endif
 
 /**
 **	Flush the video decoder.
@@ -702,7 +809,7 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 
     Debug(3, "codec: using audio codec ID %#06x (%s)\n", codec_id,
 	avcodec_get_name(codec_id));
-    if (!(audio_codec = avcodec_find_decoder_by_name(avcodec_get_name(codec_id)))) {
+    if (!(audio_codec = avcodec_find_decoder(codec_id))) {
 //    if (!(audio_codec = avcodec_find_decoder(codec_id))) {
 	Fatal(_("codec: codec ID %#06x not found\n"), codec_id);
 	// FIXME: errors aren't fatal
@@ -1291,7 +1398,7 @@ void CodecAudioEnqueue(AudioDecoder * audio_decoder, int16_t * data, int count)
 #ifdef USE_AUDIO_DRIFT_CORRECTION
     if ((CodecAudioDrift & CORRECT_PCM) && audio_decoder->AvResample) {
 	int16_t buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4 +
-	    FF_INPUT_BUFFER_PADDING_SIZE] __attribute__ ((aligned(16)));
+	    AV_INPUT_BUFFER_PADDING_SIZE] __attribute__ ((aligned(16)));
 	int16_t buftmp[MAX_CHANNELS][(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4];
 	int consumed;
 	int i;
@@ -1383,7 +1490,7 @@ int myavcodec_decode_audio3(AVCodecContext *avctx, int16_t *samples,
 //  in the caller may be able to be optimized.
     ret = avcodec_receive_frame(avctx,frame);
     if (ret == 0)
-        got_frame = true;
+        got_frame = 1;
     if (ret == AVERROR(EAGAIN))
         ret = 0;
     if (ret == 0)
@@ -1392,7 +1499,7 @@ int myavcodec_decode_audio3(AVCodecContext *avctx, int16_t *samples,
         ret = 0;
     else if (ret < 0)
     {
-        Debug(3, "codec/audio: audio decode error: %1 (%2)\n",av_make_error_string(error, sizeof(error), ret),got_frame);
+//        Debug(3, "codec/audio: audio decode error: %1 (%2)\n",av_make_error_string(error, sizeof(error), ret),got_frame);
         return ret;
     }
     else
@@ -1434,7 +1541,7 @@ int myavcodec_decode_audio3(AVCodecContext *avctx, int16_t *samples,
 void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 {
     int16_t buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4 +
-	FF_INPUT_BUFFER_PADDING_SIZE] __attribute__ ((aligned(16)));
+	AV_INPUT_BUFFER_PADDING_SIZE] __attribute__ ((aligned(16)));
     int buf_sz;
     int l;
     AVCodecContext *audio_ctx;
@@ -1470,7 +1577,7 @@ void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 		// need to resample audio
 		if (audio_decoder->ReSample) {
 			int16_t outbuf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 4 +
-			FF_INPUT_BUFFER_PADDING_SIZE]
+			AV_INPUT_BUFFER_PADDING_SIZE]
 			__attribute__ ((aligned(16)));
 			int outlen;
 

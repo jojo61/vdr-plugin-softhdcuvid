@@ -40,13 +40,17 @@ A software and GPU emulated UHD output device plugin for VDR.
 To compile you must have the 'requires' installed. 
 
 
-This is a fork of johns original softhddevice work and I reworked ist to support HEVC with CUDA and opengl output.
+This is a fork of johns original softhddevice work and I reworked it to support HEVC with CUDA and opengl output.
 Currently I have tested it with a GTX 1050 from NVIDIA. SD, HD and UHD is working.
 
-Current Status NVIDA:
+Current Status NVIDIA:
 The CUDA driver supports HEVC with 8 Bit and 10 Bit up to UHD resolution. Opengl is able to output also 10 Bit, but NVIDIA does not support to output 10 Bit via HDMI.
 Only via DisplayPort you can get 10 Bit output to a compatible screen. This is a restriction from NVIDIA.
 
+Current Status with VAAPI
+You need libplacebo.
+It is still beta and I tested it with Intel VAAPI. If you have problmes with the shaders then copy the drirc file in your home directory as .drirc
+AMD VAAPI is broken by AMD and will not work currently. The vaapi_deinterlace is broken and the amdgpu driver is instable. I have not testet with amdgpupro
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0 
 The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10

@@ -1,6 +1,6 @@
 #
 # Makefile for a Video Disk Recorder plugin
-#
+# 
 # $Id: 2a41981a57e5e83036463c6a08c84b86ed9d2be3 $
 
 # The official name of this plugin.
@@ -11,35 +11,46 @@ PLUGIN = softhdcuvid
 
 ### Configuration (edit this for your needs)
 
+# what kind of driver do we make - 
+# if VAAPI is enabled the drivername is softhdvaapi
+# if CUVID is enabled the drivername is softhdcuvid
+#VAAPI=1
+CUVID=1
+
+
+# support OPENGLOSD - only configurable with cuvid
+OPENGLOSD=1
+
+# use Libplacebo - only configurable with cuvid
+LIBPLACEBO=1
+
+# use YADIF deint - only configurable with cuvid
+YADIF=0
+
+#--------------------- no more config needed past this point--------------------------------
     # support alsa audio output module
 ALSA ?= $(shell pkg-config --exists alsa && echo 1)
     # support OSS audio output module
 OSS ?= 1
-    # support OPENGLOSD 
-OPENGLOSD=1
 
-    # use Libplacebo 
-LIBPLACEBO=0
-
-	# use DMPS
+# use DMPS
 SCREENSAVER=1
 
 OPENGL=1
-    # use ffmpeg libswresample
-#SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
-SWRESAMPLE = 1
-    # use libav libavresample
-ifneq ($(SWRESAMPLE),1)
-AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1)
-AVRESAMPLE = 0
-endif
 
-CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
-CONFIG += -DCUVID			# enable CUVID decoder
-#CONFIG += -DYADIF			# enable yadif_cuda deinterlacer
+# use ffmpeg libswresample
+SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
+SWRESAMPLE = 1
+
+# use libav libavresample
+#ifneq ($(SWRESAMPLE),1)
+#AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1#)
+#AVRESAMPLE = 1
+#endif
+
+CONFIG :=  -DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
-
 CONFIG += -DAV_INFO -DAV_INFO_TIME=3000	# info/debug a/v sync
 CONFIG += -DUSE_PIP			# PIP support
 #CONFIG += -DHAVE_PTHREAD_NAME		# supports new pthread_setname_np
@@ -54,8 +65,9 @@ CONFIG += -DUSE_VDR_SPU			# use VDR SPU decoder.
 
 ### The version number of this plugin (taken from the main source file):
 
-VERSION = $(shell grep 'static const char \*const VERSION *=' $(PLUGIN).cpp | awk '{ print $$7 }' | sed -e 's/[";]//g')
+VERSION = $(shell grep 'static const char \*const VERSION *=' softhdcuvid.cpp | awk '{ print $$7 }' | sed -e 's/[";]//g')
 GIT_REV = $(shell git describe --always 2>/dev/null)
+### The name of the distribution archive:
 
 ### The directory environment:
 
@@ -87,14 +99,7 @@ APIVERSION = $(call PKGCFG,apiversion)
 
 -include $(PLGCFG)
 
-### The name of the distribution archive:
 
-ARCHIVE = $(PLUGIN)-$(VERSION)
-PACKAGE = vdr-$(ARCHIVE)
-
-### The name of the shared object file:
-
-SOFILE = libvdr-$(PLUGIN).so
 
 ### Parse softhddevice config
 
@@ -103,16 +108,20 @@ CONFIG += -DUSE_ALSA
 _CFLAGS += $(shell pkg-config --cflags alsa)
 LIBS += $(shell pkg-config --libs alsa)
 endif
+
 ifeq ($(OSS),1)
 CONFIG += -DUSE_OSS
 endif
+
 ifeq ($(OPENGL),1)
 _CFLAGS += $(shell pkg-config --cflags libva-glx)
 LIBS += $(shell pkg-config --libs libva-glx)
 endif
+
 ifeq ($(OPENGLOSD),1)
 CONFIG += -DUSE_OPENGLOSD
 endif
+
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
@@ -122,18 +131,43 @@ LIBS += $(shell pkg-config --libs glew)
 _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
 endif
+
+ifeq ($(VAAPI),1)
+CONFIG += -DVAAPI
+LIBPLACEBO=1
+PLUGIN = softhdvaapi
+endif
+
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
 endif
 
+ifeq ($(CUVID),1)
+CONFIG += -DCUVID			# enable CUVID decoder
+ifeq ($(YADIF),1)
+CONFIG += -DYADIF			# Yadif only with CUVID
+endif
+endif
+
+
+
+
+ARCHIVE = $(PLUGIN)-$(VERSION)
+PACKAGE = vdr-$(ARCHIVE)
+
+### The name of the shared object file:
+
+SOFILE = libvdr-$(PLUGIN).so
+
+
 #
 # Test that libswresample is available 
 #
-ifneq (exists, $(shell pkg-config libswresample && echo exists))
-  $(warning ******************************************************************)
-  $(warning 'libswresample' not found!)
-  $(error ******************************************************************)
-endif
+#ifneq (exists, $(shell pkg-config libswresample && echo exists))
+#  $(warning ******************************************************************)
+#  $(warning 'libswresample' not found!)
+#  $(error ******************************************************************)
+#endif
 
 #
 # Test and set config for libavutil 
@@ -179,11 +213,11 @@ CONFIG += -DUSE_SWRESAMPLE
 _CFLAGS += $(shell pkg-config --cflags libswresample)
 LIBS += $(shell pkg-config --libs libswresample)
 endif
-#ifeq ($(AVRESAMPLE),1)
-#CONFIG += -DUSE_AVRESAMPLE
-#_CFLAGS += $(shell pkg-config --cflags libavresample)
-#LIBS += $(shell pkg-config --libs libavresample)
-#endif
+ifeq ($(AVRESAMPLE),1)
+CONFIG += -DUSE_AVRESAMPLE
+_CFLAGS += $(shell pkg-config --cflags libavresample)
+LIBS += $(shell pkg-config --libs libavresample)
+endif
 
 #_CFLAGS += $(shell pkg-config --cflags libavcodec x11 x11-xcb xcb xcb-icccm)
 #LIBS += -lrt $(shell pkg-config --libs libavcodec x11 x11-xcb xcb xcb-icccm)
@@ -200,7 +234,11 @@ ifeq ($(LIBPLACEBO),1)
 LIBS += -lplacebo -lglut
 endif
 
-LIBS += -lGLEW  -lGLX -ldl -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid 
+ifeq ($(CUVID),1)
+LIBS +=  -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid
+endif
+
+LIBS += -lGLEW  -lGLX -ldl  
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=
@@ -218,12 +256,12 @@ override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o softhddev.o video.o audio.o codec.o ringbuffer.o  
+OBJS = softhdcuvid.o softhddev.o video.o audio.o codec.o ringbuffer.o  
 ifeq ($(OPENGLOSD),1)
 OBJS += openglosd.o 
 endif
 
-SRCS = $(wildcard $(OBJS:.o=.c)) $(PLUGIN).cpp
+SRCS = $(wildcard $(OBJS:.o=.c)) softhdcuvid.cpp
 
 ### The main target:
 

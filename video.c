@@ -1,4 +1,3 @@
-
 ///
 ///	@file video.c	@brief Video module
 ///
@@ -153,11 +152,12 @@ typedef enum
 #include <GL/freeglut_ext.h>
 #endif
 
+#include <libavutil/hwcontext.h>
+
 #ifdef CUVID
 //#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
 //#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT 
-#include <libavutil/hwcontext.h>
 #include <cuda.h>
 //#include <dynlink_cuda.h>
 #include <cuda_runtime_api.h>
@@ -168,6 +168,18 @@ typedef enum
 // CUDA includes
 #define __DEVICE_TYPES_H__
 #endif
+
+#ifdef VAAPI
+#include <va/va_drmcommon.h>
+#include <libavcodec/vaapi.h>
+#include <libavutil/hwcontext_vaapi.h>
+#define TO_AVHW_DEVICE_CTX(x) ((AVHWDeviceContext*)x->data)
+#define TO_AVHW_FRAMES_CTX(x) ((AVHWFramesContext*)x->data)
+
+#define TO_VAAPI_DEVICE_CTX(x) ((AVVAAPIDeviceContext*)TO_AVHW_DEVICE_CTX(x)->hwctx)
+#define TO_VAAPI_FRAMES_CTX(x) ((AVVAAPIFramesContext*)TO_AVHW_FRAMES_CTX(x)->hwctx)
+#endif
+
 
 #ifdef PLACEBO
 
@@ -197,7 +209,7 @@ typedef enum
 #include <libavutil/pixdesc.h>
 #include <libavutil/hwcontext.h>
 
-#ifdef YADIF
+#if defined(YADIF) || defined (VAAPI)
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavutil/opt.h>
@@ -340,7 +352,7 @@ typedef struct {
 
 #define CODEC_SURFACES_MAX	16	///< maximal of surfaces
 
-#define VIDEO_SURFACES_MAX	8	///< video output surfaces for queue
+#define VIDEO_SURFACES_MAX	6	///< video output surfaces for queue
 //#define OUTPUT_SURFACES_MAX	4	///< output surfaces for flip page
 
 //----------------------------------------------------------------------------
@@ -453,7 +465,7 @@ static pthread_mutex_t VideoLockMutex;	///< video lock mutex
 pthread_mutex_t OSDMutex;			///< OSD update mutex
 #endif
 
-
+int skipwait;
 
 static pthread_t VideoDisplayThread;	///< video display thread
 //static pthread_cond_t VideoDisplayWakeupCond;	///< wakeup condition variable
@@ -502,8 +514,8 @@ GLXContext OSDcontext;
 //	Common Functions
 //----------------------------------------------------------------------------
 
-static void VideoThreadLock(void);	///< lock video thread
-static void VideoThreadUnlock(void);	///< unlock video thread
+void VideoThreadLock(void);	///< lock video thread
+void VideoThreadUnlock(void);	///< unlock video thread
 static void VideoThreadExit(void);	///< exit/kill video thread
 
 #ifdef USE_SCREENSAVER
@@ -897,6 +909,7 @@ static void GlxUploadOsdTexture(int x, int y, int width, int height,
 ///
 static void GlxOsdInit(__attribute__((unused))int width, __attribute__((unused))int height)
 {
+	int i;
 #ifdef DEBUG
     if (!GlxEnabled) {
 		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
@@ -1596,9 +1609,15 @@ static void AutoCropDetect(AutoCropCtx * autocrop, int width, int height,
 #ifdef PLACEBO
 struct ext_buf {
     int fd;
+#ifdef CUVID
     CUexternalMemory mem;
     CUdeviceptr buf;
+#endif
 };
+#endif
+
+#ifdef VAAPI
+static VADisplay *VaDisplay;		///< VA-API display
 #endif
 
 ///
@@ -1606,6 +1625,11 @@ struct ext_buf {
 ///
 typedef struct _cuvid_decoder_
 {
+#ifdef VAAPI	
+	VADisplay *VaDisplay;		///< VA-API display
+#endif
+
+
      xcb_window_t Window;		///< output window
 
     int VideoX;				///< video base x coordinate
@@ -1661,17 +1685,18 @@ typedef struct _cuvid_decoder_
     int SurfaceWrite;			///< write pointer
     int SurfaceRead;			///< read pointer
     atomic_t SurfacesFilled;		///< how many of the buffer is used
-	
+	AVFrame *frames[CODEC_SURFACES_MAX+1];
+#ifdef CUVID	
 	CUarray      		 cu_array[CODEC_SURFACES_MAX+1][2];
 	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX+1][2];
 	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
 	CUcontext cuda_ctx;
-	
+#endif	
 #ifdef PLACEBO
 	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images for Placebo chain
-	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
-	const struct pl_buf		 *pl_buf_Y,*pl_buf_UV;				 // buffer for Texture upload
-	struct ext_buf			 ebuf[2];							 // for managing vk buffer
+//	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
+	const struct pl_buf		 *pl_buf_Y[2],*pl_buf_UV[2];				 // buffer for Texture upload
+	struct ext_buf			 ebuf[4];							 // for managing vk buffer
 #endif
 	
 	
@@ -1684,7 +1709,7 @@ typedef struct _cuvid_decoder_
     int SyncOnAudio;			///< flag sync to audio
     int64_t PTS;			///< video PTS clock
 	
-#ifdef YADIF
+#if defined(YADIF) || defined (VAAPI)
 	AVFilterContext *buffersink_ctx;
 	AVFilterContext *buffersrc_ctx;
 	AVFilterGraph *filter_graph;
@@ -1720,6 +1745,7 @@ typedef struct priv {
 	struct pl_tex      final_fbo;
 	VkSurfaceKHR  pSurface;
 	VkSemaphore sig_in;
+	int has_dma_buf;
 }priv;
 static priv *p;
 static struct pl_overlay osdoverlay;
@@ -1810,7 +1836,7 @@ int CuvidMessage(int level, const char *format, ...)
 
 ////////////////////////////////////////////////////////////////////////////////
 // These are CUDA Helper functions
-
+#ifdef CUVID
 // This will output the proper CUDA error strings in the event that a CUDA host call returns an error
 #define checkCudaErrors(err)  __checkCudaErrors (err, __FILE__, __LINE__)
 
@@ -1823,6 +1849,7 @@ static inline void __checkCudaErrors(CUresult err, const char *file, const int l
         exit(EXIT_FAILURE);
     }
 }
+#endif
 //	Surfaces -------------------------------------------------------------
 
 void
@@ -1875,22 +1902,32 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 #endif
 	
 	for (i=0;i<decoder->SurfacesNeeded;i++) {
+		if (decoder->frames[i]) {
+			av_frame_free(&decoder->frames[i]);
+		}
 		for (j=0;j<2;j++) {
-#ifdef PLACEBO
-			pl_tex_destroy(p->gpu,&decoder->pl_tex_in[i][j]);
+#ifdef PLACEBO		
+			if (decoder->pl_images[i].planes[j].texture) {
+
+#ifdef VAAPI				
+				if (p->has_dma_buf && decoder->pl_images[i].planes[j].texture->params.shared_mem.handle.fd) {
+					close(decoder->pl_images[i].planes[j].texture->params.shared_mem.handle.fd);
+				}
+#endif
+				pl_tex_destroy(p->gpu,&decoder->pl_images[i].planes[j].texture);
+			}
 #else
 			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));			
 #endif
 		}
 	}
 #ifdef PLACEBO
-// Never ever close the FD this will corrupt cuda
-//	if (decoder->pl_buf_Y->handles.fd > 0)
-//		close(decoder->pl_buf_Y->handles.fd);
-//	if (decoder->pl_buf_UV->handles.fd > 0)
-//		close(decoder->pl_buf_UV->handles.fd);
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y);
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV);
+#ifdef CUVID
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y[0]);
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV[0]);
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y[1]);
+	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV[1]);
+#endif
 	pl_renderer_destroy(&p->renderer);
 	p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
@@ -1957,7 +1994,25 @@ static int CuvidGetVideoSurface0(CuvidDecoder * decoder)
 static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
 {
     int i;
-
+	if (decoder->frames[surface]) {
+		av_frame_free(&decoder->frames[surface]);
+	}
+#ifdef PLACEBO	
+	if (p->has_dma_buf) {
+		if (decoder->pl_images[surface].planes[0].texture) {
+			if (decoder->pl_images[surface].planes[0].texture->params.shared_mem.handle.fd) {
+				close(decoder->pl_images[surface].planes[0].texture->params.shared_mem.handle.fd);
+			}
+			pl_tex_destroy(p->gpu,&decoder->pl_images[surface].planes[0].texture);
+		}
+		if (decoder->pl_images[surface].planes[1].texture) {
+			if (decoder->pl_images[surface].planes[1].texture->params.shared_mem.handle.fd) {
+				close(decoder->pl_images[surface].planes[1].texture->params.shared_mem.handle.fd);
+			}
+			pl_tex_destroy(p->gpu,&decoder->pl_images[surface].planes[1].texture);
+		}
+	}
+#endif
     for (i = 0; i < decoder->SurfaceUsedN; ++i) {
 		if (decoder->SurfacesUsed[i] == surface) {
 			// no problem, with last used
@@ -2002,7 +2057,9 @@ int CuvidTestSurfaces() {
 ///
 static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 {
+	
     CuvidDecoder *decoder;
+
     int i=0;
 
 //	setenv ("DISPLAY", ":0", 0); 
@@ -2012,17 +2069,26 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 		Error(_("video/cuvid: out of decoders\n"));
 		return NULL;
     }
-	
+#ifdef CUVID	
     if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, X11DisplayName, NULL, 0)) != 0) {
 		Fatal("codec: can't allocate HW video codec context err %04x",i);
     }
+#endif
+#ifdef VAAPI
+	if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, "/dev/dri/renderD128" , NULL, 0)) != 0) {
+		Fatal("codec: can't allocate HW video codec context err %04x",i);
+    }
+#endif
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
 	
     if (!(decoder = calloc(1, sizeof(*decoder)))) {
 		Error(_("video/cuvid: out of memory\n"));
 		return NULL;
     }
-
+#ifdef VAAPI	
+    VaDisplay = TO_VAAPI_DEVICE_CTX(HwDeviceContext)->display;
+    decoder->VaDisplay = VaDisplay;
+#endif
     decoder->Window = VideoWindow;
     //decoder->VideoX = 0;		// done by calloc
     //decoder->VideoY = 0;
@@ -2046,6 +2112,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
     decoder->OutputWidth = VideoWindowWidth;
     decoder->OutputHeight = VideoWindowHeight;
     decoder->PixFmt = AV_PIX_FMT_NONE;
+
 
 #ifdef USE_AUTOCROP
     //decoder->AutoCropBuffer = NULL;	// done by calloc
@@ -2219,6 +2286,10 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
     Debug(3,"video/vulkan: create %d Textures Format %s w %d h %d \n",anz,PixFmt==AV_PIX_FMT_NV12?"NV12":"P010",size_x,size_y);
   
 	for (i=0;i<anz;i++) {		// number of texture
+		if (decoder->frames[i]) {
+			av_frame_free(&decoder->frames[i]);
+			decoder->frames[i] = NULL;
+		}
 		for (n=0;n<2;n++ ) {  	// number of planes
 			bool ok = true;
 			if (PixFmt == AV_PIX_FMT_NV12) {
@@ -2228,7 +2299,17 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 				fmt = pl_find_named_fmt(p->gpu, n==0?"r16":"rg16");	// 10 Bit YUV
 				size = 2;
 			}
-			decoder->pl_tex_in[i][n] = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+			if (decoder->pl_images[i].planes[n].texture) {
+#ifdef VAAPI
+				if (p->has_dma_buf && decoder->pl_images[i].planes[n].texture->params.shared_mem.handle.fd) {
+					close(decoder->pl_images[i].planes[n].texture->params.shared_mem.handle.fd);
+				}
+#endif
+				pl_tex_destroy(p->gpu,&decoder->pl_images[i].planes[n].texture);  // delete old texture
+			}
+//			decoder->pl_tex_in[i][n] = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+			if (p->has_dma_buf == 0) { 
+			     decoder->pl_images[i].planes[n].texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
 				.w = n==0?size_x:size_x/2,
 				.h = n==0?size_y:size_y/2,
 				.d = 0,
@@ -2238,9 +2319,10 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 				.sample_mode = PL_TEX_SAMPLE_LINEAR,
 				.address_mode = PL_TEX_ADDRESS_CLAMP,
 				});
+			}
 			// make planes for image
 			pl = &decoder->pl_images[i].planes[n];
-			pl->texture = decoder->pl_tex_in[i][n];
+//			pl->texture = decoder->pl_tex_in[i][n];
 			pl->components = n==0?1:2;
 			pl->shift_x = 0.0f;
 			pl->shift_y = 0.0f;
@@ -2275,8 +2357,8 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		img->height = size_y;
 		img->num_overlays = 0;
 	}
-	
-	decoder->pl_buf_Y = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for Y texture upload
+#ifdef CUVID	
+	decoder->pl_buf_Y[0] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for Y texture upload
 		.type = PL_BUF_TEX_TRANSFER,
 		.size = size_x * size_y * size,
 		.host_mapped = false,
@@ -2284,9 +2366,9 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.memory_type = PL_BUF_MEM_DEVICE,
 		.handle_type = PL_HANDLE_FD,
 		});
-	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y->shared_mem.handle.fd);		// dup fd
+	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y[0]->shared_mem.handle.fd);		// dup fd
 
-	decoder->pl_buf_UV = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for UV texture upload
+	decoder->pl_buf_UV[0] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for UV texture upload
 		.type = PL_BUF_TEX_TRANSFER,
 		.size = size_x * size_y * size / 2,
 		.host_mapped = false,
@@ -2294,18 +2376,18 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		.memory_type = PL_BUF_MEM_DEVICE,
 		.handle_type = PL_HANDLE_FD,
 		});
-	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV->shared_mem.handle.fd);	// dup fd 
+	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV[0]->shared_mem.handle.fd);	// dup fd 
 
 	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc  = {
 		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
 		.handle.fd   = decoder->ebuf[0].fd,
-		.size = decoder->pl_buf_Y->shared_mem.size,   // image_width * image_height * bytes,
+		.size = decoder->pl_buf_Y[0]->shared_mem.size,   // image_width * image_height * bytes,
 		.flags = 0,
 	};
 	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[0].mem, &ext_desc));	// Import Memory segment
 
 	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc = {
-		.offset = decoder->pl_buf_Y->shared_mem.offset,
+		.offset = decoder->pl_buf_Y[0]->shared_mem.offset,
 		.size = size_x * size_y * size,
 		.flags = 0,
 	};
@@ -2314,37 +2396,181 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
 		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
 		.handle.fd   = decoder->ebuf[1].fd,
-		.size = decoder->pl_buf_UV->shared_mem.size,   // image_width * image_height * bytes / 2,
+		.size = decoder->pl_buf_UV[0]->shared_mem.size,   // image_width * image_height * bytes / 2,
 		.flags = 0,
 	};
 	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  
 
 	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc1 = {
-		.offset = decoder->pl_buf_UV->shared_mem.offset,
+		.offset = decoder->pl_buf_UV[0]->shared_mem.offset,
 		.size = size_x * size_y * size / 2,
 		.flags = 0,
 	};
 	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[1].buf, decoder->ebuf[1].mem, &buf_desc1));	// get pointer
+// ----------------------------
+		decoder->pl_buf_Y[1] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for Y texture upload
+		.type = PL_BUF_TEX_TRANSFER,
+		.size = size_x * size_y * size,
+		.host_mapped = false,
+		.host_writable = false,
+		.memory_type = PL_BUF_MEM_DEVICE,
+		.handle_type = PL_HANDLE_FD,
+		});
+	decoder->ebuf[2].fd = dup(decoder->pl_buf_Y[1]->shared_mem.handle.fd);		// dup fd
+
+	decoder->pl_buf_UV[1] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for UV texture upload
+		.type = PL_BUF_TEX_TRANSFER,
+		.size = size_x * size_y * size / 2,
+		.host_mapped = false,
+		.host_writable = false,
+		.memory_type = PL_BUF_MEM_DEVICE,
+		.handle_type = PL_HANDLE_FD,
+		});
+	decoder->ebuf[3].fd = dup(decoder->pl_buf_UV[1]->shared_mem.handle.fd);	// dup fd 
+
+	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc2  = {
+		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
+		.handle.fd   = decoder->ebuf[2].fd,
+		.size = decoder->pl_buf_Y[1]->shared_mem.size,   // image_width * image_height * bytes,
+		.flags = 0,
+	};
+	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[2].mem, &ext_desc2));	// Import Memory segment
+
+	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc2 = {
+		.offset = decoder->pl_buf_Y[1]->shared_mem.offset,
+		.size = size_x * size_y * size,
+		.flags = 0,
+	};
+	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[2].buf, decoder->ebuf[2].mem, &buf_desc2)); // get Pointer
+	
+	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc3 = {
+		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
+		.handle.fd   = decoder->ebuf[3].fd,
+		.size = decoder->pl_buf_UV[1]->shared_mem.size,   // image_width * image_height * bytes / 2,
+		.flags = 0,
+	};
+	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[3].mem, &ext_desc3)); // Import Memory Segment  
+
+	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc3 = {
+		.offset = decoder->pl_buf_UV[1]->shared_mem.offset,
+		.size = size_x * size_y * size / 2,
+		.flags = 0,
+	};
+	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[3].buf, decoder->ebuf[3].mem, &buf_desc3));	// get pointer
+#endif	
+}
+#ifdef VAAPI
+// copy image and process using CUDA
+void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height)
+{
+    int n;
+	VAStatus status;
+	static int toggle = 0;
+	uint64_t first_time;
+	VADRMPRIMESurfaceDescriptor desc;
+	
+    status = vaExportSurfaceHandle(decoder->VaDisplay, (unsigned int)frame->data[3],
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+                                   VA_EXPORT_SURFACE_READ_ONLY |
+                                   VA_EXPORT_SURFACE_SEPARATE_LAYERS,
+                                   &desc);
+	
+	if (status != VA_STATUS_SUCCESS) {
+		printf("Fehler beim export VAAPI Handle\n");
+		return;
+	}
+	vaSyncSurface(decoder->VaDisplay,(unsigned int)frame->data[3]);
+	
+    for (n = 0; n < 2; n++) { 		//  Set DMA_BUF from VAAPI decoder to Textures 
+            int id = desc.layers[n].object_index[0];
+            int fd = desc.objects[id].fd;
+            uint32_t size = desc.objects[id].size;
+            uint32_t offset = desc.layers[n].offset[0];
+			const struct pl_fmt *fmt;
+			
+			if (fd == -1) {
+				printf("Fehler beim Import von Surface %d\n",index);
+				return;
+			}
+			
+			if (decoder->PixFmt == AV_PIX_FMT_NV12) {
+				fmt = pl_find_named_fmt(p->gpu, n==0?"r8":"rg8");	// 8 Bit YUV
+			} else {
+				fmt = pl_find_named_fmt(p->gpu, n==0?"r16":"rg16");	// 10 Bit YUV
+			}
+
+            struct pl_tex_params tex_params = {
+                .w = n==0?image_width:image_width/2,
+                .h = n==0?image_height:image_height/2,
+                .d = 0,
+                .format = fmt,
+                .sampleable = true,						
+				.host_writable = false,
+				.address_mode = PL_TEX_ADDRESS_CLAMP,				
+                .sample_mode =  PL_TEX_SAMPLE_LINEAR,                                                
+                .import_handle = PL_HANDLE_DMA_BUF,
+                .shared_mem = (struct pl_shared_mem) {
+                    .handle = {
+                        .fd = fd,
+                    },
+                    .size = size,
+                    .offset = offset,
+                },
+            };
+
+//printf("vor create  Object %d with fd %d import size %u offset  %d  %dx%d\n",id,fd,size,offset, tex_params.w,tex_params.h);
+
+			if (decoder->pl_images[index].planes[n].texture) {
+#if 0
+				if (decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd) {
+					close(decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd);
+					printf("close FD %d\n",decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd);
+				}
+#endif
+				pl_tex_destroy(p->gpu,&decoder->pl_images[index].planes[n].texture);
+
+			}
+			decoder->pl_images[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
+
+
+
+
+    }
+
+//	VideoThreadUnlock();
 
 }
-
-
+#endif
+#ifdef CUVID
 // copy image and process using CUDA
 void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
 {
     int n;
- 
-	struct ext_buf ebuf[2];
+	static int toggle = 0;
+	uint64_t first_time;
+//	struct ext_buf ebuf[2];
+//first_time = GetusTicks();
+	VideoThreadLock();
+		
 //printf("Upload buf to texture for frame %d in size %d-%d\n",index,image_width,image_height);
-	if (decoder->pl_buf_Y)
-		while (pl_buf_poll(p->gpu,decoder->pl_buf_Y, 5000000));   //  5 ms
+	if (decoder->pl_buf_Y[toggle])
+		while (pl_buf_poll(p->gpu,decoder->pl_buf_Y[toggle], 000000)) {   //  5 ms
+			VideoThreadUnlock();
+			usleep(1);
+			VideoThreadLock();
+		}
 	else
 		return;
-	if (decoder->pl_buf_UV)
-		while (pl_buf_poll(p->gpu,decoder->pl_buf_UV, 5000000));
+	if (decoder->pl_buf_UV[toggle])
+		while (pl_buf_poll(p->gpu,decoder->pl_buf_UV[toggle], 000000)) {
+			VideoThreadUnlock();
+			usleep(1);
+			VideoThreadLock();
+		}
 	else
 		return;
-			
+//	printf("1 got Image buffers %2.2f\n",(float)(GetusTicks()-first_time)/1000000.0);	
+
     for (n = 0; n < 2; n++) { 									//  Copy 2 Planes from Cuda decoder to upload Buffer 
         // widthInBytes must account for the chroma plane
         // elements being two samples wide.
@@ -2356,28 +2582,31 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
             .WidthInBytes  = image_width * bytes, 
             .Height        = n==0?image_height:image_height/2 , 
 			.dstMemoryType = CU_MEMORYTYPE_DEVICE,
-            .dstDevice 	   = decoder->ebuf[n].buf,
+            .dstDevice 	   = decoder->ebuf[toggle*2+n].buf,
             .dstPitch  	   = image_width * bytes,
         };
         checkCudaErrors(cuMemcpy2D(&cpy));        
     }
 
 	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {  	// upload Y 
-		.tex = decoder->pl_tex_in[index][0],
-		.buf = decoder->pl_buf_Y,
+		.tex = decoder->pl_images[index].planes[0].texture,
+		.buf = decoder->pl_buf_Y[toggle],
 	});
 	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {		// upload UV
-		.tex = decoder->pl_tex_in[index][1],
-		.buf = decoder->pl_buf_UV,
+		.tex = decoder->pl_images[index].planes[1].texture,
+		.buf = decoder->pl_buf_UV[toggle],
 	});
 
-	pl_buf_export(p->gpu,decoder->pl_buf_Y);
-	pl_buf_export(p->gpu,decoder->pl_buf_UV);
+	pl_buf_export(p->gpu,decoder->pl_buf_Y[toggle]);
+	pl_buf_export(p->gpu,decoder->pl_buf_UV[toggle]);
+//	toggle = toggle==0?1:0;
+//	pl_gpu_flush(p->gpu);
+	VideoThreadUnlock();
 
-//	pl_gpu_finish(p->gpu);
 }
-
+#endif
 #else
+#ifdef CUVID
 void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {
@@ -2446,6 +2675,7 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
     }
 }
 #endif
+#endif
 
 
 
@@ -2484,16 +2714,15 @@ static unsigned CuvidGetVideoSurface(CuvidDecoder * decoder,
     return CuvidGetVideoSurface0(decoder);
 }
 
-#ifdef YADIF
+
+#ifdef VAAPI
 static void CuvidSyncRenderFrame(CuvidDecoder * decoder,
     const AVCodecContext * video_ctx, const AVFrame * frame);
 
 int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame) {
-	int ret;
+	int ret,i=0;
 	AVFrame *filt_frame = av_frame_alloc();
 	
-//	frame->pts = frame->best_effort_timestamp;
-
 	/* push the decoded frame into the filtergraph */
 	if (av_buffersrc_add_frame_flags(decoder->buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
 		av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
@@ -2503,14 +2732,171 @@ int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 	/* pull filtered frames from the filtergraph */
 	while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
 //		filt_frame->pts = frame->pts;						// Restore orginal pts 
-//		frame->pts += 20 * 90;									// prepare for next frame
+//		filt_frame->pts += 20 * 90;									// prepare for next frame
+		filt_frame->pts /= 2;
+		decoder->Interlaced = 0;
+//		printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);		
+		CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
+		if (i++ == 0)
+		  filt_frame = av_frame_alloc();  // get new frame
+//		av_frame_unref(filt_frame);
+	}
+
+//	av_frame_free(&filt_frame);
+	av_frame_free(&frame);
+	return ret;
+}
+
+
+int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
+{	
+#ifdef VAAPI
+	const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";   //
+	enum AVPixelFormat format = AV_PIX_FMT_VAAPI;
+#endif
+#ifdef YADIF
+	const char *filters_descr = "yadif_cuda=1:0:1";   // mode=send_field,parity=tff,deint=interlaced";
+	enum AVPixelFormat format = AV_PIX_FMT_CUDA;
+#endif
+    char args[512];
+    int ret = 0;
+    const AVFilter *buffersrc  = avfilter_get_by_name("buffer");
+    const AVFilter *buffersink = avfilter_get_by_name("buffersink");
+    AVFilterInOut *outputs = avfilter_inout_alloc();
+    AVFilterInOut *inputs  = avfilter_inout_alloc();
+	AVBufferSrcParameters *src_params;
+
+    enum AVPixelFormat pix_fmts[] = { format, AV_PIX_FMT_NONE };
+
+	if (decoder->filter_graph)
+		avfilter_graph_free(&decoder->filter_graph);
+	
+    decoder->filter_graph = avfilter_graph_alloc();
+    if (!outputs || !inputs || !decoder->filter_graph) {
+        ret = AVERROR(ENOMEM);
+        goto end;
+    }
+
+    /* buffer video source: the decoded frames from the decoder will be inserted here. */
+    snprintf(args, sizeof(args),
+            "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+            dec_ctx->width, dec_ctx->height, format,
+            1, 90000,
+            dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den);
+
+    ret = avfilter_graph_create_filter(&decoder->buffersrc_ctx, buffersrc, "in",
+                                       args, NULL, decoder->filter_graph);
+    if (ret < 0) {
+        Debug(3, "Cannot create buffer source\n");
+        goto end;
+    }
+	src_params = av_buffersrc_parameters_alloc();
+	src_params->hw_frames_ctx = frame->hw_frames_ctx;
+	src_params->format = format;
+	src_params->time_base.num = 1;
+	src_params->time_base.den = 90000;
+	src_params->width = dec_ctx->width;
+	src_params->height = dec_ctx->height;
+	src_params->frame_rate.num = 50;
+	src_params->frame_rate.den = 1;
+	src_params->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+	
+//printf("width %d height %d hw_frames_ctx %p\n",dec_ctx->width,dec_ctx->height ,frame->hw_frames_ctx);
+	ret = av_buffersrc_parameters_set(decoder->buffersrc_ctx, src_params);
+	if (ret < 0) {
+        Debug(3, "Cannot set hw_frames_ctx to src\n");
+        goto end;
+    }
+    /* buffer video sink: to terminate the filter chain. */
+    ret = avfilter_graph_create_filter(&decoder->buffersink_ctx, buffersink, "out",
+                                       NULL, NULL, decoder->filter_graph);
+    if (ret < 0) {
+        Debug(3, "Cannot create buffer sink\n");
+        goto end;
+    }
+#if 0
+    ret = av_opt_set_int_list(decoder->buffersink_ctx, "pix_fmts", pix_fmts,
+                              AV_PIX_FMT_NONE , AV_OPT_SEARCH_CHILDREN);
+    if (ret < 0) {
+        Debug(3, "Cannot set output pixel format\n");
+        goto end;
+    }
+#endif
+    /*
+     * Set the endpoints for the filter graph. The filter_graph will
+     * be linked to the graph described by filters_descr.
+     */
+
+    /*
+     * The buffer source output must be connected to the input pad of
+     * the first filter described by filters_descr; since the first
+     * filter input label is not specified, it is set to "in" by
+     * default.
+     */
+    outputs->name       = av_strdup("in");
+    outputs->filter_ctx = decoder->buffersrc_ctx;
+    outputs->pad_idx    = 0;
+    outputs->next       = NULL;
+
+    /*
+     * The buffer sink input must be connected to the output pad of
+     * the last filter described by filters_descr; since the last
+     * filter output label is not specified, it is set to "out" by
+     * default.
+     */
+    inputs->name       = av_strdup("out");
+    inputs->filter_ctx = decoder->buffersink_ctx;
+    inputs->pad_idx    = 0;
+    inputs->next       = NULL;
+
+    if ((ret = avfilter_graph_parse_ptr(decoder->filter_graph, filters_descr, &inputs, &outputs, NULL)) < 0) {
+		Debug(3,"Cannot set graph parse %d\n",ret);
+        goto end;
+	}
+
+    if ((ret = avfilter_graph_config(decoder->filter_graph, NULL)) < 0) {
+		Debug(3,"Cannot set graph config %d\n",ret);
+        goto end;
+	}
+
+end:
+    avfilter_inout_free(&inputs);
+    avfilter_inout_free(&outputs);
+
+    return ret;
+}
+
+#endif
+
+
+#ifdef YADIF
+static void CuvidSyncRenderFrame(CuvidDecoder * decoder,
+    const AVCodecContext * video_ctx, const AVFrame * frame);
+
+int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame) {
+	int ret,i;
+	AVFrame *filt_frame = av_frame_alloc();
+	
+//	frame->pts = frame->best_effort_timestamp;
+
+	/* push the decoded frame into the filtergraph */
+	if (av_buffersrc_add_frame_flags(decoder->buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
+		av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
+	}
+    av_frame_copy_props(filt_frame,frame);
+//printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
+	/* pull filtered frames from the filtergraph */
+	while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
 		filt_frame->pts /= 2;
 //		Debug(3,"video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
 		CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
-		av_frame_unref(filt_frame);
+		if (i++ == 0)
+		  filt_frame = av_frame_alloc();  // get new frame
+//		av_frame_unref(filt_frame);
 	}
 
-	av_frame_free(&filt_frame);
+//	av_frame_free(&filt_frame);
+	av_frame_free(&frame);
 	return ret;
 }
 
@@ -2656,13 +3042,20 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
         if (*fmt_idx == AV_PIX_FMT_P010LE)
             bitformat16 = 1;
     }
+#ifdef VAAPI
+	if (video_ctx->profile == FF_PROFILE_HEVC_MAIN_10)
+		bitformat16 = 1;
+#endif
 
     Debug(3, "%s: codec %d fmts:\n", __FUNCTION__, video_ctx->codec_id);
     for (fmt_idx = fmt; *fmt_idx != AV_PIX_FMT_NONE; fmt_idx++) {
 		Debug(3, "\t%#010x %s\n", *fmt_idx, av_get_pix_fmt_name(*fmt_idx));
 		// check supported pixel format with entry point
 		switch (*fmt_idx) {
+#ifdef CUVID
 			case AV_PIX_FMT_CUDA:
+#endif
+			case AV_PIX_FMT_VAAPI:
 				break;
 			default:
 				continue;
@@ -2672,20 +3065,32 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 	
 	Debug(3,"video profile %d codec id %d\n",video_ctx->profile,video_ctx->codec_id);
     if (*fmt_idx == AV_PIX_FMT_NONE) {
-		Error(_("video: no valid pixfmt found\n"));
+		Fatal(_("video: no valid pixfmt found\n"));
     }
 
-
+#ifdef CUVID
     if (*fmt_idx != AV_PIX_FMT_CUDA) {
 		Fatal(_("video: no valid profile found\n"));
     }
     if (ist->GetFormatDone)
 		return AV_PIX_FMT_CUDA;
+#endif
+#ifdef VAAPI
+	if (*fmt_idx != AV_PIX_FMT_VAAPI) {
+		Fatal(_("video: no valid profile found\n"));
+    }
+    if (ist->GetFormatDone)
+		return AV_PIX_FMT_VAAPI;
+#endif
 	ist->GetFormatDone = 1;
 	
     Debug(3, "video: create decoder 16bit?=%d %dx%d old  %d %d\n",bitformat16, video_ctx->width, video_ctx->height,decoder->InputWidth,decoder->InputHeight);
-	
+#ifdef CUVID
     if (*fmt_idx == AV_PIX_FMT_CUDA  )  {       // HWACCEL used 
+#endif
+#ifdef VAAPI
+	if (*fmt_idx == AV_PIX_FMT_VAAPI) {         // HWACCEL used 
+#endif
 		//	Check image, format, size
 		// 
 		if (bitformat16) { 
@@ -2695,10 +3100,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			decoder->PixFmt = AV_PIX_FMT_NV12;        // 8 Bit Planar
 			ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
-#if 1
+
 	if (1 || video_ctx->width  != decoder->InputWidth
 		|| video_ctx->height != decoder->InputHeight) { 
-
+			VideoThreadLock();
 			CuvidCleanup(decoder);
 			decoder->InputAspect = video_ctx->sample_aspect_ratio;
 			decoder->InputWidth = video_ctx->width;
@@ -2707,6 +3112,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			
 			decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
 			CuvidSetupOutput(decoder);
+			VideoThreadUnlock();
 #ifdef PLACEBO     // dont show first frame
 			decoder->newchannel = 1;
 #endif
@@ -2726,14 +3132,20 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 #endif
 		} 
 
-#endif	
   		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
+		decoder->InputAspect = video_ctx->sample_aspect_ratio;
+#ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
         ist->hwaccel_pix_fmt   = AV_PIX_FMT_CUDA;
+		return AV_PIX_FMT_CUDA;
+#endif
+#ifdef VAAPI
+		ist->filter = 1;  // init deint vaapi
+        ist->active_hwaccel_id = HWACCEL_VAAPI;
+        ist->hwaccel_pix_fmt   = AV_PIX_FMT_VAAPI;
+		return AV_PIX_FMT_VAAPI;
+#endif
  
-        decoder->InputAspect = video_ctx->sample_aspect_ratio;
-
-        return AV_PIX_FMT_CUDA;
     }
 	Fatal(_("NO Format valid"));
     return *fmt_idx;
@@ -2944,7 +3356,7 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 	height = decoder->InputHeight;
 #endif
     
-    Debug(3, "video/cuvid: grab %dx%d\n", width, height);
+//    Debug(3, "video/cuvid: grab %dx%d\n", width, height);
 
     source_rect.x0 = 0;
     source_rect.y0 = 0;
@@ -2977,9 +3389,7 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 			}
 		}
 
-		Debug(3, "video/cuvid: grab source rect %d,%d:%d,%d dest dim %dx%d\n",
-			source_rect.x0, source_rect.y0, source_rect.x1, source_rect.y1,
-			width, height);
+//		printf("video/cuvid: grab source  dim %dx%d\n", width, height);
 
 		size = width * height * sizeof(uint32_t);
 		
@@ -3000,7 +3410,7 @@ static uint8_t *CuvidGrabOutputSurfaceLocked(int *ret_size, int *ret_width, int 
 		while(decoder->grab) {
 			usleep(1000);				// wait for data
 		}
-		Debug(3,"got grab data\n");
+//		Debug(3,"got grab data\n");
 
 		if (ret_size) {
 			*ret_size = size;
@@ -3285,11 +3695,13 @@ static void CuvidQueueVideoSurface(CuvidDecoder * decoder, int surface, int soft
     atomic_inc(&decoder->SurfacesFilled);
 }
 
+#if 0
 extern void Nv12ToBgra32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix,cudaStream_t stream);
 extern void P016ToBgra32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix,cudaStream_t stream);
 extern void ResizeNv12(unsigned char *dpDstNv12, int nDstPitch, int nDstWidth, int nDstHeight, unsigned char *dpSrcNv12, int nSrcPitch, int nSrcWidth, int nSrcHeight, unsigned char* dpDstNv12UV);
 extern void ResizeP016(unsigned char *dpDstP016, int nDstPitch, int nDstWidth, int nDstHeight, unsigned char *dpSrcP016, int nSrcPitch, int nSrcWidth, int nSrcHeight, unsigned char* dpDstP016UV);
 extern void cudaLaunchNV12toARGBDrv(uint32_t *d_srcNV12, size_t nSourcePitch,uint32_t *d_dstARGB, size_t nDestPitch,uint32_t width, uint32_t height,CUstream streamID);
+#endif	
 void VideoSetAbove();
 ///
 ///	Render a ffmpeg frame.
@@ -3299,10 +3711,18 @@ void VideoSetAbove();
 ///	@param frame		frame to display
 ///
 static void CuvidRenderFrame(CuvidDecoder * decoder,
-    const AVCodecContext * video_ctx, const AVFrame * frame)
+    const AVCodecContext * video_ctx, AVFrame * frame)
 {
+	uint64_t first_time;
     int surface;
 	enum AVColorSpace color;
+
+#if 1
+	if (skipwait > 1) {
+		skipwait--;
+		return;
+	}
+#endif	
 
     // update aspect ratio changes
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,60,100)
@@ -3351,7 +3771,12 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 	//	Copy data from frame to image
 	//
 	
+#ifdef CUVID	
 	if (video_ctx->pix_fmt == AV_PIX_FMT_CUDA) { 
+#endif
+#ifdef VAAPI
+	if (video_ctx->pix_fmt == AV_PIX_FMT_VAAPI) { 
+#endif
 		int w = decoder->InputWidth;
 		int h = decoder->InputHeight;
 
@@ -3361,45 +3786,68 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		
 		surface = CuvidGetVideoSurface0(decoder);
 		
-		if (surface == -1)     // no free surfaces
+		if (surface == -1)  {   // no free surfaces
+			Debug(3,"no more surfaces\n");
 			return;	
-
-#if 0   // old copy via host ram
+		}
+		
+	if (!decoder->Closing) {
+		VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
+	}
+				
+#ifdef VAAPI    // old copy via host ram
 		{
-			AVFrame *output;
-			int t = decoder->PixFmt==AV_PIX_FMT_NV12?1:2;
-			struct pl_rect3d rc1 = {0,0,0,w,h,0};
+		AVFrame *output;
+		VideoThreadLock();
+		int t = decoder->PixFmt==AV_PIX_FMT_NV12?1:2;
+		struct pl_rect3d rc1 = {0,0,0,w,h,0};
+
+		if (p->has_dma_buf) {  // Vulkan supports DMA_BUF no copy required
+			generateVAAPIImage(decoder,surface,frame,w,h);
+		}
+		else {   // we need to Copy the frame via RAM
+			vaSyncSurface(decoder->VaDisplay,(unsigned int)frame->data[3]);
 			output = av_frame_alloc();
+	//			av_frame_ref(output,frame);
 			av_hwframe_transfer_data(output,frame,0);
-			av_frame_copy_props(output,frame);		
+			av_frame_copy_props(output,frame);	
+//				printf("Save Surface ID %d %p %p\n",surface,decoder->pl_images[surface].planes[0].texture,decoder->pl_images[surface].planes[1].texture);
 			bool ok = pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {
-				.tex = decoder->pl_tex_in[surface][0],
-				.stride_w = output->linesize[0] / t,
+				.tex = decoder->pl_images[surface].planes[0].texture,
+				.stride_w = output->linesize[0], 
+				.stride_h = h,
 				.ptr = output->data[0],
 				.rc.x1 = w,
 				.rc.y1 = h,
 				.rc.z1 = 0,
 			});
 			ok &= pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {
-				.tex = decoder->pl_tex_in[surface][1],
-				.stride_w = (output->linesize[1] / 2) / t,
+				.tex = decoder->pl_images[surface].planes[1].texture,
+				.stride_w = output->linesize[0]/2, 
+				.stride_h = h/2,
 				.ptr = output->data[1],
 				.rc.x1 = w/2,					
 				.rc.y1 = h/2,
 				.rc.z1 = 0,
 			});
-
 			av_frame_free(&output);
 		}
+		VideoThreadUnlock();
+		}
 #endif
+#ifdef CUVID
+//		first_time = GetusTicks();
 		
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
-			
+//			printf("generate CUDA Image  %d\n",(GetusTicks()-first_time)/1000000);
+#endif
 		CuvidQueueVideoSurface(decoder, surface, 1);
+		decoder->frames[surface] = frame; 
 		return;      
 
 	}
+	
 	Fatal(_("video/vdpau: pixel format %d not supported\n"),video_ctx->pix_fmt);
 }
 
@@ -3414,6 +3862,7 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 
 	Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n",(long int)syscall(186));
 //turn NULL;
+#ifdef CUVID
 	if (decoder->cuda_ctx) {
 		Debug(3,"schon passiert\n");
 		return NULL;
@@ -3435,7 +3884,7 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 
     cuCtxGetApiVersion(decoder->cuda_ctx,&version);
 	Debug(3, "***********CUDA API Version %d\n",version);
-
+#endif
 	return NULL;
 
 }
@@ -3482,6 +3931,7 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
 //				VideoGetBuffers(decoder->Stream));
 				return;
 			}
+
 			decoder->SurfaceRead = (decoder->SurfaceRead + 1) % VIDEO_SURFACES_MAX;
 			atomic_dec(&decoder->SurfacesFilled);
 			decoder->SurfaceField = !decoder->Interlaced;
@@ -3695,6 +4145,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 	
 	if (decoder->newchannel && current == 0 ) {
 		colors.brightness = -1.0f;
+		colors.contrast = 0.0f;
 		if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
 		   Debug(3,"Failed rendering frame!\n");
 		}
@@ -3797,7 +4248,7 @@ void make_osd_overlay(int x, int y, int width, int height) {
 static void CuvidDisplayFrame(void)
 {
 
-	uint64_t first_time;
+	static uint64_t first_time = 0;
 	static uint64_t last_time = 0;
 	int i;
 	static unsigned int Count;
@@ -3808,9 +4259,11 @@ static void CuvidDisplayFrame(void)
   
 #ifdef PLACEBO
 	uint64_t diff;
+	static float fdiff = 23000.0;
 	struct pl_swapchain_frame frame;
 	struct pl_render_target target;
 	bool ok;
+	static int first = 1;
 	VkImage Image;
 	const struct pl_fmt *fmt; 
 	const float black[4] = { 0.0f,0.0f,0.0f,1.0f};
@@ -3822,46 +4275,59 @@ static void CuvidDisplayFrame(void)
 	if (CuvidDecoderN)
 		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
 //	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
-#endif
-	
-#ifndef PLACEBO
+
     glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
 	last_time = GetusTicks();	
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 #else
-	if (CuvidDecoderN)
-		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
-#if 0
-	diff = (GetusTicks()-last_time)/1000000;
-//	printf("Time wait %2.2f \n",(float)(diff));
-	last_time = GetusTicks();
-	if (diff < 19) {
-//		printf("Sleep %d\n",19-diff);
-//		usleep((18 - diff) * 1000);
-	}
-//	usleep(15000);
-//	printf("sleept %d\n",(GetusTicks()-last_time)/1000000);
-	
+//	if (CuvidDecoderN) {
+//		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+//	}
+#if 1
+	diff = (GetusTicks()-last_time)/1000; //000;
+
 //	last_time = GetusTicks();
+//printf("Roundtrip %d\n",diff);
+	if (diff < 15000 && skipwait != 1) {
+//		printf("Sleep %d\n",15000-diff);
+		usleep((15000 - diff));// * 1000);
+	} else if (skipwait != 1) {
+	//	usleep(15000);
+	}
+
 #endif	
 	if (!p->swapchain)
 		return;
 	
-//	pl_swapchain_swap_buffers(p->swapchain);  // swap buffers
+//last_time = GetusTicks();
+	VideoThreadLock();
 
-//	printf(" Latency %d  \n",pl_swapchain_latency(p->swapchain));
-//	last_time = GetusTicks();
+	if (!first) {
+//		last_time = GetusTicks();
+		if (!pl_swapchain_submit_frame(p->swapchain))
+			Fatal(_("Failed to submit swapchain buffer\n"));	
+		pl_swapchain_swap_buffers(p->swapchain);  // swap buffers
+//		printf("submit and swap %d\n",(GetusTicks()-last_time)/1000000);
+	}
+	
+	first = 0;
+#if 0	
+ 	fdiff = (float)(GetusTicks()-first_time)/1000.0;
+	if (fdiff > 20100.0 || fdiff < 19900.0)
+		printf("roundtrip %2.2f\n",fdiff);
+	first_time = GetusTicks();	
+#endif	
 
-
-	pthread_mutex_unlock(&VideoLockMutex);
-
+	last_time = GetusTicks();
+	
 	while (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame wait for previous to swap
 		usleep(5);
 	}
-	pthread_mutex_lock(&VideoLockMutex);
 
-last_time = GetusTicks();
+//printf("wait for frame %d\n",(GetusTicks()-last_time)/1000000);
+
+
 	if (!frame.fbo)
 		return;
 	pl_render_target_from_swapchain(&target, &frame);  // make target frame
@@ -3933,7 +4399,9 @@ last_time = GetusTicks();
 			}
 			continue;
 		}
-#ifdef PLACEBO
+		
+#ifdef PLACEBO	
+
 		if (OsdShown == 1) {  // New OSD opened
 			pthread_mutex_lock(&OSDMutex);	
 			make_osd_overlay(OSDx,OSDy,OSDxsize,OSDysize);
@@ -3947,12 +4415,14 @@ last_time = GetusTicks();
 			pthread_mutex_unlock(&OSDMutex);
 
 		}
+		
 		if (OsdShown == 2) {	
 			CuvidMixVideo(decoder, i, &target, &osdoverlay);
 		} else {	
 
 			CuvidMixVideo(decoder, i, &target, NULL);
 		}	
+		
 #else
 		CuvidMixVideo(decoder, i);
 #endif
@@ -3969,6 +4439,8 @@ last_time = GetusTicks();
 			decoder->grab = 0;
 		}
 	}
+	
+	
 	//
 #ifndef PLACEBO	   
 	//	add osd to surface
@@ -3994,15 +4466,12 @@ last_time = GetusTicks();
 #endif	
 
 #ifdef PLACEBO
-	if (!pl_swapchain_submit_frame(p->swapchain))
-		Fatal(_("Failed to submit swapchain buffer\n"));	
-	pl_swapchain_swap_buffers(p->swapchain);  // swap buffers
+	
+	VideoThreadUnlock();
 #else
 	glXGetVideoSyncSGI (&Count);    // get current frame
 	glXSwapBuffers(XlibDisplay, VideoWindow);
 #endif
-
-	
 	
 	// FIXME: CLOCK_MONOTONIC_RAW
 	clock_gettime(CLOCK_MONOTONIC, &CuvidFrameTime);
@@ -4010,6 +4479,7 @@ last_time = GetusTicks();
 		// remember time of last shown surface
 		CuvidDecoders[i]->FrameTime = CuvidFrameTime;
 	}
+
 
 }
 
@@ -4135,7 +4605,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		goto skip_sync;
 	}
 	audio_clock = AudioGetClock();
-
+//printf("Diff %d %ld %ld   filled %d \n",(video_clock - audio_clock - VideoAudioDelay)/90,video_clock,audio_clock,filled);
 	// 60Hz: repeat every 5th field
 	if (Video60HzMode && !(decoder->FramesDisplayed % 6)) {
 			if (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock == (int64_t) AV_NOPTS_VALUE) {
@@ -4182,8 +4652,21 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		diff = video_clock - audio_clock - VideoAudioDelay;
 		diff = (decoder->LastAVDiff + diff) / 2;
 		decoder->LastAVDiff = diff;
-//if (abs(diff/90) > 100)
-//  printf("Diff %d\n",diff/90);
+		decoder->Frameproc = diff/90;
+#if 1		
+	if (skipwait <= 1) {
+		if ((diff/90) > 55) {
+			skipwait = 1;
+		} else if ((diff/90) < -25) {
+			skipwait = 3;
+		} else {
+			skipwait = 0;
+		}
+	}
+#endif
+		skipwait =0;
+//  printf("Diff %d filled %d skipwait %d\n",diff/90,filled,skipwait);
+
 		if (abs(diff) > 5000 * 90) {	// more than 5s
 			err = CuvidMessage(2, "video: audio/video difference too big\n");
 			decoder->SyncCounter = 1;
@@ -4199,13 +4682,15 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 			++decoder->FramesDuped;
 			decoder->SyncCounter = 1;
 			goto out;
-		} else if (diff < -25 * 90 && filled > 3 + 2 * decoder->Interlaced) {
+		} else if (diff < -25 * 90)  {
 		    err = CuvidMessage(3, "video: speed up video, droping frame\n");
 			++decoder->FramesDropped;
 			CuvidAdvanceDecoderFrame(decoder);
+			if (filled > 2 && (diff < -50 * 90))
+				CuvidAdvanceDecoderFrame(decoder);
 	//	    filled = atomic_read(&decoder->SurfacesFilled);
 //			Debug(3,"hinter drop frame filled %d\n",atomic_read(&decoder->SurfacesFilled));
-			decoder->SyncCounter = 1;;;
+			decoder->SyncCounter = 1;
 		}
 #if defined(DEBUG) || defined(AV_INFO)
 		if (!decoder->SyncCounter && decoder->StartCounter < 1000) {
@@ -4322,9 +4807,9 @@ static void CuvidSyncRenderFrame(CuvidDecoder * decoder,
 		return;
 	}
 
-	if (!decoder->Closing) {
-		VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
-	}
+//	if (!decoder->Closing) {
+//		VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
+//	}
 	CuvidRenderFrame(decoder, video_ctx, frame);
 }
 
@@ -4383,10 +4868,6 @@ Debug(3,"Set video mode %dx%d\n",VideoWindowWidth,VideoWindowHeight);
 	}
 }
 
-
-
-
-
 ///
 ///	Handle a CUVID display.
 ///
@@ -4403,7 +4884,9 @@ static void CuvidDisplayHandlerThread(void)
 	allfull = 1;
 	decoded = 0;
 	 
+#ifndef PLACEBO	
 	pthread_mutex_lock(&VideoLockMutex);
+#endif
 	for (i = 0; i < CuvidDecoderN; ++i) {
 
 		decoder = CuvidDecoders[i];
@@ -4412,7 +4895,7 @@ static void CuvidDisplayHandlerThread(void)
 		//
 		filled = atomic_read(&decoder->SurfacesFilled);
 //if (filled <= 1 +  2 * decoder->Interlaced) {
-		if (filled < 5) {
+		if (filled < 4) {
 			// FIXME: hot polling
 			// fetch+decode or reopen
 			allfull = 0;
@@ -4431,22 +4914,24 @@ static void CuvidDisplayHandlerThread(void)
 				}
 			}
 #ifdef PLACEBO
-//	usleep(1000);
+	usleep(1000);
 #endif
 			continue;
 		}
 		decoded = 1;
 	}
-	 
+	
+#ifndef PLACEBO
 	pthread_mutex_unlock(&VideoLockMutex);
-#if 1	 
+#endif
+	 
 	if (!decoded) {			// nothing decoded, sleep
 	// FIXME: sleep on wakeup
-		usleep(1 * 100);
+		usleep(1 * 1000);
 	}
-#endif
+	
 #ifdef PLACEBO
-	usleep(100);
+	usleep(1000);
 #endif
 
 	// all decoder buffers are full
@@ -4958,33 +5443,32 @@ static void VideoEvent(void)
 	case KeyPress:
 	    VideoThreadLock();
 	    letter_len =
-		XLookupString(&event.xkey, letter, sizeof(letter) - 1, &keysym,
-		NULL);
+		XLookupString(&event.xkey, letter, sizeof(letter) - 1, &keysym,	NULL);
 	    VideoThreadUnlock();
 	    if (letter_len < 0) {
-		letter_len = 0;
+			letter_len = 0;
 	    }
 	    letter[letter_len] = '\0';
 	    if (keysym == NoSymbol) {
-		Warning(_("video/event: No symbol for %d\n"),
+			Warning(_("video/event: No symbol for %d\n"),
 		    event.xkey.keycode);
-		break;
+			break;
 	    }
 	    VideoThreadLock();
 	    keynam = XKeysymToString(keysym);
 	    VideoThreadUnlock();
 	    // check for key modifiers (Alt/Ctrl)
 	    if (event.xkey.state & (Mod1Mask | ControlMask)) {
-		if (event.xkey.state & Mod1Mask) {
-		    strcpy(buf, "Alt+");
-		} else {
-		    buf[0] = '\0';
-		}
-		if (event.xkey.state & ControlMask) {
-		    strcat(buf, "Ctrl+");
-		}
-		strncat(buf, keynam, sizeof(buf) - 10);
-		keynam = buf;
+			if (event.xkey.state & Mod1Mask) {
+				strcpy(buf, "Alt+");
+			} else {
+				buf[0] = '\0';
+			}
+			if (event.xkey.state & ControlMask) {
+				strcat(buf, "Ctrl+");
+			}
+			strncat(buf, keynam, sizeof(buf) - 10);
+			keynam = buf;
 	    }
 	    FeedKeyPress("XKeySym", keynam, 0, 0, letter);
 	    break;
@@ -5043,28 +5527,33 @@ void VideoSetVideoEventCallback(void (*videoEventCallback)(void))
 
 #ifdef USE_VIDEO_THREAD
 
+	
+static uint64_t test_time=0;
 ///
 ///	Lock video thread.
 ///
-static void VideoThreadLock(void)
+void VideoThreadLock(void)
 {
 
     if (VideoThread) {
 		if (pthread_mutex_lock(&VideoLockMutex)) {
 			Error(_("video: can't lock thread\n"));
 		}
+//		test_time = GetusTicks();
+//		printf("Lock start....");
     }
 }
 
 ///
 ///	Unlock video thread.
 ///
-static void VideoThreadUnlock(void)
+void VideoThreadUnlock(void)
 {
     if (VideoThread) {
 		if (pthread_mutex_unlock(&VideoLockMutex)) {
 			Error(_("video: can't unlock thread\n"));
 		}
+//		printf("Video Locked for  %d\n",(GetusTicks()-test_time)/1000000);
 	}
 }
 #ifdef PLACEBO
@@ -5089,21 +5578,15 @@ void InitPlacebo(){
 	struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
 	VkXcbSurfaceCreateInfoKHR xcbinfo;
 
-
-	
 	char xcbext[] = {"VK_KHR_xcb_surface"};
 	char surfext[] = {"VK_KHR_surface"};
 
 	Debug(3,"Init Placebo\n");
-	
-
-
-	
+		
 	p = calloc(1,sizeof(struct priv));
 	if (!p)
 	   Fatal(_("Cant get memory for PLACEBO struct"));
-	
-	
+		
 	// Create context
 	p->context.log_cb = &pl_log_intern;
 	p->context.log_level = PL_LOG_WARN;
@@ -5142,7 +5625,7 @@ void InitPlacebo(){
 	params.instance = p->vk_inst->instance;
 	params.async_transfer = true;
     params.async_compute = true;
-    params.queue_count = 1;
+    params.queue_count = 16;
 	params.surface = p->pSurface;
     params.allow_software = false;
 	
@@ -5151,7 +5634,17 @@ void InitPlacebo(){
 		Fatal(_("Failed to create Vulkan Device"));
 	
     p->gpu = p->vk->gpu;
-
+	
+	if (!(p->gpu->import_caps.tex & PL_HANDLE_DMA_BUF)) {
+		p->has_dma_buf = 0;
+		Debug(3,"No support for dma_buf import in Vulkan\n");
+	}
+	else {
+		p->has_dma_buf = 1;
+		Debug(3,"dma_buf support in Vulkan available\n");
+	}
+	
+#if 1
 	// Create initial swapchain
 	p->swapchain = pl_vulkan_create_swapchain(p->vk, &(struct pl_vulkan_swapchain_params) {
         .surface = p->pSurface,
@@ -5168,7 +5661,7 @@ void InitPlacebo(){
     if (!p->renderer) {
         Fatal(_("Failed initializing libplacebo renderer\n"));
     }
-		
+#endif		
 	Debug(3,"Placebo: init ok");
 	
 }
@@ -5179,9 +5672,9 @@ void InitPlacebo(){
 ///
 static void *VideoDisplayHandlerThread(void *dummy)
 {
-
+#ifdef CUVID
 	CUcontext cuda_ctx;
-
+#endif
 #ifdef PLACEBO_
 //	InitPlacebo();
 #endif
@@ -5224,33 +5717,33 @@ static void *VideoDisplayHandlerThread(void *dummy)
     pl_context_destroy(&p->ctx);
 	free(p); 
 #endif
+#ifdef CUVID
 	cuCtxDestroy (cuda_ctx);
+#endif
     return dummy;
 }
 
 #ifdef PLACEBO
 static void *VideoHandlerThread(void *dummy) {
-	CuvidDecoder *decoder;
-	int filled;
-	 
-	decoder = CuvidDecoders[0];
+
+	uint64_t first_time;
 		
 	prctl(PR_SET_NAME,"cuvid video display",0,0,0);
+	
 	for (;;) {
 	
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		pthread_testcancel();
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-		VideoPollEvent();
-		usleep(2000);
-		filled = atomic_read(&decoder->SurfacesFilled);
-//		if (filled >= 0) {			
-			pthread_mutex_lock(&VideoLockMutex);
-			CuvidSyncDisplayFrame();
-			pthread_mutex_unlock(&VideoLockMutex);
-//		}		
+		VideoPollEvent();	
+			
+//		first_time = GetusTicks();
+		CuvidSyncDisplayFrame();		
+
+//		printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000000);	
 	}
+	
 	return dummy;
 }
 #endif
@@ -5678,7 +6171,7 @@ uint8_t *VideoGrab(int *size, int *width, int *height, int write_header)
 ///
 uint8_t *VideoGrabService(int *size, int *width, int *height)
 {
-    Debug(3, "video: grab service\n");
+//    Debug(3, "video: grab service\n");
 
 #ifdef USE_GRAB
     if (VideoUsedModule->GrabOutput) {

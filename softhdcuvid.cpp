@@ -67,7 +67,7 @@ extern "C"
     /// vdr-plugin version number.
     /// Makefile extracts the version number for generating the file name
     /// for the distribution archive.
-static const char *const VERSION = "1.1.0"
+static const char *const VERSION = "2.0.0"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -75,7 +75,7 @@ static const char *const VERSION = "1.1.0"
 
     /// vdr-plugin description.
 static const char *const DESCRIPTION =
-trNOOP("A software and GPU emulated HD device");
+trNOOP("A software and GPU emulated UHD device");
 
     /// vdr-plugin text of main menu entry
 static const char *MAINMENUENTRY = trNOOP("SoftUHD");
@@ -232,7 +232,7 @@ class cSoftRemote:public cRemote
     **	@param release	flag key released
     */
     bool Put(const char *code, bool repeat = false, bool release = false) {
-	return cRemote::Put(code, repeat, release);
+		return cRemote::Put(code, repeat, release);
     }
 };
 
@@ -249,40 +249,38 @@ extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat,
     int release, const char *letter)
 {
     cRemote *remote;
-    cSoftRemote *csoft;
+    cSoftRemote *csoft; 
 
     if (!keymap || !key) {
-	return;
+		return;
     }
     // find remote
     for (remote = Remotes.First(); remote; remote = Remotes.Next(remote)) {
-	if (!strcmp(remote->Name(), keymap)) {
-	    break;
-	}
+		if (!strcmp(remote->Name(), keymap)) {
+			break;
+		}
     }
     // if remote not already exists, create it
     if (remote) {
-	csoft = (cSoftRemote *) remote;
+		csoft = (cSoftRemote *) remote;
     } else {
-	dsyslog("[softhddev]%s: remote '%s' not found\n", __FUNCTION__,
-	    keymap);
-	csoft = new cSoftRemote(keymap);
+		dsyslog("[softhddev]%s: remote '%s' not found\n", __FUNCTION__, keymap);
+		csoft = new cSoftRemote(keymap);
     }
 
     //dsyslog("[softhddev]%s %s, %s, %s\n", __FUNCTION__, keymap, key, letter);
     if (key[1]) {			// no single character
-	if (!csoft->Put(key, repeat, release) && letter
-	    && !cRemote::IsLearning()) {
-	    cCharSetConv conv;
-	    unsigned code;
+		if (!csoft->Put(key, repeat, release) && letter && !cRemote::IsLearning()) {
+			cCharSetConv conv;
+			unsigned code;
 
-	    code = Utf8CharGet(conv.Convert(letter));
-	    if (code <= 0xFF) {
-		cRemote::Put(KBDKEY(code));	// feed it for edit mode
-	    }
-	}
+			code = Utf8CharGet(conv.Convert(letter));
+			if (code <= 0xFF) {
+				cRemote::Put(KBDKEY(code));	// feed it for edit mode
+			}
+		}
     } else if (!csoft->Put(key, repeat, release)) {
-	cRemote::Put(KBDKEY(key[0]));	// feed it for edit mode
+		cRemote::Put(KBDKEY(key[0]));	// feed it for edit mode
     }
 }
 
