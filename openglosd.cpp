@@ -134,7 +134,7 @@ void main() \
 ";
 
 const char *rectFragmentShader = 
-"#version 330 core \n\
+"\n\
 \
 in vec4 rectCol; \
 out vec4 color; \
