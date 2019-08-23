@@ -120,7 +120,6 @@ void main() \
 
 const char *rectVertexShader = 
 "\n\
-
 \
 layout (location = 0) in vec2 position; \
 out vec4 rectCol; \
