@@ -133,7 +133,7 @@ LIBS   += $(shell pkg-config --libs freetype2)
 endif
 
 ifeq ($(VAAPI),1)
-CONFIG += -DVAAPI
+CONFIG += -DVAAPI -DUSE_OPENGLOSD
 LIBPLACEBO=1
 PLUGIN = softhdvaapi
 endif
