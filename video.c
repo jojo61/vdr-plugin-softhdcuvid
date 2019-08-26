@@ -555,7 +555,6 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
     }
 //    Debug(4, "video: %d/%d %" PRIx64 " -> %d\n", video_ctx->framerate.den,	video_ctx->framerate.num, av_frame_get_pkt_duration(frame), duration);
 
-
     // update video clock
     if (*pts_p != (int64_t) AV_NOPTS_VALUE) {
 		*pts_p += duration * 90;
@@ -3794,10 +3793,10 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 	if (!decoder->Closing) {
 		VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
 	}
-				
+
 #ifdef VAAPI    // old copy via host ram
 		{
-		AVFrame *output;
+		AVFrame *output;	
 		VideoThreadLock();
 		int t = decoder->PixFmt==AV_PIX_FMT_NV12?1:2;
 		struct pl_rect3d rc1 = {0,0,0,w,h,0};
@@ -4281,16 +4280,16 @@ static void CuvidDisplayFrame(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 #else
-//	if (CuvidDecoderN) {
-//		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
-//	}
+	if (CuvidDecoderN) {
+		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
+	}
 #if 1
 	diff = (GetusTicks()-last_time)/1000; //000;
 
 //	last_time = GetusTicks();
-//printf("Roundtrip %d\n",diff);
+//printf("Roundtrip Displayframe %d\n",diff);
 	if (diff < 15000 && skipwait != 1) {
-//		printf("Sleep %d\n",15000-diff);
+//printf("Sleep %d\n",15000-diff);
 		usleep((15000 - diff));// * 1000);
 	} else if (skipwait != 1) {
 	//	usleep(15000);
@@ -4302,7 +4301,7 @@ static void CuvidDisplayFrame(void)
 	
 //last_time = GetusTicks();
 	VideoThreadLock();
-
+#if 1
 	if (!first) {
 //		last_time = GetusTicks();
 		if (!pl_swapchain_submit_frame(p->swapchain))
@@ -4310,7 +4309,7 @@ static void CuvidDisplayFrame(void)
 		pl_swapchain_swap_buffers(p->swapchain);  // swap buffers
 //		printf("submit and swap %d\n",(GetusTicks()-last_time)/1000000);
 	}
-	
+#endif	
 	first = 0;
 #if 0	
  	fdiff = (float)(GetusTicks()-first_time)/1000.0;
@@ -4324,7 +4323,7 @@ static void CuvidDisplayFrame(void)
 	while (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame wait for previous to swap
 		usleep(5);
 	}
-
+last_time = GetusTicks();
 //printf("wait for frame %d\n",(GetusTicks()-last_time)/1000000);
 
 
@@ -4440,7 +4439,7 @@ static void CuvidDisplayFrame(void)
 		}
 	}
 	
-	
+
 	//
 #ifndef PLACEBO	   
 	//	add osd to surface
@@ -4465,8 +4464,7 @@ static void CuvidDisplayFrame(void)
 	}
 #endif	
 
-#ifdef PLACEBO
-	
+#ifdef PLACEBO	
 	VideoThreadUnlock();
 #else
 	glXGetVideoSyncSGI (&Count);    // get current frame
@@ -4595,6 +4593,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 	int64_t audio_clock;
 	int64_t video_clock;
 	int err = 0;
+	static uint64_t last_time;
 
 	video_clock = CuvidGetClock(decoder);
 	filled = atomic_read(&decoder->SurfacesFilled);
@@ -4652,7 +4651,9 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		diff = video_clock - audio_clock - VideoAudioDelay;
 		diff = (decoder->LastAVDiff + diff) / 2;
 		decoder->LastAVDiff = diff;
-		decoder->Frameproc = diff/90;
+//		decoder->Frameproc = diff/90;
+//		printf("Roundtrip sync %d\n",(GetusTicks()-last_time)/1000);
+//		last_time = GetusTicks();
 #if 1		
 	if (skipwait <= 1) {
 		if ((diff/90) > 55) {
@@ -4665,7 +4666,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 	}
 #endif
 		skipwait =0;
-//  printf("Diff %d filled %d skipwait %d\n",diff/90,filled,skipwait);
+//  printf("      Diff %d filled %d skipwait %d                        \n",diff/90,filled,skipwait);
 
 		if (abs(diff) > 5000 * 90) {	// more than 5s
 			err = CuvidMessage(2, "video: audio/video difference too big\n");
@@ -4686,7 +4687,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		    err = CuvidMessage(3, "video: speed up video, droping frame\n");
 			++decoder->FramesDropped;
 			CuvidAdvanceDecoderFrame(decoder);
-			if (filled > 2 && (diff < -50 * 90))
+			if (filled >2)
 				CuvidAdvanceDecoderFrame(decoder);
 	//	    filled = atomic_read(&decoder->SurfacesFilled);
 //			Debug(3,"hinter drop frame filled %d\n",atomic_read(&decoder->SurfacesFilled));
@@ -4773,8 +4774,9 @@ static void CuvidSyncFrame(void)
 static void CuvidSyncDisplayFrame(void)
 {
 
-	CuvidDisplayFrame();
+	CuvidDisplayFrame();	
 	CuvidSyncFrame();
+	
 }
 
 ///
@@ -5649,7 +5651,12 @@ void InitPlacebo(){
 	p->swapchain = pl_vulkan_create_swapchain(p->vk, &(struct pl_vulkan_swapchain_params) {
         .surface = p->pSurface,
         .present_mode = VK_PRESENT_MODE_FIFO_KHR,
+#ifdef VAAPI
+		.swapchain_depth = 2,
+#endif
+#ifdef CUVID
 		.swapchain_depth = 1,
+#endif
     });
 
     if (!p->swapchain) {
@@ -5741,7 +5748,7 @@ static void *VideoHandlerThread(void *dummy) {
 //		first_time = GetusTicks();
 		CuvidSyncDisplayFrame();		
 
-//		printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000000);	
+//		printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000);	
 	}
 	
 	return dummy;
