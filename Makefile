@@ -7,9 +7,9 @@
 # This name will be used in the '-P...' option of VDR to load the plugin.
 # By default the main source file also carries this name.
 
-PLUGIN = softhdcuvid
 
 ### Configuration (edit this for your needs)
+#  comment out if not needed
 
 # what kind of driver do we make - 
 # if VAAPI is enabled the drivername is softhdvaapi
@@ -17,18 +17,30 @@ PLUGIN = softhdcuvid
 #VAAPI=1
 CUVID=1
 
+# use libplacebo - available for both drivers  
+#LIBPLACEBO=1
 
-# support OPENGLOSD - only configurable with cuvid
-OPENGLOSD=1
+# use YADIF deint - only available with cuvid
+#YADIF=1
 
-# use Libplacebo - only configurable with cuvid
-LIBPLACEBO=1
 
-# use YADIF deint - only configurable with cuvid
-YADIF=0
+
+
+
+
+
+
+
+
+
 
 #--------------------- no more config needed past this point--------------------------------
-    # support alsa audio output module
+PLUGIN = softhdcuvid
+
+# support OPENGLOSD always needed
+OPENGLOSD=1
+
+# support alsa audio output module
 ALSA ?= $(shell pkg-config --exists alsa && echo 1)
     # support OSS audio output module
 OSS ?= 1
@@ -48,7 +60,7 @@ SWRESAMPLE = 1
 #AVRESAMPLE = 1
 #endif
 
-CONFIG :=  -DDEBUG #-DOSD_DEBUG	# enable debug output+functions
+CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
 CONFIG += -DAV_INFO -DAV_INFO_TIME=3000	# info/debug a/v sync
@@ -114,8 +126,8 @@ CONFIG += -DUSE_OSS
 endif
 
 ifeq ($(OPENGL),1)
-_CFLAGS += $(shell pkg-config --cflags libva-glx)
-LIBS += $(shell pkg-config --libs libva-glx)
+#_CFLAGS += $(shell pkg-config --cflags libva-glx)
+#LIBS += $(shell pkg-config --libs libva-glx)
 endif
 
 ifeq ($(OPENGLOSD),1)
@@ -125,17 +137,16 @@ endif
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
-LIBS += $(shell pkg-config --libs gl glu glew)
-_CFLAGS += $(shell pkg-config --cflags glew)
-LIBS += $(shell pkg-config --libs glew) 
+#LIBS += $(shell pkg-config --libs glu  glew)
 _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
 endif
 
 ifeq ($(VAAPI),1)
-CONFIG += -DVAAPI -DUSE_OPENGLOSD
-LIBPLACEBO=1
+CONFIG += -DVAAPI 
+#LIBPLACEBO=1
 PLUGIN = softhdvaapi
+LIBS += -lEGL -lEGL_mesa  
 endif
 
 ifeq ($(LIBPLACEBO),1)
@@ -144,6 +155,7 @@ endif
 
 ifeq ($(CUVID),1)
 CONFIG += -DCUVID			# enable CUVID decoder
+LIBS += -lEGL -lGL 
 ifeq ($(YADIF),1)
 CONFIG += -DYADIF			# Yadif only with CUVID
 endif
@@ -235,10 +247,10 @@ LIBS += -lplacebo -lglut
 endif
 
 ifeq ($(CUVID),1)
-LIBS +=  -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid
+LIBS +=  -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid  
 endif
 
-LIBS += -lGLEW  -lGLX -ldl  
+LIBS += -lGLEW -lGLU  -ldl  
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=

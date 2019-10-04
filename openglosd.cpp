@@ -14,6 +14,10 @@ void ConvertColor(const GLint &colARGB, glm::vec4 &col) {
     col.b = ((colARGB & 0x000000FF)      ) / 255.0;
 }
 
+extern "C" void OSD_get_context();
+extern "C" void OSD_get_shared_context();
+extern "C" void OSD_release_context();
+
 /****************************************************************************************
 * cShader
 ****************************************************************************************/
@@ -119,7 +123,7 @@ void main() \
 #else
 
 const char *rectVertexShader = 
-"\n\
+"\n \
 \
 layout (location = 0) in vec2 position; \
 out vec4 rectCol; \
@@ -134,8 +138,9 @@ void main() \
 ";
 
 const char *rectFragmentShader = 
-"\n\
+"\n \
 \
+precision mediump float; \
 in vec4 rectCol; \
 out vec4 color; \
 \
@@ -146,7 +151,7 @@ void main() \
 ";
 
 const char *textureVertexShader = 
-"\n\
+"\n \
 \
 layout (location = 0) in vec2 position; \
 layout (location = 1) in vec2 texCoords; \
@@ -166,7 +171,8 @@ void main() \
 ";
 
 const char *textureFragmentShader = 
-"\n\
+"\n \
+precision mediump float; \
 in vec2 TexCoords; \
 in vec4 alphaValue; \
 out vec4 color; \
@@ -180,7 +186,7 @@ void main() \
 ";
 
 const char *textVertexShader = 
-"\n\
+"\n \
 \
 layout (location = 0) in vec2 position; \
 layout (location = 1) in vec2 texCoords; \
@@ -200,7 +206,8 @@ void main() \
 ";
 
 const char *textFragmentShader = 
-"\n\
+"\n \
+precision mediump float; \
 in vec2 TexCoords; \
 in vec4 textColor; \
 \
@@ -287,12 +294,14 @@ bool cShader::Compile(const char *vertexCode, const char *fragmentCode) {
     sVertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(sVertex, 1, &vertexCode, NULL);
     glCompileShader(sVertex);
+//	esyslog("[softhddev]:SHADER:VERTEX %s\n",vertexCode);
     if (!CheckCompileErrors(sVertex))
         return false;
     // Fragment Shader
     sFragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(sFragment, 1, &fragmentCode, NULL);
     glCompileShader(sFragment);
+//	esyslog("[softhddev]:SHADER:FRAGMENT %s\n",fragmentCode);
     if (!CheckCompileErrors(sFragment))
         return false;
     // link Program
@@ -315,14 +324,14 @@ bool cShader::CheckCompileErrors(GLuint object, bool program) {
         glGetShaderiv(object, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(object, 1024, NULL, infoLog);
-            esyslog("[softhddev]:SHADER: Compile-time error: Type: %d - %s", type, infoLog);
+            esyslog("[softhddev]:SHADER: Compile-time error: Type: %d - \n%s\n", type, infoLog);
             return false;
         }
     } else {
         glGetProgramiv(object, GL_LINK_STATUS, &success);
         if (!success) {
             glGetProgramInfoLog(object, 1024, NULL, infoLog);
-            esyslog("[softhddev]:SHADER: Link-time error: Type: %d", type);
+            esyslog("[softhddev]:SHADER: Link-time error: Type: %d - \n%s\n", type, infoLog);
             return false;
         }
     }
@@ -365,6 +374,10 @@ void cOglGlyph::BindTexture(void) {
 
 void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     // Disable byte-alignment restriction
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_shared_context();
+#endif
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -386,6 +399,11 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_context();	
+#endif
+	
 }
 
 
@@ -550,6 +568,10 @@ cOglFb::~cOglFb(void) {
 
 bool cOglFb::Init(void) {
     initiated = true;
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_shared_context();
+#endif
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -562,10 +584,19 @@ bool cOglFb::Init(void) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+	
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        esyslog("[softhddev]ERROR: Framebuffer is not complete!\n");
+        esyslog("[softhddev]ERROR: %d Framebuffer is not complete!\n",__LINE__);
+#ifdef VAAPI
+		OSD_release_context();
+		OSD_get_context();
+#endif
         return false;
     }
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_context();
+#endif
     return true;
 }
 
@@ -619,6 +650,7 @@ cOglOutputFb::~cOglOutputFb(void) {
 
 bool cOglOutputFb::Init(void) {
 	initiated = true;
+
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -634,19 +666,16 @@ bool cOglOutputFb::Init(void) {
         esyslog("[softhddev]ERROR::cOglOutputFb: Framebuffer is not complete!");
         return false;
     }
-
     return true;
 }
 
 void cOglOutputFb::BindWrite(void) {
-//    glVDPAUMapSurfacesNV(1, &surface);
 	if (!initiated)
         Init();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
 }
 
 void cOglOutputFb::Unbind(void) {
-//    glVDPAUUnmapSurfacesNV(1, &surface);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -882,6 +911,8 @@ extern 	unsigned char *posd;
 //}
 #endif
 
+
+
 bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 	int i;
     pthread_mutex_lock(&OSDMutex);
@@ -896,6 +927,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 		glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_BGRA,GL_UNSIGNED_BYTE,posd);
 #else
 	fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
+	glFlush();
 #endif
 	ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
 
@@ -1323,6 +1355,10 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_shared_context();
+#endif
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(
@@ -1341,7 +1377,11 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_context();	
+#endif
+	
     GLfloat x1 = x;          //left
     GLfloat y1 = y;          //top
     GLfloat x2 = x + width;  //right
@@ -1430,6 +1470,10 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 }
 
 bool cOglCmdStoreImage::Execute(void) {
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_shared_context();	
+#endif
     glGenTextures(1, &imageRef->texture);
     glBindTexture(GL_TEXTURE_2D, imageRef->texture);
     glTexImage2D(
@@ -1448,6 +1492,10 @@ bool cOglCmdStoreImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
+#ifdef VAAPI
+	OSD_release_context();
+	OSD_get_context();	
+#endif
     return true;
 }
 
@@ -2041,11 +2089,17 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 	posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
 #endif
     //create  output framebuffer
+#ifdef VAAPI	
+	OSD_release_context();
+	OSD_get_shared_context();
+#endif
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
-
+#ifdef VAAPI
+	OSD_release_context();
+#endif
 }
 
 cOglOsd::~cOglOsd() {

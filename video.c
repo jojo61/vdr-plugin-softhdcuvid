@@ -67,11 +67,7 @@
 #include <termios.h>	 /* POSIX Terminal Control Definitions */
 #include <unistd.h> 	 /* UNIX Standard Definitions 	       */ 
 #include <errno.h>   	 /* ERROR Number Definitions           */
-#include <sys/ioctl.h> /* ioctl()       */  
-//#include <sys/stat.h> 
-//#include <fcntl.h>
-//#include <stropts.h>
-//#inclde <asm-generic/ioctls.h>
+#include <sys/ioctl.h>   /* ioctl()       */  
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -105,15 +101,12 @@
 #include <X11/keysym.h>
 
 #include <xcb/xcb.h>
-//#include <xcb/bigreq.h>
-#ifdef xcb_USE_GLX
-#include <xcb/glx.h>
-#endif
-//#include <xcb/randr.h>
+
 #ifdef USE_SCREENSAVER
 #include <xcb/screensaver.h>
 #include <xcb/dpms.h>
 #endif
+
 //#include <xcb/shm.h>
 //#include <xcb/xv.h>
 
@@ -142,10 +135,10 @@ typedef enum
 
 #ifdef USE_GLX
 #include <GL/glew.h>
-#include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
+//#include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
 //#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT
 //#include <GL/glxew.h>
-#include <GL/glx.h>
+//#include <GL/glx.h>
 // only for gluErrorString
 #include <GL/glu.h>
 #include <GL/glut.h>
@@ -153,36 +146,42 @@ typedef enum
 #endif
 
 #include <libavutil/hwcontext.h>
+#include <libavutil/pixdesc.h>
 
 #ifdef CUVID
-//#define CUDA_API_PER_THREAD_DEFAULT_STREAM
-#include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
+//#include <GL/gl.h>			// For GL_COLOR_BUFFER_BIT
 //#include <GL/glext.h>			// For GL_COLOR_BUFFER_BIT 
 #include <cuda.h>
-//#include <dynlink_cuda.h>
 #include <cuda_runtime_api.h>
-//#include <dynlink_nvcuvid.h>
 #include <cudaGL.h>
 #include <libavutil/hwcontext_cuda.h>
 #include "drvapi_error_string.h"
-// CUDA includes
 #define __DEVICE_TYPES_H__
 #endif
 
 #ifdef VAAPI
+
 #include <va/va_drmcommon.h>
 #include <libavcodec/vaapi.h>
 #include <libavutil/hwcontext_vaapi.h>
 #define TO_AVHW_DEVICE_CTX(x) ((AVHWDeviceContext*)x->data)
 #define TO_AVHW_FRAMES_CTX(x) ((AVHWFramesContext*)x->data)
-
 #define TO_VAAPI_DEVICE_CTX(x) ((AVVAAPIDeviceContext*)TO_AVHW_DEVICE_CTX(x)->hwctx)
 #define TO_VAAPI_FRAMES_CTX(x) ((AVVAAPIFramesContext*)TO_AVHW_FRAMES_CTX(x)->hwctx)
 #endif
 
+#include <assert.h>
+//#define EGL_EGLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#ifndef GL_OES_EGL_image
+typedef void* GLeglImageOES;
+#endif
+#ifndef EGL_KHR_image
+typedef void *EGLImageKHR;
+#endif
 
 #ifdef PLACEBO
-
 #define VK_USE_PLATFORM_XCB_KHR
 #include <vulkan/vulkan.h>
 #include <libplacebo/context.h>
@@ -193,21 +192,6 @@ typedef enum
 
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
-
-// support old ffmpeg versions <1.0
-#if 0 //LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,18,102)
-#define AVCodecID CodecID
-#define AV_CODEC_ID_H263 CODEC_ID_H263
-#define AV_CODEC_ID_H264 CODEC_ID_H264
-#define AV_CODEC_ID_MPEG1VIDEO CODEC_ID_MPEG1VIDEO
-#define AV_CODEC_ID_MPEG2VIDEO CODEC_ID_MPEG2VIDEO
-#define AV_CODEC_ID_MPEG4 CODEC_ID_MPEG4
-#define AV_CODEC_ID_VC1 CODEC_ID_VC1
-#define AV_CODEC_ID_WMV3 CODEC_ID_WMV3
-#endif
-
-#include <libavutil/pixdesc.h>
-#include <libavutil/hwcontext.h>
 
 #if defined(YADIF) || defined (VAAPI)
 #include <libavfilter/buffersink.h>
@@ -231,7 +215,7 @@ typedef enum
 #include "audio.h"
 #include "codec.h"
 
-
+ 
 
 //----------------------------------------------------------------------------
 //	Declarations
@@ -350,11 +334,17 @@ typedef struct {
 //	Defines
 //----------------------------------------------------------------------------
 
-#define CODEC_SURFACES_MAX	16	///< maximal of surfaces
+#define CODEC_SURFACES_MAX 12 //
+
 
 #define VIDEO_SURFACES_MAX	6	///< video output surfaces for queue
 //#define OUTPUT_SURFACES_MAX	4	///< output surfaces for flip page
-
+#ifdef VAAPI
+#define SWAP_BUFFER_SIZE     3
+#endif
+#ifdef CUVID
+#define SWAP_BUFFER_SIZE     1
+#endif
 //----------------------------------------------------------------------------
 //	Variables
 //----------------------------------------------------------------------------
@@ -455,6 +445,7 @@ static xcb_atom_t NetWmStateAbove;
 extern uint32_t VideoSwitch;		///< ticks for channel switch
 #endif
 extern void AudioVideoReady(int64_t);	///< tell audio video is ready
+extern int AudioDelay;
 
 #ifdef USE_VIDEO_THREAD
 
@@ -484,9 +475,10 @@ static int OsdDirtyX;			///< osd dirty area x
 static int OsdDirtyY;			///< osd dirty area y
 static int OsdDirtyWidth;		///< osd dirty area width
 static int OsdDirtyHeight;		///< osd dirty area height
-#ifdef USE_OPENGLOSD
+
+
 static void (*VideoEventCallback)(void) = NULL;  /// callback function to notify VDR about Video Events
-#endif
+
 static int64_t VideoDeltaPTS;		///< FIXME: fix pts
 
 #ifdef USE_SCREENSAVER
@@ -494,21 +486,44 @@ static char DPMSDisabled;		///< flag we have disabled dpms
 static char EnableDPMSatBlackScreen;	///< flag we should enable dpms at black screen
 #endif
 
-static int GlxEnabled;			///< use GLX
+static int EglEnabled;			///< use EGL
 static int GlxVSyncEnabled = 1;		///< enable/disable v-sync
-static GLXContext GlxSharedContext;	///< shared gl context
-static GLXContext GlxContext;		///< our gl context
 
-#ifdef USE_VIDEO_THREAD
-static GLXContext GlxThreadContext;	///< our gl context for the thread
+#ifdef CUVID
+	static GLXContext eglSharedContext;	///< shared gl context
+	static GLXContext eglContext;		///< our gl context
+
+	#ifdef USE_VIDEO_THREAD
+	static GLXContext eglThreadContext;	///< our gl context for the thread
+	#endif
+	static XVisualInfo *GlxVisualInfo;	///< our gl visual
+	static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
+	GLXContext OSDcontext;
+#else
+	static EGLContext eglSharedContext;	///< shared gl context
+
+	static EGLContext eglContext;		///< our gl context
+	static EGLConfig eglConfig;
+	static EGLDisplay eglDisplay;
+	static EGLSurface eglSurface,eglOSDSurface;
+	static EGLint eglAttrs[10];
+	static int eglVersion = 2;
+	static EGLImageKHR (EGLAPIENTRY *CreateImageKHR)(EGLDisplay, EGLContext,
+												  EGLenum, EGLClientBuffer,
+												  const EGLint *);
+	static EGLBoolean (EGLAPIENTRY *DestroyImageKHR)(EGLDisplay, EGLImageKHR);
+	static void (EGLAPIENTRY *EGLImageTargetTexture2DOES)(GLenum, GLeglImageOES);
+
+	#ifdef USE_VIDEO_THREAD
+	static EGLContext eglThreadContext;	///< our gl context for the thread
+	#endif
+	static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContext context);
+	EGLContext OSDcontext;
 #endif
-
-static XVisualInfo *GlxVisualInfo;	///< our gl visual
 
 static GLuint OsdGlTextures[2];		///< gl texture for OSD
 static int OsdIndex=0;			///< index into OsdGlTextures
-static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
-GLXContext OSDcontext;
+
 
 //----------------------------------------------------------------------------
 //	Common Functions
@@ -584,6 +599,7 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
 			return;
 			}
 		} else {			// first new clock value
+			Debug(3,"++++++++++++++++++++++++++++++++++++starte audio\n");
 			AudioVideoReady(pts);
 		}
 		if (*pts_p != pts) {
@@ -749,8 +765,6 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width,
 
 #ifdef USE_GLX
 
-
-
 ///
 ///	GLX extension functions
 ///@{
@@ -764,19 +778,76 @@ static PFNGLXGETVIDEOSYNCSGIPROC GlxGetVideoSyncSGI;
 static PFNGLXSWAPINTERVALSGIPROC GlxSwapIntervalSGI;
 #endif
 
-///@}
-
 ///
 ///	GLX check error.
 ///
-static void GlxCheck(void)
-{
-    GLenum err;
-
-    if ((err = glGetError()) != GL_NO_ERROR) {
-	Debug(3, "video/glx: error %d '%s'\n", err, gluErrorString(err));
-    }
+#define GlxCheck(void)\
+{\
+    GLenum err;\
+\
+    if ((err = glGetError()) != GL_NO_ERROR) {\
+		Debug(3, "video/glx: error %s:%d %d '%s'\n",__FILE__,__LINE__, err, gluErrorString(err));\
+    }\
 }
+
+char *eglErrorString(EGLint error)
+{
+    switch(error)
+    {
+		case EGL_SUCCESS: return "No error";
+		case EGL_NOT_INITIALIZED: return "EGL not initialized or failed to initialize";
+		case EGL_BAD_ACCESS: return "Resource inaccessible";
+		case EGL_BAD_ALLOC: return "Cannot allocate resources";
+		case EGL_BAD_ATTRIBUTE: return "Unrecognized attribute or attribute value";
+		case EGL_BAD_CONTEXT: return "Invalid EGL context";
+		case EGL_BAD_CONFIG: return "Invalid EGL frame buffer configuration";
+		case EGL_BAD_CURRENT_SURFACE: return "Current surface is no longer valid";
+		case EGL_BAD_DISPLAY: return "Invalid EGL display";
+		case EGL_BAD_SURFACE: return "Invalid surface";
+		case EGL_BAD_MATCH: return "Inconsistent arguments";
+		case EGL_BAD_PARAMETER: return "Invalid argument";
+		case EGL_BAD_NATIVE_PIXMAP: return "Invalid native pixmap";
+		case EGL_BAD_NATIVE_WINDOW: return "Invalid native window";
+		case EGL_CONTEXT_LOST: return "Context lost";
+    }
+    return "Unknown error ";
+}
+///
+///	egl check error.
+///
+#define EglCheck(void) \
+{\
+    EGLint err;\
+\
+    if ((err = eglGetError()) != EGL_SUCCESS) {\
+		Debug(3, "video/egl: %s:%d error %d %s\n", __FILE__,__LINE__,err,eglErrorString(err));\
+    }\
+}
+
+
+#ifdef VAAPI
+
+void OSD_get_shared_context()
+{
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
+//	EglCheck();
+}
+
+void OSD_get_context()
+{
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
+//	EglCheck();
+}
+	
+void OSD_release_context()
+{
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+//	EglCheck();
+}
+		 
+#endif
+
+
 
 ///
 ///	GLX check if a GLX extension is supported.
@@ -802,253 +873,6 @@ static int GlxIsExtensionSupported(const char *ext)
 }
 
 ///
-///	Setup GLX decoder
-///
-///	@param width		input video textures width
-///	@param height		input video textures height
-///	@param[OUT] textures	created and prepared textures
-///
-static void GlxSetupDecoder(int width, int height, GLuint * textures)
-{
-    int i;
-
-    glEnable(GL_TEXTURE_2D);		// create 2d texture
-    glGenTextures(2, textures);
-    GlxCheck();
-    for (i = 0; i < 2; ++i) {
-		glBindTexture(GL_TEXTURE_2D, textures[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-		glBindTexture(GL_TEXTURE_2D, 0);
-    }
-    glDisable(GL_TEXTURE_2D);
-
-    GlxCheck();
-}
-
-///
-///	Render texture.
-///
-///	@param texture	2d texture
-///	@param x	window x
-///	@param y	window y
-///	@param width	window width
-///	@param height	window height
-///
-static inline void GlxRenderTexture(GLuint texture, int x, int y, int width, int height, int flip)
-{
-	
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-//    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	// no color
-
-    glBegin(GL_QUADS); {
-		if (!flip) {
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(x + width, y + height);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(x, y + height);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(x, y);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(x + width, y);
-		} else {
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex2i(x + width, y);
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2i(x, y);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2i(x, y+height);
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex2i(x + width, y+height);		
-		}
-    }
-    glEnd();
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-}
-
-///
-///	Upload OSD texture.
-///
-///	@param x	x coordinate texture
-///	@param y	y coordinate texture
-///	@param width	argb image width
-///	@param height	argb image height
-///	@param argb	argb image
-///
-static void GlxUploadOsdTexture(int x, int y, int width, int height,
-    const uint8_t * argb)
-{
-    // FIXME: use other / faster uploads
-    // ARB_pixelbuffer_object GL_PIXEL_UNPACK_BUFFER glBindBufferARB()
-    // glMapBuffer() glUnmapBuffer()
-
-    glEnable(GL_TEXTURE_2D);		// upload 2d texture
-
-    glBindTexture(GL_TEXTURE_2D, OsdGlTextures[OsdIndex]);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,	GL_UNSIGNED_BYTE, argb);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glDisable(GL_TEXTURE_2D);
-
-}
-
-///
-///	GLX initialize OSD.
-///
-///	@param width	osd width
-///	@param height	osd height
-///
-static void GlxOsdInit(__attribute__((unused))int width, __attribute__((unused))int height)
-{
-	int i;
-#ifdef DEBUG
-    if (!GlxEnabled) {
-		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
-		OsdGlTextures[0] = 0;
-		return;
-    }
-#endif
-
-    Debug(3, "video/glx: osd init context %p <-> %p\n", glXGetCurrentContext(), GlxContext);
-	
-#ifndef USE_OPENGLOSD
-    //
-    //	create a RGBA texture.
-    //
-    glEnable(GL_TEXTURE_2D);		// create 2d texture(s)
-    glGenTextures(2, OsdGlTextures);
-    for (i = 0; i < 2; ++i) {
-		glBindTexture(GL_TEXTURE_2D, OsdGlTextures[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-#else
-	OsdGlTextures[0] = 0;
-#endif
-}
-
-///
-///	GLX cleanup osd.
-///
-static void GlxOsdExit(void)
-{
-    if (OsdGlTextures[0]) {
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );
-		glDeleteTextures(2, OsdGlTextures);
-		OsdGlTextures[0] = 0;
-		OsdGlTextures[1] = 0;
-    }
-}
-
-///
-///	Upload ARGB image to texture.
-///
-///	@param xi	x-coordinate in argb image
-///	@param yi	y-coordinate in argb image
-///	@paran height	height in pixel in argb image
-///	@paran width	width in pixel in argb image
-///	@param pitch	pitch of argb image
-///	@param argb	32bit ARGB image data
-///	@param x	x-coordinate on screen of argb image
-///	@param y	y-coordinate on screen of argb image
-///
-///	@note looked by caller
-///
-static void GlxOsdDrawARGB(int xi, int yi, int width, int height, int pitch,
-    const uint8_t * argb, int x, int y)
-{
-    uint8_t *tmp;
-
-#ifdef DEBUG
-    uint32_t start;
-    uint32_t end;
-#endif
-
-#ifdef DEBUG
-    if (!GlxEnabled) {
-		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
-		return;
-    }
-    start = GetMsTicks();	
-#endif
-
-    // set glx context
-    if (!glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext)) {
-		Error(_("video/glx: can't make glx context current\n"));
-		return;
-    }
-    // FIXME: faster way
-    tmp = malloc(width * height * 4);
-    if (tmp) {
-		int i;
-
-		for (i = 0; i < height; ++i) {
-		    memcpy(tmp + i * width * 4, argb + xi * 4 + (i + yi) * pitch, width * 4);
-		}
-		GlxUploadOsdTexture(x, y, width, height, tmp);
-		glXMakeCurrent(XlibDisplay, None, NULL);
-		free(tmp);
-    }
-#ifdef DEBUG
-    end = GetMsTicks();
-
-    Debug(4, "video/glx: osd upload %dx%d%+d%+d %dms %d\n", width, height, x, y, end - start, width * height * 4);
-#endif
-}
-
-///
-///	Clear OSD texture.
-///
-///	@note looked by caller
-///
-static void GlxOsdClear(void)
-{
-    void *texbuf;
-
-#ifdef USE_OPENGLOSD
-	return;
-#endif
-	
-#ifdef DEBUG
-    if (!GlxEnabled) {
-		Debug(3, "video/glx: %s called without glx enabled\n", __FUNCTION__);
-	return;
-    }
-
-    Debug(3, "video/glx: osd context %p <-> %p\n", glXGetCurrentContext(),	GlxContext);
-#endif
-
-    // FIXME: any opengl function to clear an area?
-    // FIXME: if not; use zero buffer
-    // FIXME: if not; use dirty area
-
-    // set glx context
-    if (!glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext)) {
-		Error(_("video/glx: can't make glx context current\n"));
-	return;
-    }
-
-    texbuf = calloc(OsdWidth * OsdHeight, 4);
-    GlxUploadOsdTexture(0, 0, OsdWidth, OsdHeight, texbuf);
-    glXMakeCurrent(XlibDisplay, None, NULL);
-    free(texbuf);
-}
-
-///
 ///	Setup GLX window.
 ///
 ///	@param window	xcb window id
@@ -1056,7 +880,11 @@ static void GlxOsdClear(void)
 ///	@param height	window height
 ///	@param context	GLX context
 ///
+#ifdef CUVID
 static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context)
+#else
+static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContext context)
+#endif
 {
 #ifdef DEBUG
     uint32_t start;
@@ -1064,33 +892,35 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
     int i;
     unsigned count;
 #endif
-	
+
 #ifdef PLACEBO_
 	return;
 #endif
 	
+    Debug(3, "video/egl: %s %x %dx%d context: %p", __FUNCTION__, window, width, height, context);
 
-    Debug(3, "video/glx: %s %x %dx%d context:%p", __FUNCTION__, window, width, height, context);
-
-    // set glx context
-    if (!glXMakeCurrent(XlibDisplay, window, context)) {
-		Fatal(_("video/glx: can't make glx context current\n"));
-		GlxEnabled = 0;
+    // set gl context
+#ifdef CUVID
+	if (!glXMakeCurrent(XlibDisplay, window, context)) {
+#else
+    if (!eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, context )) {
+#endif
+		Fatal(_("video/egl: GlxSetupWindow can't make egl context current\n"));
+		EglEnabled = 0;
 		return;
     }
+    Debug(3, "video/egl: ok\n");
 
-    Debug(3, "video/glx: ok\n");
-
-#ifdef DEBUG
+#ifdef CUVID
     // check if v-sync is working correct
     end = GetMsTicks();
     for (i = 0; i < 10; ++i) {
 		start = end;
-
+		
 		glClear(GL_COLOR_BUFFER_BIT);
 		glXSwapBuffers(XlibDisplay, window);
 		end = GetMsTicks();
-
+		
 		GlxGetVideoSyncSGI(&count);
 		Debug(4, "video/glx: %5d frame rate %dms\n", count, end - start);
 		// nvidia can queue 5 swaps
@@ -1098,61 +928,25 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 		    Warning(_("video/glx: no v-sync\n"));
 		}
     }
+	GLenum err = glewInit();	
+	if (err != GLEW_OK) {
+		Debug(3,"Error: %s\n", glewGetErrorString(err));
+	}	
+	GlxCheck();
 #endif
-
     // viewpoint
-    GlxCheck();
     glViewport(0, 0, width, height);
-    glDepthRange(-1.0, 1.0);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glClearDepth(1.0);
-    GlxCheck();
-	if (glewInit())
-		Fatal(_("glewinit failed\n"));
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, width, height, 0.0, -1.0, 1.0);
-    GlxCheck();
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glDisable(GL_DEPTH_TEST);		// setup 2d drawing
-    glDepthMask(GL_FALSE);
-    glDisable(GL_CULL_FACE);
-#ifdef USE_DOUBLEBUFFER
-    glDrawBuffer(GL_BACK);
-#else
-    glDrawBuffer(GL_FRONT);
+	GlxCheck();
+#ifdef VAAPI
+	OSD_release_context();
 #endif
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-#ifdef DEBUG
-#ifdef USE_DOUBLEBUFFER
-    glDrawBuffer(GL_FRONT);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDrawBuffer(GL_BACK);
-#endif
-#endif
-
-    // clear
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);	// intial background color
-    glClear(GL_COLOR_BUFFER_BIT);
-#ifdef DEBUG
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);	// background color
-#endif
-    GlxCheck();
 }
 
 ///
 ///	Initialize GLX.
 ///
-static void GlxInit(void)
+#ifdef CUVID
+static void EglInit(void)
 {
 
     XVisualInfo *vi=NULL;
@@ -1180,7 +974,7 @@ static void GlxInit(void)
 		None 
 	}; 
 	int fbcount; 
-	
+	 
     GLXContext context;
     int major;
     int minor;
@@ -1192,11 +986,10 @@ static void GlxInit(void)
 	int redSize, greenSize, blueSize;
 	
     if (!glXQueryVersion(XlibDisplay, &major, &minor)) {
-		Error(_("video/glx: no GLX support\n"));
-		GlxEnabled = 0;
-	return;
+		Fatal(_("video/glx: no GLX support\n"));
     }
     Info(_("video/glx: glx version %d.%d\n"), major, minor);
+	
 
     //
     //	check which extension are supported
@@ -1249,41 +1042,21 @@ static void GlxInit(void)
 	glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize); 
 	Debug(3,"RGB size %d:%d:%d\n",redSize, greenSize, blueSize); 
 	
-    if (!vi) {
-		Fatal(_("video/glx: can't get a RGB visual\n"));
-		GlxEnabled = 0;
-		return;
-    }
-    if (!vi->visual) {
-		Fatal(_("video/glx: no valid visual found\n"));
-		GlxEnabled = 0;
-		return;
-    }
-    if (vi->bits_per_rgb < 8) {
-		Fatal(_("video/glx: need atleast 8-bits per RGB\n"));
-		GlxEnabled = 0;
-		return;
-    }
 	
 	Debug(3, "Chosen visual ID = 0x%x\n", vi->visualid );
 
     context = glXCreateContext(XlibDisplay, vi, NULL, GL_TRUE);
     if (!context) {
 		Fatal(_("video/glx: can't create glx context\n"));
-		GlxEnabled = 0;
-		return;
     }
-    GlxSharedContext = context;
-    context = glXCreateContext(XlibDisplay, vi, GlxSharedContext, GL_TRUE);
+    eglSharedContext = context;
+    context = glXCreateContext(XlibDisplay, vi, eglSharedContext, GL_TRUE);
     if (!context) {
 		Fatal(_("video/glx: can't create glx context\n"));
-		GlxEnabled = 0;
-		glXDestroyContext(XlibDisplay, GlxSharedContext);
-		GlxSharedContext = 0;
-		return;
     }
-    GlxContext = context;
-
+    eglContext = context;
+	
+	EglEnabled = 1;
     GlxVisualInfo = vi;
     Debug(3, "video/glx: visual %#02x depth %u\n", (unsigned)vi->visualid, vi->depth);
 
@@ -1355,38 +1128,90 @@ static void GlxInit(void)
 
 }
 
+#else
+static void EglInit(void)
+{
+	int redSize, greenSize, blueSize, alphaSize;
+	
+#ifdef PLACEBO
+	return;
+#endif
+	EGLContext context;
+    // create egl context
+    make_egl();
+	GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		Debug(3,"Error: %s\n", glewGetErrorString(err));
+	}
+	 
+	eglGetConfigAttrib(eglDisplay, eglConfig, EGL_BLUE_SIZE, &blueSize);
+	eglGetConfigAttrib(eglDisplay, eglConfig, EGL_RED_SIZE, &redSize);
+	eglGetConfigAttrib(eglDisplay, eglConfig, EGL_GREEN_SIZE, &greenSize);
+	eglGetConfigAttrib(eglDisplay, eglConfig, EGL_ALPHA_SIZE, &alphaSize);
+	Debug(3,"RGB size %d:%d:%d Alpha %d\n",redSize, greenSize, blueSize,alphaSize); 
+	
+    eglSharedContext = eglContext;
+		
+    context = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, eglAttrs);
+	EglCheck();
+    if (!context) {
+		Fatal(_("video/egl: can't create egl context\n"));
+    }
+    eglContext = context;
+}	
+#endif
+
 
 ///
 ///	Cleanup GLX.
 ///
-static void GlxExit(void)
+static void EglExit(void)
 {
-    Debug(3, "video/glx: %s\n", __FUNCTION__);
+    Debug(3, "video/egl: %s\n", __FUNCTION__);
 #ifdef PLACEBO
 	return;
 #endif
 	
-	
     glFinish();
 
-    // must destroy glx
-    if (glXGetCurrentContext() == GlxContext) {
+    // must destroy contet
+#ifdef CUVID
+	    // must destroy glx
+    if (glXGetCurrentContext() == eglContext) {
 		// if currently used, set to none
 		glXMakeCurrent(XlibDisplay, None, NULL);
     }
-    if (GlxSharedContext) {
-		glXDestroyContext(XlibDisplay, GlxSharedContext);
+    if (eglSharedContext) {
+		glXDestroyContext(XlibDisplay, eglSharedContext);
 		GlxCheck();
     }
-    if (GlxContext) {
-		glXDestroyContext(XlibDisplay, GlxContext);
+    if (eglContext) {
+		glXDestroyContext(XlibDisplay, eglContext);
 		GlxCheck();
     }
-    if (GlxThreadContext) {
-		glXDestroyContext(XlibDisplay, GlxThreadContext);
+    if (eglThreadContext) {
+		glXDestroyContext(XlibDisplay, eglThreadContext);
 		GlxCheck();
     }
-    // FIXME: must free GlxVisualInfo
+#else
+    if (eglGetCurrentContext() == eglContext) {
+		// if currently used, set to none
+		eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    }
+    if (eglSharedContext) {
+		eglDestroyContext(eglDisplay, eglSharedContext);
+		EglCheck();
+    }
+    if (eglContext) {
+		eglDestroyContext(eglDisplay, eglContext);
+		EglCheck();
+    }
+    if (eglThreadContext) {
+		eglDestroyContext(eglDisplay, eglThreadContext);
+		EglCheck();
+    }
+	eglTerminate(eglDisplay);
+#endif
 }
 
 #endif
@@ -1688,9 +1513,13 @@ typedef struct _cuvid_decoder_
 #ifdef CUVID	
 	CUarray      		 cu_array[CODEC_SURFACES_MAX+1][2];
 	CUgraphicsResource   cu_res[CODEC_SURFACES_MAX+1][2];
-	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
 	CUcontext cuda_ctx;
 #endif	
+	GLuint gl_textures[(CODEC_SURFACES_MAX+1)*2];  // where we will copy the CUDA result
+#ifdef VAAPI
+	EGLImageKHR images[(CODEC_SURFACES_MAX+1)*2];
+	int	 fds[(CODEC_SURFACES_MAX+1)*2];
+#endif
 #ifdef PLACEBO
 	struct pl_image     	  pl_images[CODEC_SURFACES_MAX+1];    // images for Placebo chain
 //	const struct pl_tex		 *pl_tex_in[CODEC_SURFACES_MAX+1][2];  // Textures in image
@@ -1760,7 +1589,7 @@ GLuint vao_buffer;  //
 GLuint gl_shader=0,gl_prog = 0,gl_fbo=0;      // shader programm
 GLint gl_colormatrix,gl_colormatrix_c;
 GLuint OSDfb=0;
-GLuint OSDtexture;
+GLuint OSDtexture,gl_prog_osd=0;
 
 int OSDx,OSDy,OSDxsize,OSDysize;
 
@@ -1896,10 +1725,14 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
     Debug(3, "video/cuvid: %s\n", __FUNCTION__);
 	
 #ifndef PLACEBO
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+#ifdef CUVID
+	glXMakeCurrent(XlibDisplay, VideoWindow, eglContext);
 	GlxCheck();
+#else
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
+	EglCheck();
 #endif
-	
+#endif	
 	for (i=0;i<decoder->SurfacesNeeded;i++) {
 		if (decoder->frames[i]) {
 			av_frame_free(&decoder->frames[i]);
@@ -1916,7 +1749,18 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 				pl_tex_destroy(p->gpu,&decoder->pl_images[i].planes[j].texture);
 			}
 #else
+#ifdef CUVID
 			checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));			
+#endif
+#ifdef VAAPI
+			if (decoder->images[i*2+j]) {
+                DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i*2+j]);
+				if (decoder->fds[i*2+j])
+					close(decoder->fds[i*2+j]);
+			}
+			decoder->fds[i*2+j] = 0;
+            decoder->images[i*2+j] = 0;
+#endif
 #endif
 		}
 	}
@@ -1930,7 +1774,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 	pl_renderer_destroy(&p->renderer);
 	p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
-	glDeleteTextures(CODEC_SURFACES_MAX*2,(GLuint*)&decoder->gl_textures);
+	glDeleteTextures(CODEC_SURFACES_MAX * 2,(GLuint*)&decoder->gl_textures);
 	GlxCheck();
 
 	if (decoder == CuvidDecoders[0]) {   // only wenn last decoder closes
@@ -2011,6 +1855,21 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
 			pl_tex_destroy(p->gpu,&decoder->pl_images[surface].planes[1].texture);
 		}
 	}
+#else
+#ifdef VAAPI 
+		if (decoder->images[surface*2]) {
+			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*2]);	 
+			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*2+1]);
+			if (decoder->fds[surface*2]) {
+				close(decoder->fds[surface*2]);
+				close(decoder->fds[surface*2+1]);
+			}
+		}	
+		decoder->fds[surface*2] = 0;
+		decoder->fds[surface*2+1] = 0;
+		decoder->images[surface*2] = 0;
+		decoder->images[surface*2+1] = 0;		
+#endif
 #endif
     for (i = 0; i < decoder->SurfaceUsedN; ++i) {
 		if (decoder->SurfacesUsed[i] == surface) {
@@ -2047,6 +1906,210 @@ int CuvidTestSurfaces() {
 		return 0;
 }
 
+#ifdef VAAPI
+struct mp_egl_config_attr {
+    int attrib;
+    const char *name;
+};
+#define MPGL_VER(major, minor) (((major) * 100) + (minor) * 10)
+#define MPGL_VER_GET_MAJOR(ver) ((unsigned)(ver) / 100)
+#define MPGL_VER_GET_MINOR(ver) ((unsigned)(ver) % 100 / 10)
+#define MP_EGL_ATTRIB(id) {id, # id}
+
+static const struct mp_egl_config_attr mp_egl_attribs[] = {
+    MP_EGL_ATTRIB(EGL_CONFIG_ID),
+    MP_EGL_ATTRIB(EGL_RED_SIZE),
+    MP_EGL_ATTRIB(EGL_GREEN_SIZE),
+    MP_EGL_ATTRIB(EGL_BLUE_SIZE),
+    MP_EGL_ATTRIB(EGL_ALPHA_SIZE),
+    MP_EGL_ATTRIB(EGL_COLOR_BUFFER_TYPE),
+    MP_EGL_ATTRIB(EGL_CONFIG_CAVEAT),
+    MP_EGL_ATTRIB(EGL_CONFORMANT),
+};
+
+const int mpgl_preferred_gl_versions[] = {
+//    440,
+//    430,
+//    400,
+    330,
+    320,
+    310,
+    300,
+    210,
+    0
+};
+static bool create_context_cb(EGLDisplay display,
+                           int es_version, 
+                           EGLContext *out_context, EGLConfig *out_config)
+{
+  
+    EGLenum api;
+    EGLint rend, *attribs;
+    const char *name;
+
+    switch (es_version) {
+    case 0:
+        api = EGL_OPENGL_API;
+        rend = EGL_OPENGL_BIT;
+        name = "Desktop OpenGL";
+        break;
+    case 2:
+        api = EGL_OPENGL_ES_API;
+        rend = EGL_OPENGL_ES2_BIT;
+        name = "GLES 2.x";
+        break;
+    case 3:
+        api = EGL_OPENGL_ES_API;
+        rend = EGL_OPENGL_ES3_BIT;
+        name = "GLES 3.x";
+        break;
+    default: Fatal(_("Wrong ES version \n"));;
+    }
+
+    Debug(3,"Trying to create %s context.\n", name);
+
+    if (!eglBindAPI(api)) {
+        Fatal(_(" Could not bind API!\n"));
+    }
+
+    EGLint attributes8[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_RENDERABLE_TYPE, rend,
+        EGL_NONE
+    };
+	EGLint attributes10[] = {
+			EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+			EGL_RED_SIZE, 10,
+			EGL_GREEN_SIZE, 10,
+			EGL_BLUE_SIZE, 10,
+			EGL_ALPHA_SIZE, 8,
+			EGL_RENDERABLE_TYPE, rend,
+			EGL_NONE
+		};
+    EGLint num_configs;
+	
+	attribs = attributes10;
+	
+//    if (!eglChooseConfig(display, attributes10, NULL, 0, &num_configs)) { 	// try 10 Bit
+		attribs = attributes8;
+		if (!eglChooseConfig(display, attributes8, NULL, 0, &num_configs)) {	// try 8 Bit
+			num_configs = 0;
+		}
+//	}
+
+    EGLConfig *configs = malloc(sizeof(EGLConfig) * num_configs);
+    if (!eglChooseConfig(display, attribs, configs, num_configs, &num_configs))
+        num_configs = 0;
+
+    if (!num_configs) {
+        free (configs);
+        Debug(3,"Could not choose EGLConfig for %s!\n", name);
+        return false;
+    }
+
+//    for (int n = 0; n < num_configs; n++)
+//        dump_egl_config(ctx->log, MSGL_TRACE, display, configs[n]);
+
+    int chosen = 0;
+
+    EGLConfig config = configs[chosen];
+
+    free(configs);
+
+//    MP_DBG(ctx, "Chosen EGLConfig:\n");
+//    dump_egl_config(ctx->log, MSGL_DEBUG, display, config);
+
+    EGLContext *egl_ctx = NULL;
+
+    if (es_version) {
+//        if (!ra_gl_ctx_test_version(ctx, MPGL_VER(es_version, 0), true))
+//            return false;
+
+        eglAttrs[0] = EGL_CONTEXT_CLIENT_VERSION;
+		eglAttrs[1] = es_version;
+        eglAttrs[2] = EGL_NONE;
+        
+
+        egl_ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, eglAttrs);
+    } else {
+        for (int n = 0; mpgl_preferred_gl_versions[n]; n++) {
+            int ver = mpgl_preferred_gl_versions[n];
+ 
+            eglAttrs[0] = EGL_CONTEXT_MAJOR_VERSION;
+			eglAttrs[1] = MPGL_VER_GET_MAJOR(ver);
+			eglAttrs[2] = EGL_CONTEXT_MINOR_VERSION;
+			eglAttrs[3] = MPGL_VER_GET_MINOR(ver);
+			eglAttrs[4] = EGL_CONTEXT_OPENGL_PROFILE_MASK;
+			eglAttrs[5] = ver >= 320 ? EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT : 0;
+			eglAttrs[6] = EGL_NONE;
+            
+
+            egl_ctx = eglCreateContext(display, config, EGL_NO_CONTEXT, eglAttrs);
+			EglCheck();
+            if (egl_ctx) {
+				Debug(3,"Use %d GLVersion\n",ver);
+                break;
+			}
+        }
+    }
+
+    if (!egl_ctx) {
+        Debug(3,"Could not create EGL context for %s!\n", name);
+        return false;
+    }
+
+    *out_context = egl_ctx;
+    *out_config = config;
+	eglVersion = es_version;
+    return true;
+}
+
+make_egl() {
+
+	CreateImageKHR = (void *)eglGetProcAddress("eglCreateImageKHR");
+	DestroyImageKHR = (void *)eglGetProcAddress("eglDestroyImageKHR");
+	EGLImageTargetTexture2DOES = (void *)eglGetProcAddress("glEGLImageTargetTexture2DOES");
+
+	if (!CreateImageKHR || !DestroyImageKHR || !EGLImageTargetTexture2DOES)
+		Fatal(_("Can't get EGL Extentions\n"));
+	
+	eglDisplay = eglGetDisplay(XlibDisplay);
+	
+    if (!eglInitialize(eglDisplay, NULL, NULL)) {
+        Fatal(_("Could not initialize EGL.\n"));
+	}
+#if CUVID	
+	if (!create_context_cb(eglDisplay, 3, &eglContext, &eglConfig)) {
+#else
+	if (!create_context_cb(eglDisplay, 0, &eglContext, &eglConfig)) {
+#endif
+		Fatal(_("Could not create EGL Context\n"));
+	}
+	int vID, n;
+    eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
+	Debug(3,"chose visual 0x%x\n", vID);
+	
+	eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig,
+                                    (EGLNativeWindowType)VideoWindow, NULL);
+
+    if (eglSurface == EGL_NO_SURFACE) {
+        Fatal(_("Could not create EGL surface!\n"));
+    }
+
+    if (!eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext))
+    {
+        Fatal(_("Could not make context current!\n"));
+    }
+	EglEnabled = 1;
+}	
+#endif
+
+
+
 ///
 ///	Allocate new CUVID decoder.
 ///
@@ -2075,6 +2138,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 #endif
 #ifdef VAAPI
 	if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, "/dev/dri/renderD128" , NULL, 0)) != 0) {
+//	if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, ":0.0" , NULL, 0)) != 0 ) {
 		Fatal("codec: can't allocate HW video codec context err %04x",i);
     }
 #endif
@@ -2087,6 +2151,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
 #ifdef VAAPI	
     VaDisplay = TO_VAAPI_DEVICE_CTX(HwDeviceContext)->display;
     decoder->VaDisplay = VaDisplay;
+
 #endif
     decoder->Window = VideoWindow;
     //decoder->VideoX = 0;		// done by calloc
@@ -2177,8 +2242,13 @@ Debug(3,"cuvid del hw decoder \n");
 	if (decoder == CuvidDecoders[0])
   		pthread_mutex_lock(&VideoLockMutex);
 #ifndef PLACEBO
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
+#ifdef CUVID
+	glXMakeCurrent(XlibDisplay, VideoWindow, eglContext);
 	GlxCheck();
+#else
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
+	EglCheck();
+#endif
 #endif
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
 		CuvidDestroySurfaces(decoder);
@@ -2209,18 +2279,17 @@ Debug(3,"cuvid del hw decoder \n");
 static int CuvidGlxInit(__attribute__((unused))const char *display_name)
 {
 #ifndef PLACEBO
-    GlxEnabled = 1;
-
-    GlxInit();
-    if (GlxEnabled) {
-        GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, GlxContext);
+    
+    EglInit();
+    if (EglEnabled) {
+        GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, eglContext);
     }
 
-    if (!GlxEnabled) {
-        Error(_("video/glx: glx error\n"));
+    if (!EglEnabled) {
+        Fatal(_("video/egl: egl init error\n"));
     }
 #else
-	GlxEnabled = 0;
+	EglEnabled = 0;
 #endif
 
     return 1;
@@ -2459,6 +2528,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 #endif	
 }
 #ifdef VAAPI
+
 // copy image and process using CUDA
 void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height)
 {
@@ -2479,7 +2549,7 @@ void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,i
 		return;
 	}
 	vaSyncSurface(decoder->VaDisplay,(unsigned int)frame->data[3]);
-	
+	VideoThreadLock();
     for (n = 0; n < 2; n++) { 		//  Set DMA_BUF from VAAPI decoder to Textures 
             int id = desc.layers[n].object_index[0];
             int fd = desc.objects[id].fd;
@@ -2530,13 +2600,8 @@ void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,i
 
 			}
 			decoder->pl_images[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
-
-
-
-
     }
-
-//	VideoThreadUnlock();
+	VideoThreadUnlock();
 
 }
 #endif
@@ -2605,15 +2670,18 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
 }
 #endif
 #else
-#ifdef CUVID
+
 void
 createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned int size_y, enum AVPixelFormat PixFmt)
 {
 	
     int n,i;
-
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+#ifdef CUVID
+	glXMakeCurrent(XlibDisplay, VideoWindow, eglContext);
 	GlxCheck();
+#else
+ 	OSD_get_shared_context();
+#endif
 	
     glGenBuffers(1,&vao_buffer);
 	GlxCheck();
@@ -2640,18 +2708,21 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
 			SDK_CHECK_ERROR_GL();
 			// register this texture with CUDA
-
+#ifdef CUVID
 			checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i*2+n],GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
 			checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
 			checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n],0, 0));
 			checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
-
+#endif
 		}
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
-
+	GlxCheck();
+#ifdef VAAPI
+	OSD_release_context();
+#endif
 }
-
+#ifdef CUVID
 // copy image and process using CUDA
 void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
 {
@@ -2672,6 +2743,87 @@ void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,in
         };
         checkCudaErrors(cuMemcpy2D(&cpy));        
     }
+}
+#endif
+#ifdef VAAPI
+#define MP_ARRAY_SIZE(s) (sizeof(s) / sizeof((s)[0]))
+#define ADD_ATTRIB(name, value)                         \
+    do {                                                \
+    assert(num_attribs + 3 < MP_ARRAY_SIZE(attribs));   \
+    attribs[num_attribs++] = (name);                    \
+    attribs[num_attribs++] = (value);                   \
+    attribs[num_attribs] = EGL_NONE;                    \
+    } while(0)
+
+#define ADD_PLANE_ATTRIBS(plane) do { \
+    ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _FD_EXT, \
+                           desc.objects[desc.layers[n].object_index[plane]].fd); \
+    ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _OFFSET_EXT, \
+                           desc.layers[n].offset[plane]); \
+    ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _PITCH_EXT, \
+                           desc.layers[n].pitch[plane]); \
+    } while (0)
+
+void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height)
+{
+    int n,i;
+	VAStatus status;
+	static int toggle = 0;
+	uint64_t first_time;
+	VADRMPRIMESurfaceDescriptor desc;
+	
+    status = vaExportSurfaceHandle(decoder->VaDisplay, (unsigned int)frame->data[3],
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+                                   VA_EXPORT_SURFACE_READ_ONLY |
+                                   VA_EXPORT_SURFACE_SEPARATE_LAYERS,
+                                   &desc);
+	
+	if (status != VA_STATUS_SUCCESS) {
+		printf("Fehler beim export VAAPI Handle\n");
+		return;
+	}
+	vaSyncSurface(decoder->VaDisplay,(unsigned int)frame->data[3]);
+	
+ 	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
+	EglCheck();
+	
+	for (int n = 0; n < 2; n++) {
+		int attribs[20] = {EGL_NONE};
+		int num_attribs = 0;
+
+		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
+		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
+		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
+
+		ADD_PLANE_ATTRIBS(0);
+#if 0
+		if (desc.layers[n].num_planes > 1)
+			ADD_PLANE_ATTRIBS(1);
+		if (desc.layers[n].num_planes > 2)
+			ADD_PLANE_ATTRIBS(2);
+		if (desc.layers[n].num_planes > 3)
+			ADD_PLANE_ATTRIBS(3);
+#endif	
+		decoder->images[index*2+n] = CreateImageKHR(eglGetCurrentDisplay(),EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
+
+		if (!decoder->images[index*2+n])
+			goto esh_failed;
+
+		glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index*2+n]);
+		EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index*2+n]);
+		decoder->fds[index*2+n] = desc.objects[desc.layers[n].object_index[0]].fd;
+	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+	eglMakeCurrent(eglDisplay,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);
+	EglCheck();
+    return 0;
+	
+esh_failed:
+	Debug(3,"Failure in generateVAAPIImage\n");
+	for (int n = 0; n < desc.num_objects; n++)
+            close(desc.objects[n].fd);
+	eglMakeCurrent(eglDisplay,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);
+	EglCheck();
 }
 #endif
 #endif
@@ -2730,18 +2882,14 @@ int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 //printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
 	/* pull filtered frames from the filtergraph */
 	while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
-//		filt_frame->pts = frame->pts;						// Restore orginal pts 
-//		filt_frame->pts += 20 * 90;									// prepare for next frame
 		filt_frame->pts /= 2;
 		decoder->Interlaced = 0;
 //		printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);		
-		CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
-		if (i++ == 0)
-		  filt_frame = av_frame_alloc();  // get new frame
-//		av_frame_unref(filt_frame);
-	}
+		CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);	
+		filt_frame = av_frame_alloc();  // get new frame
 
-//	av_frame_free(&filt_frame);
+	}
+	av_frame_free(&filt_frame);
 	av_frame_free(&frame);
 	return ret;
 }
@@ -2873,7 +3021,7 @@ static void CuvidSyncRenderFrame(CuvidDecoder * decoder,
     const AVCodecContext * video_ctx, const AVFrame * frame);
 
 int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame) {
-	int ret,i;
+	int ret;
 	AVFrame *filt_frame = av_frame_alloc();
 	
 //	frame->pts = frame->best_effort_timestamp;
@@ -2882,19 +3030,18 @@ int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 	if (av_buffersrc_add_frame_flags(decoder->buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
 		av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
 	}
-    av_frame_copy_props(filt_frame,frame);
+
 //printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
 	/* pull filtered frames from the filtergraph */
 	while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
 		filt_frame->pts /= 2;
 //		Debug(3,"video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
 		CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
-		if (i++ == 0)
-		  filt_frame = av_frame_alloc();  // get new frame
-//		av_frame_unref(filt_frame);
+		
+		filt_frame = av_frame_alloc();  // get new frame
 	}
 
-//	av_frame_free(&filt_frame);
+	av_frame_free(&filt_frame);
 	av_frame_free(&frame);
 	return ret;
 }
@@ -3009,7 +3156,7 @@ end:
 
 #endif
 
-
+extern void AudioPlay(void);
 typedef struct CUVIDContext {
     AVBufferRef *hw_frames_ctx;
     AVFrame *tmp_frame;
@@ -3054,7 +3201,9 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 #ifdef CUVID
 			case AV_PIX_FMT_CUDA:
 #endif
+#ifdef VAAPI				
 			case AV_PIX_FMT_VAAPI:
+#endif
 				break;
 			default:
 				continue;
@@ -3102,16 +3251,19 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 
 	if (1 || video_ctx->width  != decoder->InputWidth
 		|| video_ctx->height != decoder->InputHeight) { 
+#ifdef PLACEBO
 			VideoThreadLock();
+#endif
 			CuvidCleanup(decoder);
 			decoder->InputAspect = video_ctx->sample_aspect_ratio;
 			decoder->InputWidth = video_ctx->width;
 			decoder->InputHeight = video_ctx->height;
 			decoder->Interlaced = 0;
-			
 			decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
 			CuvidSetupOutput(decoder);
+#ifdef PLACEBO
 			VideoThreadUnlock();
+#endif
 #ifdef PLACEBO     // dont show first frame
 			decoder->newchannel = 1;
 #endif
@@ -3180,6 +3332,7 @@ int get_RGB(CuvidDecoder *decoder) {
 	current = decoder->SurfacesRb[decoder->SurfaceRead];
 	
 #ifndef PLACEBO	
+//	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
 	glGenTextures(1, &texture);
 	GlxCheck();
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -3199,8 +3352,13 @@ int get_RGB(CuvidDecoder *decoder) {
 		Debug(3,"video/cuvid: grab Framebuffer is not complete!");
 		return 0;
 	}
-		
+	
 	glViewport(0,0,width, height);
+	GlxCheck();
+	
+//	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglThreadContext);	
+//	EglCheck();
+	
 
 	if (gl_prog == 0)
 		gl_prog = sc_generate(gl_prog, decoder->ColorSpace);    // generate shader programm
@@ -3222,24 +3380,35 @@ int get_RGB(CuvidDecoder *decoder) {
 	glUseProgram(0);
 	glActiveTexture(GL_TEXTURE0);
 			
-	if (OsdShown && decoder->grab == 2) {		
-#ifndef USE_OPENGLOSD
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, width, height,1);		
-#else
+	if (OsdShown && decoder->grab == 2) {	
+		GLint texLoc;
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		if (gl_prog_osd == 0)
+			gl_prog_osd = sc_generate_osd(gl_prog_osd);    // generate shader programm
+
+		glUseProgram(gl_prog_osd);
+		texLoc = glGetUniformLocation(gl_prog_osd, "texture0");
+		glUniform1i(texLoc, 0);
+
+		glActiveTexture(GL_TEXTURE0);
+
 		pthread_mutex_lock(&OSDMutex);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );	
-		glViewport(0, 0, width, height);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0.0, width, height, 0.0, -1.0, 1.0);
-		GlxCheck();
-		GlxRenderTexture(OSDtexture, 0,0, width, height,1);
+		glBindTexture(GL_TEXTURE_2D,OSDtexture);
+		render_pass_quad(1, 0, 0);
 		pthread_mutex_unlock(&OSDMutex);
+		
+		glUseProgram(0);
+		glActiveTexture(GL_TEXTURE0);
+#ifdef CUVID
+		glXMakeCurrent(XlibDisplay, VideoWindow, eglContext);
+#else
+		eglMakeCurrent(eglDisplay, eglSurface,eglSurface, eglThreadContext);
 #endif
-//		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
 	}
+	glFlush();
 	Debug(3,"Read pixels %d %d\n",width,height);
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -3716,9 +3885,10 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
     int surface;
 	enum AVColorSpace color;
 
-#if 1
+#ifdef CUVID
 	if (skipwait > 1) {
 		skipwait--;
+		av_frame_free(&frame);
 		return;
 	}
 #endif	
@@ -3742,7 +3912,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		CuvidUpdateOutput(decoder);
     }
 #endif
-	decoder->Closing = 0;
+//	decoder->Closing = 0;
 	color = frame->colorspace;
 	if (color == AVCOL_SPC_UNSPECIFIED)   // if unknown
 		color = AVCOL_SPC_BT709;
@@ -3787,24 +3957,25 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 		
 		if (surface == -1)  {   // no free surfaces
 			Debug(3,"no more surfaces\n");
+			av_frame_free(&frame);
 			return;	
 		}
 		
-	if (!decoder->Closing) {
-		VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
-	}
+		if (!decoder->Closing) {
+			VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
+		}
 
-#ifdef VAAPI    // old copy via host ram
+#if defined (VAAPI) && defined (PLACEBO)   // old copy via host ram
 		{
 		AVFrame *output;	
-		VideoThreadLock();
+		
 		int t = decoder->PixFmt==AV_PIX_FMT_NV12?1:2;
-		struct pl_rect3d rc1 = {0,0,0,w,h,0};
 
 		if (p->has_dma_buf) {  // Vulkan supports DMA_BUF no copy required
 			generateVAAPIImage(decoder,surface,frame,w,h);
 		}
 		else {   // we need to Copy the frame via RAM
+			VideoThreadLock();
 			vaSyncSurface(decoder->VaDisplay,(unsigned int)frame->data[3]);
 			output = av_frame_alloc();
 	//			av_frame_ref(output,frame);
@@ -3830,17 +4001,21 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 				.rc.z1 = 0,
 			});
 			av_frame_free(&output);
+			VideoThreadUnlock();
 		}
-		VideoThreadUnlock();
-		}
-#endif
-#ifdef CUVID
-//		first_time = GetusTicks();
 		
+		}
+#else
+#ifdef CUVID
 		// copy to texture
 		generateCUDAImage(decoder,surface,frame,w,h,decoder->PixFmt==AV_PIX_FMT_NV12?1:2);
-//			printf("generate CUDA Image  %d\n",(GetusTicks()-first_time)/1000000);
+#endif		
+#ifdef VAAPI 		
+		// copy to texture
+		generateVAAPIImage(decoder,surface,frame,w,h);
 #endif
+#endif
+		
 		CuvidQueueVideoSurface(decoder, surface, 1);
 		decoder->frames[surface] = frame; 
 		return;      
@@ -4056,14 +4231,17 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 //		img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;
 //		img->color.light = PL_COLOR_LIGHT_DISPLAY;
 		break;
+#ifdef CUVID
 	case AVCOL_SPC_BT2020_NCL:
 		img->repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
+		memcpy(&img->repr,&pl_color_repr_uhdtv,sizeof(struct pl_color_repr));
 		memcpy(&img->color,&pl_color_space_bt2020_hlg,sizeof(struct pl_color_space));
 		deband.grain = 0.0f;			// no grain in HDR
 //		img->color.primaries = PL_COLOR_PRIM_BT_2020;
 //		img->color.transfer = PL_COLOR_TRC_HLG;
 //		img->color.light = PL_COLOR_LIGHT_SCENE_HLG;
 		break;
+#endif
 	default:								// fallback
 		img->repr.sys = PL_COLOR_SYSTEM_BT_709;
 		memcpy(&img->color,&pl_color_space_bt709,sizeof(struct pl_color_space));
@@ -4254,6 +4432,7 @@ static void CuvidDisplayFrame(void)
 	int filled;
 	CuvidDecoder *decoder;
 	int RTS_flag;
+	int valid_frame = 0;
 	
   
 #ifdef PLACEBO
@@ -4269,14 +4448,17 @@ static void CuvidDisplayFrame(void)
 #endif
 	
 #ifndef PLACEBO
-	glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
-
 	if (CuvidDecoderN)
 		CuvidDecoders[0]->Frameproc = (float)(GetusTicks()-last_time)/1000000.0;
-//	printf("Time used %2.2f\n",CuvidDecoders[0]->Frameproc);
 
-    glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
+#ifdef CUVID
+	glXMakeCurrent(XlibDisplay, VideoWindow, eglContext);
+	glXWaitVideoSyncSGI (2, (Count + 1) % 2, &Count);   // wait for previous frame to swap
 	last_time = GetusTicks();	
+#else
+	eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
+	EglCheck();
+#endif
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 #else
@@ -4292,7 +4474,9 @@ static void CuvidDisplayFrame(void)
 //printf("Sleep %d\n",15000-diff);
 		usleep((15000 - diff));// * 1000);
 	} else if (skipwait != 1) {
-	//	usleep(15000);
+#ifdef CUVID
+		usleep(15000);
+#endif
 	}
 
 #endif	
@@ -4300,8 +4484,9 @@ static void CuvidDisplayFrame(void)
 		return;
 	
 //last_time = GetusTicks();
+	
+#ifdef CUVID
 	VideoThreadLock();
-#if 1
 	if (!first) {
 //		last_time = GetusTicks();
 		if (!pl_swapchain_submit_frame(p->swapchain))
@@ -4311,24 +4496,25 @@ static void CuvidDisplayFrame(void)
 	}
 #endif	
 	first = 0;
-#if 0	
- 	fdiff = (float)(GetusTicks()-first_time)/1000.0;
-	if (fdiff > 20100.0 || fdiff < 19900.0)
-		printf("roundtrip %2.2f\n",fdiff);
-	first_time = GetusTicks();	
-#endif	
 
 	last_time = GetusTicks();
 	
 	while (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame wait for previous to swap
 		usleep(5);
 	}
-last_time = GetusTicks();
+//	last_time = GetusTicks();
 //printf("wait for frame %d\n",(GetusTicks()-last_time)/1000000);
 
 
-	if (!frame.fbo)
+	if (!frame.fbo) {
+#ifdef CUVID
+		VideoThreadUnlock();
+#endif
 		return;
+	}
+#ifdef VAAPI	
+	VideoThreadLock();
+#endif
 	pl_render_target_from_swapchain(&target, &frame);  // make target frame
 
 	
@@ -4371,9 +4557,7 @@ last_time = GetusTicks();
 		default:
 			memcpy(&target.color,&pl_color_space_monitor,sizeof(struct pl_color_space));  
 			break;
-	}
-
-	
+	}	
 #endif
 	//
 	//	Render videos into output
@@ -4398,9 +4582,8 @@ last_time = GetusTicks();
 			}
 			continue;
 		}
-		
+		valid_frame = 1;
 #ifdef PLACEBO	
-
 		if (OsdShown == 1) {  // New OSD opened
 			pthread_mutex_lock(&OSDMutex);	
 			make_osd_overlay(OSDx,OSDy,OSDxsize,OSDysize);
@@ -4444,31 +4627,51 @@ last_time = GetusTicks();
 #ifndef PLACEBO	   
 	//	add osd to surface
 	//
-	if (OsdShown) {		
-#ifndef USE_OPENGLOSD
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxThreadContext);
-		GlxRenderTexture(OsdGlTextures[OsdIndex], 0,0, VideoWindowWidth, VideoWindowHeight,0);		
-#else
+	if (OsdShown && valid_frame) {		
+		int y;
+		
+		GLint texLoc;
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		if (gl_prog_osd == 0)
+			gl_prog_osd = sc_generate_osd(gl_prog_osd);    // generate shader programm
+
+		glUseProgram(gl_prog_osd);
+		texLoc = glGetUniformLocation(gl_prog_osd, "texture0");
+		glUniform1i(texLoc, 0);
+
+		glActiveTexture(GL_TEXTURE0);
+
 		pthread_mutex_lock(&OSDMutex);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext );	
-		glViewport(0, 0, VideoWindowWidth, VideoWindowHeight);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0.0, VideoWindowWidth, VideoWindowHeight, 0.0, -1.0, 1.0);
-		GlxCheck();
-		GlxRenderTexture(OSDtexture, 0,0, VideoWindowWidth, VideoWindowHeight,0);
+		glBindTexture(GL_TEXTURE_2D,OSDtexture);
+		render_pass_quad(0, 0, 0);
 		pthread_mutex_unlock(&OSDMutex);
-#endif
-//		glXMakeCurrent(XlibDisplay, VideoWindow, GlxSharedContext);
-		glXMakeCurrent(XlibDisplay, VideoWindow, GlxContext);
+		
+		glUseProgram(0);
+		glActiveTexture(GL_TEXTURE0);
+//		eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
 	}
 #endif	
 
 #ifdef PLACEBO	
+#ifdef VAAPI	
+	//	first_time = GetusTicks();
+		if (!pl_swapchain_submit_frame(p->swapchain))
+			Fatal(_("Failed to submit swapchain buffer\n"));
+		pl_swapchain_swap_buffers(p->swapchain);  // swap buffers		
+	//	printf("submit and swap %d us\n",(GetusTicks()-first_time)/1000);
+#endif	
 	VideoThreadUnlock();
 #else
+#ifdef CUVID
 	glXGetVideoSyncSGI (&Count);    // get current frame
 	glXSwapBuffers(XlibDisplay, VideoWindow);
+#else
+	eglSwapBuffers(eglDisplay, eglSurface);
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#endif
 #endif
 	
 	// FIXME: CLOCK_MONOTONIC_RAW
@@ -4517,7 +4720,7 @@ static int64_t CuvidGetClock(const CuvidDecoder * decoder)
 		return decoder->PTS - 20 * 90 * (2 * atomic_read(&decoder->SurfacesFilled) - decoder->SurfaceField - 2 + 2);
 	}
 	// + 2 in driver queue
-	return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled));  // +2
+	return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled)+SWAP_BUFFER_SIZE-1);  // +2
 }
 
 ///
@@ -4587,6 +4790,7 @@ void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped,
 ///
 ///	@param decoder	CUVID hw decoder
 ///
+
 static void CuvidSyncDecoder(CuvidDecoder * decoder)
 {
 	int filled;
@@ -4648,30 +4852,40 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		// both clocks are known
 		int diff;
 
-		diff = video_clock - audio_clock - VideoAudioDelay;
+		diff = video_clock - audio_clock + VideoAudioDelay;
 		diff = (decoder->LastAVDiff + diff) / 2;
 		decoder->LastAVDiff = diff;
 //		decoder->Frameproc = diff/90;
 //		printf("Roundtrip sync %d\n",(GetusTicks()-last_time)/1000);
 //		last_time = GetusTicks();
-#if 1		
+#ifdef CUVID1
 	if (skipwait <= 1) {
 		if ((diff/90) > 55) {
 			skipwait = 1;
-		} else if ((diff/90) < -25) {
+		} else if ((diff/90) < -200 && filled > 1) {
 			skipwait = 3;
+			decoder->SyncCounter = 1;
+		} else if ((diff/90) < -100 && filled > 1) {
+			skipwait = 2;
+			decoder->SyncCounter = 1;
 		} else {
+			decoder->SyncCounter = 1;
 			skipwait = 0;
 		}
 	}
-#endif
+#else
 		skipwait =0;
-//  printf("      Diff %d filled %d skipwait %d                        \n",diff/90,filled,skipwait);
-
+#endif
+#if 0
+  if (abs(diff/90)> 55  ) {
+        printf("      Diff %d filled %d skipwait %d                        \n",diff/90,filled,skipwait);
+  }
+#endif
 		if (abs(diff) > 5000 * 90) {	// more than 5s
 			err = CuvidMessage(2, "video: audio/video difference too big\n");
-			decoder->SyncCounter = 1;
-			goto out;
+//			decoder->SyncCounter = 1;
+//			usleep(10);
+//			goto out;
 		} else if (diff > 100 * 90) {
 			// FIXME: this quicker sync step, did not work with new code!
 			err = CuvidMessage(4, "video: slow down video, duping frame\n");
@@ -4687,8 +4901,11 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 		    err = CuvidMessage(3, "video: speed up video, droping frame\n");
 			++decoder->FramesDropped;
 			CuvidAdvanceDecoderFrame(decoder);
-			if (filled >2)
-				CuvidAdvanceDecoderFrame(decoder);
+			
+//			if ((AudioDelay == 0) && (filled < 3))
+//				AudioDelay = abs(diff/90);
+//			if (filled >2 && diff < -55)
+//				CuvidAdvanceDecoderFrame(decoder);
 	//	    filled = atomic_read(&decoder->SurfacesFilled);
 //			Debug(3,"hinter drop frame filled %d\n",atomic_read(&decoder->SurfacesFilled));
 			decoder->SyncCounter = 1;
@@ -4710,7 +4927,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 	// check if next field is available
 //JOJO    if (decoder->SurfaceField && filled <= 1 + 2 * decoder->Interlaced) {
 
-	if (decoder->SurfaceField && filled < 1 + 2 * decoder->Interlaced) {
+	if (decoder->SurfaceField && filled <= 1 + 2 * decoder->Interlaced) {
 		if (filled < 1 + 2 * decoder->Interlaced) {
 			++decoder->FramesDuped;
 #if 0
@@ -4834,8 +5051,8 @@ static void CuvidSetVideoMode(void)
 
 Debug(3,"Set video mode %dx%d\n",VideoWindowWidth,VideoWindowHeight);
 
-	if (GlxEnabled) {
-		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, GlxThreadContext);
+	if (EglEnabled) {
+		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, eglContext);
 	}
 	
 #ifdef PLACEBO	
@@ -4903,6 +5120,9 @@ static void CuvidDisplayHandlerThread(void)
 			allfull = 0;
 			err = VideoDecodeInput(decoder->Stream);
 		} else {
+#ifdef PLACEBO
+	usleep(1000);
+#endif
 			err = VideoPollInput(decoder->Stream);
 		}
 		// decoder can be invalid here
@@ -4933,7 +5153,7 @@ static void CuvidDisplayHandlerThread(void)
 	}
 	
 #ifdef PLACEBO
-	usleep(1000);
+//	usleep(1000);
 #endif
 
 	// all decoder buffers are full
@@ -5011,10 +5231,10 @@ static const VideoModule CuvidModule = {
     .SetVideoMode = CuvidSetVideoMode,
   //  .ResetAutoCrop = CuvidResetAutoCrop,
     .DisplayHandlerThread = CuvidDisplayHandlerThread,
-    .OsdClear = GlxOsdClear,
-    .OsdDrawARGB = GlxOsdDrawARGB,
-    .OsdInit = GlxOsdInit,
-    .OsdExit = GlxOsdExit,
+//    .OsdClear = GlxOsdClear,
+//    .OsdDrawARGB = GlxOsdDrawARGB,
+//    .OsdInit = GlxOsdInit,
+//    .OsdExit = GlxOsdExit,
 //    .OsdClear = CuvidOsdClear,
 //    .OsdDrawARGB = CuvidOsdDrawARGB,
 //    .OsdInit = CuvidOsdInit,
@@ -5206,10 +5426,9 @@ void VideoOsdClear(void)
 
 #ifdef PLACEBO
 	OsdShown = 0;
-
 #else
     VideoThreadLock();
-    VideoUsedModule->OsdClear();
+//    VideoUsedModule->OsdClear();
     OsdDirtyX = OsdWidth;		// reset dirty area
     OsdDirtyY = OsdHeight;
     OsdDirtyWidth = 0;
@@ -5254,16 +5473,15 @@ void VideoOsdDrawARGB(int xi, int yi, int width, int height, int pitch,
     if (y + height > OsdDirtyY + OsdDirtyHeight) {
 	OsdDirtyHeight = y + height - OsdDirtyY;
     }
-    Debug(4, "video: osd dirty %dx%d%+d%+d -> %dx%d%+d%+d\n", width, height, x,
+    Debug(3, "video: osd dirty %dx%d%+d%+d -> %dx%d%+d%+d\n", width, height, x,
 	y, OsdDirtyWidth, OsdDirtyHeight, OsdDirtyX, OsdDirtyY);
 
-    VideoUsedModule->OsdDrawARGB(xi, yi, width, height, pitch, argb, x, y);
-    OsdShown = 1;
+
 
     VideoThreadUnlock();
 }
 
-#ifdef USE_OPENGLOSD
+
 void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize) {
 //printf("OSD open %d %d %d %d\n",x,y,xsize,ysize);
 	OsdShown = 1;
@@ -5274,7 +5492,7 @@ void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize) {
 	OSDxsize = xsize;
 	OSDysize = ysize;
 }
-#endif
+
 
 
 
@@ -5336,10 +5554,6 @@ void VideoOsdInit(void)
 		OsdWidth = VideoWindowWidth;
 		OsdHeight = VideoWindowHeight;
     }
-
-    VideoThreadLock();
-    VideoUsedModule->OsdInit(OsdWidth, OsdHeight);
-    VideoThreadUnlock();
     VideoOsdClear();
 }
 
@@ -5348,9 +5562,6 @@ void VideoOsdInit(void)
 ///
 void VideoOsdExit(void)
 {
-    VideoThreadLock();
-    VideoUsedModule->OsdExit();
-    VideoThreadUnlock();
     OsdDirtyWidth = 0;
     OsdDirtyHeight = 0;
 }
@@ -5517,12 +5728,12 @@ void VideoPollEvent(void)
 		VideoEvent();
     }
 }
-#ifdef USE_OPENGLOSD
+
 void VideoSetVideoEventCallback(void (*videoEventCallback)(void))
 {
     VideoEventCallback = videoEventCallback;
 }
-#endif
+
 //----------------------------------------------------------------------------
 //	Thread
 //----------------------------------------------------------------------------
@@ -5651,12 +5862,7 @@ void InitPlacebo(){
 	p->swapchain = pl_vulkan_create_swapchain(p->vk, &(struct pl_vulkan_swapchain_params) {
         .surface = p->pSurface,
         .present_mode = VK_PRESENT_MODE_FIFO_KHR,
-#ifdef VAAPI
-		.swapchain_depth = 2,
-#endif
-#ifdef CUVID
-		.swapchain_depth = 1,
-#endif
+		.swapchain_depth = SWAP_BUFFER_SIZE,
     });
 
     if (!p->swapchain) {
@@ -5682,22 +5888,25 @@ static void *VideoDisplayHandlerThread(void *dummy)
 #ifdef CUVID
 	CUcontext cuda_ctx;
 #endif
-#ifdef PLACEBO_
-//	InitPlacebo();
-#endif
-	
+	EGLint contextAttrs[] = {
+     EGL_CONTEXT_CLIENT_VERSION, 3,
+     EGL_NONE
+};
 	prctl(PR_SET_NAME,"cuvid video",0,0,0);
-    if (GlxEnabled) {
-		Debug(3, "video/glx: thread context %p <-> %p\n",glXGetCurrentContext(), GlxThreadContext);
-		Debug(3, "video/glx: context %p <-> %p\n", glXGetCurrentContext(),GlxContext);
-
-		GlxThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, GlxSharedContext,GL_TRUE);
-		if (!GlxThreadContext) {
-			Error(_("video/glx: can't create glx context\n"));
+	
+    if (EglEnabled) {
+#ifdef CUVID
+		eglThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, eglSharedContext,GL_TRUE);
+#else		
+		eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
+#endif		
+		if (!eglThreadContext) {
+			EglCheck();
+			Fatal(_("video/egl: can't create thread egl context\n"));
 			return NULL;
 		}
 		// set glx context
-		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, GlxThreadContext);
+//		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, eglThreadContext);
     }
 
     for (;;) {
@@ -5761,7 +5970,11 @@ static void VideoThreadInit(void)
 {
 	
 #ifndef PLACEBO
-    glXMakeCurrent(XlibDisplay, None, NULL);
+#ifdef CUVID
+	glXMakeCurrent(XlibDisplay, None, NULL);
+#else
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
+#endif
 #endif
     pthread_mutex_init(&VideoMutex, NULL);
     pthread_mutex_init(&VideoLockMutex, NULL);
@@ -6684,21 +6897,19 @@ void VideoSetVideoMode( __attribute__ ((unused))
 		return;				// same size nothing todo
     }
 
-#ifdef USE_OPENGLOSD
+
     if (VideoEventCallback) {
 		sleep(1);
         VideoEventCallback();
 		Debug(3,"call back set video mode %d %d\n",width,height);
 	}
-#endif	
-    VideoOsdExit();  
-
+	
     VideoThreadLock();
     VideoWindowWidth = width;
     VideoWindowHeight = height;
     VideoUsedModule->SetVideoMode();
     VideoThreadUnlock();
-    VideoOsdInit();
+   
 }
 
 ///
@@ -7128,36 +7339,17 @@ void VideoInit(const char *display_name)
     if (!VideoWindowWidth) {
 		VideoWindowWidth = (VideoWindowHeight * 16) / 9;
     }
-    //
-    //	prepare opengl
-    //
-#ifdef USE_GLX
-    // FIXME: module selected below
-    if (0) {
 
-		GlxInit();
-		// FIXME: use root window?
-		VideoCreateWindow(screen->root, GlxVisualInfo->visualid, GlxVisualInfo->depth);
-		GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, GlxContext);
-    } else
-#endif
+	//
+	// Create output window
+	//
 
-		//
-		// Create output window
-		//
-		if (1) {				// FIXME: use window mode
-			VideoCreateWindow(screen->root, screen->root_visual, screen->root_depth);
-		} else {
-			// FIXME: support embedded mode
-			VideoWindow = screen->root;
-
-			// FIXME: VideoWindowHeight VideoWindowWidth
-		}
+	VideoCreateWindow(screen->root, screen->root_visual, screen->root_depth);
 
     Debug(3, "video: window prepared\n");
 
     //
-    //	prepare hardware decoder CUVID
+    //	prepare hardware decoder
     //
     for (i = 0; i < (int)(sizeof(VideoModules) / sizeof(*VideoModules)); ++i) {
 		// FIXME: support list of drivers and include display name
@@ -7188,15 +7380,11 @@ void VideoInit(const char *display_name)
 
     //xcb_prefetch_maximum_request_length(Connection);
     xcb_flush(Connection);
+	
 #ifdef PLACEBO
 	InitPlacebo();
 #endif
-    // I would like to start threads here, but this produces:
-    // [xcb] Unknown sequence number while processing queue
-    // [xcb] Most likely this is a multi-threaded client and XInitThreads
-    // has not been called
-    //VideoPollEvent();
-    //VideoThreadInit();
+
 }
 
 ///
@@ -7221,9 +7409,10 @@ void VideoExit(void)
 #ifdef USE_VIDEO_THREAD
     VideoThreadExit();   // destroy all mutexes 
 #endif
+
 #ifdef USE_GLX
-    if (GlxEnabled) {
-		GlxExit();       // delete all contexts
+    if (EglEnabled) {
+		EglExit();       // delete all contexts
     }
 #endif
 	
@@ -7281,24 +7470,41 @@ void VideoExit(void)
 		XlibDisplay = NULL;
 		Connection = 0;
     }
+}
 	
 
-}
-
+	
 int GlxInitopengl() {
 #ifndef PLACEBO
-	while (GlxSharedContext == NULL || GlxContext == NULL) {
+#ifdef VAAPI
+	EGLint contextAttrs[] = {
+       EGL_CONTEXT_CLIENT_VERSION, 3,
+       EGL_NONE
+	};
+#endif
+	while (eglSharedContext == NULL || eglContext == NULL) {
 		sleep(1);					// wait until Init from video thread is ready
 //		printf("GlxConext %p\n",GlxSharedContext);
 	}
-
-	OSDcontext = glXCreateContext(XlibDisplay, GlxVisualInfo, GlxSharedContext,GL_TRUE);
+#ifdef CUVID
+	OSDcontext = glXCreateContext(XlibDisplay, GlxVisualInfo, eglSharedContext,GL_TRUE);
+#else
+	OSDcontext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
+#endif
 	if (!OSDcontext) {
-		Debug(3,"video/osd: can't create glx context\n");
+		Debug(3,"video/osd: can't create OSD egl context\n");
 		return 0;
 	}
-	Debug(3,"Create OSD GLX context\n");
+	Debug(3,"Create OSD egl context\n");
+#ifdef VAAPI
+	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
+	EglCheck();
+#else
 	glXMakeCurrent(XlibDisplay, VideoWindow, OSDcontext);
+	GlxCheck();
+#endif
+	
+
 #endif
 	return 1;
 	

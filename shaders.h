@@ -1,54 +1,54 @@
 
 // shader 
+#ifdef CUVID
+char vertex_osd[] = {"\
+#version 330\n\
+in vec2 vertex_position;\n\
+in vec2 vertex_texcoord0;\n\
+out vec2 texcoord0;\n\
+void main() {\n\
+gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
+texcoord0 = vertex_texcoord0;\n\
+}\n"};
+
+char fragment_osd[] = {"\
+#version 330\n\
+#define texture1D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+uniform sampler2D texture0;\n\
+void main() {\n\
+vec4 color; \n\
+color = vec4(texture(texture0, texcoord0));\n\
+out_color = color;\n\
+}\n"};
 
 char vertex[] = {"\
-#version 330\n\
+#version 310 es\n\
 in vec2 vertex_position;\n\
 in vec2 vertex_texcoord0;\n\
 out vec2 texcoord0;\n\
 in vec2 vertex_texcoord1;\n\
 out vec2 texcoord1;\n\
-in vec2 vertex_texcoord2;\n\
-out vec2 texcoord2;\n\
-in vec2 vertex_texcoord3;\n\
-out vec2 texcoord3;\n\
-in vec2 vertex_texcoord4;\n\
-out vec2 texcoord4;\n\
-in vec2 vertex_texcoord5;\n\
-out vec2 texcoord5;\n\
 void main() {\n\
 gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
 texcoord0 = vertex_texcoord0;\n\
 texcoord1 = vertex_texcoord1;\n\
-texcoord2 = vertex_texcoord2;\n\
-texcoord3 = vertex_texcoord3;\n\
-texcoord4 = vertex_texcoord4;\n\
-texcoord5 = vertex_texcoord5;\n\
 }\n"};
 
-
 char fragment[] = {"\
-#version 330\n\
+#version 310 es\n\
 #define texture1D texture\n\
 #define texture3D texture\n\
+precision mediump float; \
 layout(location = 0) out vec4 out_color;\n\
 in vec2 texcoord0;\n\
 in vec2 texcoord1;\n\
-in vec2 texcoord2;\n\
-in vec2 texcoord3;\n\
-in vec2 texcoord4;\n\
-in vec2 texcoord5;\n\
 uniform mat3 colormatrix;\n\
 uniform vec3 colormatrix_c;\n\
 uniform sampler2D texture0;\n\
-//uniform vec2 texture_size0;\n\
-//uniform mat2 texture_rot0;\n\
-//uniform vec2 pixel_size0;\n\
 uniform sampler2D texture1;\n\
-//uniform vec2 texture_size1;\n\
-//uniform mat2 texture_rot1;\n\
-//uniform vec2 pixel_size1;\n\
-//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
 void main() {\n\
 vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
 color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;\n\
@@ -61,27 +61,18 @@ out_color = color;\n\
 }\n"};
 
 char fragment_bt2100[] = {"\
-#version 330\n\
+#version 310 es\n \
 #define texture1D texture\n\
 #define texture3D texture\n\
+precision mediump float; \
 layout(location = 0) out vec4 out_color;\n\
 in vec2 texcoord0;\n\
 in vec2 texcoord1;\n\
-in vec2 texcoord2;\n\
-in vec2 texcoord3;\n\
-in vec2 texcoord4;\n\
-in vec2 texcoord5;\n\
 uniform mat3 colormatrix;\n\
 uniform vec3 colormatrix_c;\n\
 uniform mat3 cms_matrix;\n\
 uniform sampler2D texture0;\n\
-//uniform vec2 texture_size0;\n\
-//uniform mat2 texture_rot0;\n\
-//uniform vec2 pixel_size0;\n\
 uniform sampler2D texture1;\n\
-//uniform vec2 texture_size1;\n\
-//uniform mat2 texture_rot1;\n\
-//uniform vec2 pixel_size1;\n\
 //#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
 void main() {\n\
 vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
@@ -99,6 +90,98 @@ color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
 out_color = color;\n\
 }\n"};
 
+
+#else
+char vertex_osd[] = {"\
+\n\
+in vec2 vertex_position;\n\
+in vec2 vertex_texcoord0;\n\
+out vec2 texcoord0;\n\
+void main() {\n\
+gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
+texcoord0 = vertex_texcoord0;\n\
+}\n"};
+
+char fragment_osd[] = {"\
+\n\
+#define texture1D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+uniform sampler2D texture0;\n\
+void main() {\n\
+vec4 color; \n\
+color = vec4(texture(texture0, texcoord0));\n\
+out_color = color;\n\
+}\n"};
+
+char vertex[] = {"\
+\n\
+in vec2 vertex_position;\n\
+in vec2 vertex_texcoord0;\n\
+out vec2 texcoord0;\n\
+in vec2 vertex_texcoord1;\n\
+out vec2 texcoord1;\n\
+void main() {\n\
+gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
+texcoord0 = vertex_texcoord0;\n\
+texcoord1 = vertex_texcoord1;\n\
+}\n"};
+
+char fragment[] = {"\
+\n\
+#define texture1D texture\n\
+#define texture3D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+in vec2 texcoord1;\n\
+uniform mat3 colormatrix;\n\
+uniform vec3 colormatrix_c;\n\
+uniform sampler2D texture0;\n\
+uniform sampler2D texture1;\n\
+//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
+void main() {\n\
+vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
+color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;\n\
+color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg;\n\
+// color conversion\n\
+color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
+color.a = 1.0;\n\
+// color mapping\n\
+out_color = color;\n\
+}\n"};
+
+char fragment_bt2100[] = {"\
+\n \
+#define texture1D texture\n\
+#define texture3D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+in vec2 texcoord1;\n\
+uniform mat3 colormatrix;\n\
+uniform vec3 colormatrix_c;\n\
+uniform mat3 cms_matrix;\n\
+uniform sampler2D texture0;\n\
+uniform sampler2D texture1;\n\
+//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
+void main() {\n\
+vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
+color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;\n\
+color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;\n\
+// color conversion\n\
+color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
+color.a = 1.0;\n\
+// color mapping\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(2.4));\n\
+color.rgb = cms_matrix * color.rgb;\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
+out_color = color;\n\
+}\n"};
+#endif
 /* Color conversion matrix: RGB = m * YUV + c
  * m is in row-major matrix, with m[row][col], e.g.:
  *     [ a11 a12 a13 ]     float m[3][3] = { { a11, a12, a13 },
@@ -113,12 +196,12 @@ out_color = color;\n\
  * The matrix might also be used for other conversions and colorspaces.
  */
 struct mp_cmat {
-    float m[3][3]; // colormatrix
-    float c[3];    //colormatrix_c
+    GLfloat m[3][3]; // colormatrix
+    GLfloat c[3];    //colormatrix_c
 };
 
 struct mp_mat {
-	float m[3][3];
+	GLfloat m[3][3];
 };
 
 // YUV input limited range (16-235 for luma, 16-240 for chroma)
@@ -185,10 +268,6 @@ static const struct gl_vao_entry vertex_vao[] = {
     {"position", 2, GL_FLOAT, false, offsetof(struct vertex, position)},
     {"texcoord0", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[0])},
     {"texcoord1", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[1])},
-    {"texcoord2", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[2])},
-    {"texcoord3", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[3])},
-    {"texcoord4", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[4])},
-    {"texcoord5", 2, GL_FLOAT, false, offsetof(struct vertex, texcoord[5])},
     {0}
 };
 
@@ -198,7 +277,8 @@ static void compile_attach_shader(GLuint program,
 { 
     GLuint shader;
 	GLint status, log_length;
-	
+	char log[4000];
+	GLsizei len;
     shader = glCreateShader(type); 
     glShaderSource(shader, 1, &source, NULL); 
     glCompileShader(shader); 
@@ -206,9 +286,10 @@ static void compile_attach_shader(GLuint program,
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status); 
     log_length = 0; 
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length); 
-Debug(3,"compile Status %d loglen %d\n",status,log_length); 
+	glGetShaderInfoLog(shader,4000,&len,log);
+	GlxCheck();
+Debug(3,"compile Status %d loglen %d >%s<\n",status,log_length,log); 
 
-    GlxCheck();
     glAttachShader(program, shader);
     glDeleteShader(shader);
 }
@@ -223,9 +304,23 @@ static void link_shader(GLuint program)
     log_length = 0;
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
 Debug(3,"Link Status %d loglen %d\n",status,log_length); 
-
-
 }
+
+static GLuint sc_generate_osd(GLuint gl_prog) {
+    
+	Debug(3,"vor create osd\n");
+	gl_prog = glCreateProgram();
+	Debug(3,"vor compile vertex osd\n");
+	compile_attach_shader(gl_prog, GL_VERTEX_SHADER, vertex_osd);
+	Debug(3,"vor compile fragment osd \n");
+	compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, fragment_osd);
+	glBindAttribLocation(gl_prog,0,"vertex_position");
+	glBindAttribLocation(gl_prog,1,"vertex_texcoord0");
+		
+	link_shader(gl_prog);
+    return gl_prog; 
+}
+
 
 static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     
@@ -284,7 +379,8 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
 	if (gl_colormatrix != -1)
 		glProgramUniformMatrix3fv(gl_prog,gl_colormatrix,1,0,m);
 	GlxCheck();
-	  //glProgramUniform3fv(gl_prog,gl_colormatrix,3,&yuv_bt709.m[0][0]);
+	Debug(3,"nach set colormatrix\n");
+	  
 	gl_colormatrix_c = glGetUniformLocation(gl_prog,"colormatrix_c");
 	Debug(3,"get uniform colormatrix_c %d %f\n",gl_colormatrix_c,*c);
 	if (gl_colormatrix_c != -1)

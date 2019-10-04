@@ -107,6 +107,7 @@ static VideoStream *AudioSyncStream;	///< video stream for audio/video sync
 #define AUDIO_MIN_BUFFER_FREE (3072 * 8 * 8)
 #define AUDIO_BUFFER_SIZE (512 * 1024)	///< audio PES buffer default size
 static AVPacket AudioAvPkt[1];		///< audio a/v packet
+int AudioDelay = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 //	Audio codec parser
@@ -579,7 +580,7 @@ static void PesInit(PesDemux * pesdx)
     pesdx->Size = PES_MAX_PAYLOAD;
     pesdx->Buffer = av_malloc(PES_MAX_PAYLOAD + AV_INPUT_BUFFER_PADDING_SIZE);
     if (!pesdx->Buffer) {
-	Fatal(_("pesdemux: out of memory\n"));
+		Fatal(_("pesdemux: out of memory\n"));
     }
     PesReset(pesdx);
 }
@@ -672,57 +673,56 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size,
 		    // FIXME: simple+faster detection, if codec already known
 		    r = 0;
 		    if (!r && FastMpegCheck(q)) {
-			r = MpegCheck(q, n);
-			codec_id = AV_CODEC_ID_MP2;
+				r = MpegCheck(q, n);
+				codec_id = AV_CODEC_ID_MP2;
 		    }
 		    if (!r && FastAc3Check(q)) {
-			r = Ac3Check(q, n);
-			codec_id = AV_CODEC_ID_AC3;
-			if (r > 0 && q[5] > (10 << 3)) {
-			    codec_id = AV_CODEC_ID_EAC3;
-			}
+				r = Ac3Check(q, n);
+				codec_id = AV_CODEC_ID_AC3;
+				if (r > 0 && q[5] > (10 << 3)) {
+					codec_id = AV_CODEC_ID_EAC3;
+				}
 		    }
 		    if (!r && FastLatmCheck(q)) {
-			r = LatmCheck(q, n);
-			codec_id = AV_CODEC_ID_AAC_LATM;
+				r = LatmCheck(q, n);
+				codec_id = AV_CODEC_ID_AAC_LATM;
 		    }
 		    if (!r && FastAdtsCheck(q)) {
-			r = AdtsCheck(q, n);
-			codec_id = AV_CODEC_ID_AAC;
+				r = AdtsCheck(q, n);
+				codec_id = AV_CODEC_ID_AAC;
 		    }
 		    if (r < 0) {	// need more bytes
-			break;
+				break;
 		    }
 		    if (r > 0) {
-			AVPacket avpkt[1];
+				AVPacket avpkt[1];
 
-			// new codec id, close and open new
-			if (AudioCodecID != codec_id) {
-			    Debug(3, "pesdemux: new codec %#06x -> %#06x\n",
-				AudioCodecID, codec_id);
-			    CodecAudioClose(MyAudioDecoder);
-			    CodecAudioOpen(MyAudioDecoder, codec_id);
-			    AudioCodecID = codec_id;
-			}
-			av_init_packet(avpkt);
-			avpkt->data = (void *)q;
-			avpkt->size = r;
-			avpkt->pts = pesdx->PTS;
-			avpkt->dts = pesdx->DTS;
-			// FIXME: not aligned for ffmpeg
-			CodecAudioDecode(MyAudioDecoder, avpkt);
-			pesdx->PTS = AV_NOPTS_VALUE;
-			pesdx->DTS = AV_NOPTS_VALUE;
-			pesdx->Skip += r;
-			// FIXME: switch to decoder state
-			//pesdx->State = PES_MPEG_DECODE;
-			break;
+				// new codec id, close and open new
+				if (AudioCodecID != codec_id) {
+					Debug(3, "pesdemux: new codec %#06x -> %#06x\n",
+					AudioCodecID, codec_id);
+					CodecAudioClose(MyAudioDecoder);
+					CodecAudioOpen(MyAudioDecoder, codec_id);
+					AudioCodecID = codec_id;
+				}
+				av_init_packet(avpkt);
+				avpkt->data = (void *)q;
+				avpkt->size = r;
+				avpkt->pts = pesdx->PTS;
+				avpkt->dts = pesdx->DTS;
+				// FIXME: not aligned for ffmpeg
+				CodecAudioDecode(MyAudioDecoder, avpkt);
+				pesdx->PTS = AV_NOPTS_VALUE;
+				pesdx->DTS = AV_NOPTS_VALUE;
+				pesdx->Skip += r;
+				// FIXME: switch to decoder state
+				//pesdx->State = PES_MPEG_DECODE;
+				break;
 		    }
 		    if (AudioCodecID != AV_CODEC_ID_NONE) {
-			// shouldn't happen after we have a vaild codec
-			// detected
-			Debug(4, "pesdemux: skip @%d %02x\n", pesdx->Skip,
-			    q[0]);
+				// shouldn't happen after we have a vaild codec
+				// detected
+				Debug(4, "pesdemux: skip @%d %02x\n", pesdx->Skip,q[0]);
 		    }
 		    // try next byte
 		    ++pesdx->Skip;
@@ -1024,9 +1024,15 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
     if (SkipAudio || !MyAudioDecoder) {	// skip audio
 		return size;
     }
-    if (StreamFreezed) {		// stream freezed
+    if (StreamFreezed ) {		// stream freezed
 		return 0;
     }
+	if (AudioDelay) {
+		Debug(3,"AudioDelay %dms\n",AudioDelay);
+		usleep(AudioDelay/90);
+		AudioDelay = 0;
+		return 0;
+	}
     if (NewAudioStream) {
 		// this clears the audio ringbuffer indirect, open and setup does it
 		CodecAudioClose(MyAudioDecoder);
@@ -1205,9 +1211,9 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
 
 			// new codec id, close and open new
 			if (AudioCodecID != codec_id) {
-			CodecAudioClose(MyAudioDecoder);
-			CodecAudioOpen(MyAudioDecoder, codec_id);
-			AudioCodecID = codec_id;
+				CodecAudioClose(MyAudioDecoder);
+				CodecAudioOpen(MyAudioDecoder, codec_id);
+				AudioCodecID = codec_id;
 			}
 			av_init_packet(avpkt);
 			avpkt->data = (void *)p;
@@ -1257,6 +1263,7 @@ int PlayTsAudio(const uint8_t * data, int size)
     if (StreamFreezed) {		// stream freezed
 		return 0;
     }
+
     if (NewAudioStream) {
 		// this clears the audio ringbuffer indirect, open and setup does it
 		CodecAudioClose(MyAudioDecoder);
@@ -1279,7 +1286,13 @@ int PlayTsAudio(const uint8_t * data, int size)
 		return 0;
     }
 #endif
-
+	if (AudioDelay) {
+		Debug(3,"AudioDelay %dms\n",AudioDelay);
+		usleep(AudioDelay*1000);
+		AudioDelay = 0;
+//		TsDemuxer(tsdx, data, size);   // insert dummy audio
+		
+	}
     return TsDemuxer(tsdx, data, size);
 }
 
@@ -2498,27 +2511,27 @@ int SetPlayMode(int play_mode)
 	case 0:			// audio/video from decoder
 	    // tell video parser we get new stream
 	    if (MyVideoStream->Decoder && !MyVideoStream->SkipStream) {
-		// clear buffers on close configured always or replay only
-		if (ConfigVideoClearOnSwitch || MyVideoStream->ClearClose) {
-		    Clear();		// flush all buffers
-		    MyVideoStream->ClearClose = 0;
-		}
-		if (MyVideoStream->CodecID != AV_CODEC_ID_NONE) {
-		    MyVideoStream->NewStream = 1;
-		    MyVideoStream->InvalidPesCounter = 0;
-		    // tell hw decoder we are closing stream
-		    VideoSetClosing(MyVideoStream->HwDecoder);
-		    VideoResetStart(MyVideoStream->HwDecoder);
+			// clear buffers on close configured always or replay only
+			if (ConfigVideoClearOnSwitch || MyVideoStream->ClearClose) {
+				Clear();		// flush all buffers
+				MyVideoStream->ClearClose = 0;
+			}
+			if (MyVideoStream->CodecID != AV_CODEC_ID_NONE) {
+				MyVideoStream->NewStream = 1;
+				MyVideoStream->InvalidPesCounter = 0;
+				// tell hw decoder we are closing stream
+				VideoSetClosing(MyVideoStream->HwDecoder);
+				VideoResetStart(MyVideoStream->HwDecoder);
 #ifdef DEBUG
-		    VideoSwitch = GetMsTicks();
-		    Debug(3, "video: new stream start\n");
+				VideoSwitch = GetMsTicks();
+				Debug(3, "video: new stream start\n");
 #endif
-		}
+			}
 	    }
 	    if (MyAudioDecoder) {	// tell audio parser we have new stream
-		if (AudioCodecID != AV_CODEC_ID_NONE) {
-		    NewAudioStream = 1;
-		}
+			if (AudioCodecID != AV_CODEC_ID_NONE) {
+				NewAudioStream = 1;
+			}
 	    }
 	    break;
 	case 1:			// audio/video from player
