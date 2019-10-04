@@ -146,7 +146,7 @@ ifeq ($(VAAPI),1)
 CONFIG += -DVAAPI 
 #LIBPLACEBO=1
 PLUGIN = softhdvaapi
-LIBS += -lEGL -lEGL_mesa  
+LIBS += -lEGL   
 endif
 
 ifeq ($(LIBPLACEBO),1)

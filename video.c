@@ -886,12 +886,12 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContext context)
 #endif
 {
-#ifdef DEBUG
+
     uint32_t start;
     uint32_t end;
     int i;
     unsigned count;
-#endif
+
 
 #ifdef PLACEBO_
 	return;
