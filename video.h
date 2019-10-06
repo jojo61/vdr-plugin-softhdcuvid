@@ -254,9 +254,9 @@ extern int VideoRaiseWindow(void);
 extern void ActivateOsd(GLuint,int,int,int,int);
 #endif
 #if 0
-long int gettid()
+long int sys_gettid()
 {
-	return (long int)syscall(224);
+	return (long int)syscall(__NR_gettid);
 }
 #endif
 
