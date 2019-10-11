@@ -540,10 +540,7 @@ static int X11HaveDPMS(xcb_connection_t *);
 static void X11DPMSReenable(xcb_connection_t *);
 static void X11DPMSDisable(xcb_connection_t *);
 #endif
-uint64_t gettid()
-{
-	return pthread_self();
-}
+
 ///
 ///	Update video pts.
 ///
