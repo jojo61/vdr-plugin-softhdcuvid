@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2019-01-04 09:19+0100\n"
+"POT-Creation-Date: 2019-10-04 14:23+0200\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -251,9 +251,6 @@ msgstr ""
 msgid "audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n"
 msgstr ""
 
-msgid "codec: buggy libav, use ffmpeg\n"
-msgstr ""
-
 msgid "codec: can't allocate vodeo decoder\n"
 msgstr ""
 
@@ -264,6 +261,9 @@ msgid " No decoder found"
 msgstr ""
 
 msgid "codec: can't allocate video codec context\n"
+msgstr ""
+
+msgid "VAAPI Refcounts invalid\n"
 msgstr ""
 
 msgid "codec: can't set option deint to video codec!\n"
@@ -282,6 +282,9 @@ msgid "codec: can't open video codec!\n"
 msgstr ""
 
 msgid "codec: can't allocate video decoder frame buffer\n"
+msgstr ""
+
+msgid "video: Init of YADIF Filter failed\n"
 msgstr ""
 
 msgid "codec: can't allocate audio decoder\n"
@@ -327,20 +330,8 @@ msgstr ""
 msgid "codec/audio: can't open resample\n"
 msgstr ""
 
-msgid "codec/audio: latm\n"
+msgid "A software and GPU emulated UHD device"
 msgstr ""
-
-msgid "codec/audio: bad audio frame\n"
-msgstr ""
-
-msgid "codec/audio: error more than one frame data\n"
-msgstr ""
-
-msgid "codec/audio: no frame\n"
-msgstr ""
-
-msgid "A software and GPU emulated HD device"
-msgstr "Ein Software und GPU emulieres HD-Gerät"
 
 msgid "SoftUHD"
 msgstr ""
@@ -801,13 +792,10 @@ msgstr ""
 msgid "[softhddev] ready%s\n"
 msgstr ""
 
-msgid "video/glx: can't make glx context current\n"
+msgid "video/egl: GlxSetupWindow can't make egl context current\n"
 msgstr ""
 
 msgid "video/glx: no v-sync\n"
-msgstr ""
-
-msgid "glewinit failed\n"
 msgstr ""
 
 msgid "video/glx: no GLX support\n"
@@ -818,15 +806,6 @@ msgid "video/glx: glx version %d.%d\n"
 msgstr ""
 
 msgid "did not get FBconfig"
-msgstr ""
-
-msgid "video/glx: can't get a RGB visual\n"
-msgstr ""
-
-msgid "video/glx: no valid visual found\n"
-msgstr ""
-
-msgid "video/glx: need atleast 8-bits per RGB\n"
 msgstr ""
 
 msgid "video/glx: can't create glx context\n"
@@ -850,11 +829,35 @@ msgstr ""
 msgid "video/glx: SGI v-sync enabled\n"
 msgstr ""
 
+msgid "video/egl: can't create egl context\n"
+msgstr ""
+
 msgid "video/cuvid: surface needed not set\n"
 msgstr ""
 
 #, c-format
 msgid "video/cuvid: release surface %#08x, which is not in use\n"
+msgstr ""
+
+msgid "Wrong ES version \n"
+msgstr ""
+
+msgid " Could not bind API!\n"
+msgstr ""
+
+msgid "Can't get EGL Extentions\n"
+msgstr ""
+
+msgid "Could not initialize EGL.\n"
+msgstr ""
+
+msgid "Could not create EGL Context\n"
+msgstr ""
+
+msgid "Could not create EGL surface!\n"
+msgstr ""
+
+msgid "Could not make context current!\n"
 msgstr ""
 
 msgid "video/cuvid: out of decoders\n"
@@ -866,7 +869,7 @@ msgstr ""
 msgid "video/cuvid: decoder not in decoder list.\n"
 msgstr ""
 
-msgid "video/glx: glx error\n"
+msgid "video/egl: egl init error\n"
 msgstr ""
 
 #, c-format
@@ -952,6 +955,9 @@ msgstr ""
 msgid "Failed initializing libplacebo renderer\n"
 msgstr ""
 
+msgid "video/egl: can't create thread egl context\n"
+msgstr ""
+
 msgid "video: can't queue cancel video display thread\n"
 msgstr ""
 
@@ -985,6 +991,9 @@ msgstr ""
 
 msgid "video: error closing display\n"
 msgstr ""
+
+#~ msgid "A software and GPU emulated HD device"
+#~ msgstr "Ein Software und GPU emulieres HD-Gerät"
 
 #~ msgid "Use studio levels (vdpau only)"
 #~ msgstr "Benutze Studio Levels (nur vdpau)"

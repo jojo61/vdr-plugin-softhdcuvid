@@ -2044,7 +2044,7 @@ static int AudioNextRing(void)
 
     // stop, if not enough in next buffer
     used = RingBufferUsedBytes(AudioRing[AudioRingRead].RingBuffer);
-    if (AudioStartThreshold * 4 < used || (AudioVideoIsReady
+    if (AudioStartThreshold * 10 < used || (AudioVideoIsReady
 	    && AudioStartThreshold < used)) {
 		return 0;
     }
@@ -2228,6 +2228,24 @@ static const AudioModule *AudioModules[] = {
     &NoopModule,
 };
 
+void AudioDelayms(int delayms) {
+	int count;
+	unsigned char *p;
+
+#ifdef DEBUG
+	printf("Try Delay Audio for %d ms  Samplerate %d Channels %d bps %d\n",
+		   delayms,AudioRing[AudioRingWrite].HwSampleRate,AudioRing[AudioRingWrite].HwChannels,AudioBytesProSample);
+#endif
+
+	count = delayms * AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample / 1000;
+	
+	if (delayms < 5000 && delayms > 0) {  // not more than 5seconds
+		p = calloc(1,count);
+		RingBufferWrite(AudioRing[AudioRingWrite].RingBuffer, p, count);
+		free(p);
+	}
+}
+
 /**
 **	Place samples in audio output queue.
 **
@@ -2334,7 +2352,7 @@ void AudioEnqueue(const void *samples, int count)
 		}
 		// forced start or enough video + audio buffered
 		// for some exotic channels * 4 too small
-		if (AudioStartThreshold * 4 < n || (AudioVideoIsReady
+		if (AudioStartThreshold * 10 < n || (AudioVideoIsReady
 //		if ((AudioVideoIsReady											
 			&& AudioStartThreshold < n)) {
 			// restart play-back
@@ -2390,7 +2408,7 @@ void AudioVideoReady(int64_t pts)
 		Timestamp2String(pts), Timestamp2String(audio_pts),
 		(int)(pts - audio_pts) / 90, AudioRunning ? "running" : "ready");
 
-    if (!AudioRunning || 1) {
+    if (!AudioRunning) {
 		int skip;
 
 		// buffer ~15 video frames
@@ -2420,8 +2438,6 @@ void AudioVideoReady(int64_t pts)
 		}
 		else {
 			Debug(3,"No audio skip -> should skip %d\n",skip/90);
-			AudioRunning = 0;
-			usleep(abs(skip/90)*1000); 
 		}
 		// FIXME: skip<0 we need bigger audio buffer
 
