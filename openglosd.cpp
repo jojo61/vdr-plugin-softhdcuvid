@@ -2077,7 +2077,8 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     isSubtitleOsd = false;
     int osdWidth = 0;
     int osdHeight = 0;
-
+	
+    pthread_mutex_lock(&OSDMutex);
     VideoGetOsdSize(&osdWidth, &osdHeight);
 //	osdWidth = 1920;
 //	osdHeight = 1080;
@@ -2100,6 +2101,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 #ifdef VAAPI
 	OSD_release_context();
 #endif
+	pthread_mutex_unlock(&OSDMutex);
 }
 
 cOglOsd::~cOglOsd() {
