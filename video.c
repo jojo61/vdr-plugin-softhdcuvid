@@ -3741,8 +3741,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 		target->dst_rect.x1 = dst_video_rect.x1;
 		target->dst_rect.y1 = dst_video_rect.y1;
 	}
-	
-	pl_tex_clear(p->gpu,target->fbo,(float[4]){0});
+	if (level == 0)
+		pl_tex_clear(p->gpu,target->fbo,(float[4]){0});
 	
 	if (VideoColorBlindness) {
 		switch(VideoColorBlindness) {
