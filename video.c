@@ -43,7 +43,7 @@
 
 #define USE_XLIB_XCB			///< use xlib/xcb backend
 #define noUSE_SCREENSAVER		///< support disable screensaver
-//#define USE_AUTOCROP			///< compile auto-crop support
+
 #define USE_GRAB			///< experimental grab code
 //#define USE_GLX			///< outdated GLX code
 #define USE_DOUBLEBUFFER		///< use GLX double buffers
@@ -303,7 +303,6 @@ typedef struct _video_module_
     void (*const GetStats) (VideoHwDecoder *, int *, int *, int *, int *, float *);
     void (*const SetBackground) (uint32_t);
     void (*const SetVideoMode) (void);
-    void (*const ResetAutoCrop) (void);
 
     /// module display handler thread
     void (*const DisplayHandlerThread) (void);
@@ -560,12 +559,12 @@ static void VideoSetPts(int64_t * pts_p, int interlaced,
     //	Get duration for this frame.
     //	FIXME: using framerate as workaround for av_frame_get_pkt_duration
     //
-
-    if (video_ctx->framerate.num && video_ctx->framerate.den) {
-		duration = 1000 * video_ctx->framerate.den / video_ctx->framerate.num;
-    } else {
+	
+//    if (video_ctx->framerate.num && video_ctx->framerate.den) {
+//		duration = 1000 * video_ctx->framerate.den / video_ctx->framerate.num;
+//    } else {
 		duration = interlaced ? 40 : 20;	// 50Hz -> 20ms default
-    }
+//    }
 //    Debug(4, "video: %d/%d %" PRIx64 " -> %d\n", video_ctx->framerate.den,	video_ctx->framerate.num, av_frame_get_pkt_duration(frame), duration);
 
     // update video clock
@@ -1277,179 +1276,6 @@ static VideoResolutions VideoResolutionGroup(int width, int height,
 }
 
 //----------------------------------------------------------------------------
-//	auto-crop
-//----------------------------------------------------------------------------
-
-///
-///	auto-crop context structure and typedef.
-///
-typedef struct _auto_crop_ctx_
-{
-    int X1;				///< detected left border
-    int X2;				///< detected right border
-    int Y1;				///< detected top border
-    int Y2;				///< detected bottom border
-
-    int Count;				///< counter to delay switch
-    int State;				///< auto-crop state (0, 14, 16)
-
-} AutoCropCtx;
-
-#ifdef USE_AUTOCROP
-
-#define YBLACK 0x20			///< below is black
-#define UVBLACK 0x80			///< around is black
-#define M64 UINT64_C(0x0101010101010101)	///< 64bit multiplicator
-
-    /// auto-crop percent of video width to ignore logos
-static const int AutoCropLogoIgnore = 24;
-static int AutoCropInterval;		///< auto-crop check interval
-static int AutoCropDelay;		///< auto-crop switch delay
-static int AutoCropTolerance;		///< auto-crop tolerance
-
-///
-///	Detect black line Y.
-///
-///	@param data	Y plane pixel data
-///	@param length	number of pixel to check
-///	@param pitch	offset of pixels
-///
-///	@note 8 pixel are checked at once, all values must be 8 aligned
-///
-static int AutoCropIsBlackLineY(const uint8_t * data, int length, int pitch)
-{
-    int n;
-    int o;
-    uint64_t r;
-    const uint64_t *p;
-
-#ifdef DEBUG
-    if ((size_t) data & 0x7 || pitch & 0x7) {
-	abort();
-    }
-#endif
-    p = (const uint64_t *)data;
-    n = length;				// FIXME: can remove n
-    o = pitch / 8;
-
-    r = 0UL;
-    while (--n >= 0) {
-	r |= *p;
-	p += o;
-    }
-
-    // below YBLACK(0x20) is black
-    return !(r & ~((YBLACK - 1) * M64));
-}
-
-///
-///	Auto detect black borders and crop them.
-///
-///	@param autocrop auto-crop variables
-///	@param width	frame width in pixel
-///	@param height	frame height in pixel
-///	@param data	frame planes data (Y, U, V)
-///	@param pitches	frame planes pitches (Y, U, V)
-///
-///	@note FIXME: can reduce the checked range, left, right crop isn't
-///		used yet.
-///
-///	@note FIXME: only Y is checked, for black.
-///
-static void AutoCropDetect(AutoCropCtx * autocrop, int width, int height,
-    void *data[3], uint32_t pitches[3])
-{
-    const void *data_y;
-    unsigned length_y;
-    int x;
-    int y;
-    int x1;
-    int x2;
-    int y1;
-    int y2;
-    int logo_skip;
-
-    //
-    //	ignore top+bottom 6 lines and left+right 8 pixels
-    //
-#define SKIP_X	8
-#define SKIP_Y	6
-    x1 = width - 1;
-    x2 = 0;
-    y1 = height - 1;
-    y2 = 0;
-    logo_skip = SKIP_X + (((width * AutoCropLogoIgnore) / 100 + 8) / 8) * 8;
-
-    data_y = data[0];
-    length_y = pitches[0];
-
-    //
-    //	search top
-    //
-    for (y = SKIP_Y; y < y1; ++y) {
-	if (!AutoCropIsBlackLineY(data_y + logo_skip + y * length_y,
-		(width - 2 * logo_skip) / 8, 8)) {
-	    if (y == SKIP_Y) {
-		y = 0;
-	    }
-	    y1 = y;
-	    break;
-	}
-    }
-    //
-    //	search bottom
-    //
-    for (y = height - SKIP_Y - 1; y > y2; --y) {
-	if (!AutoCropIsBlackLineY(data_y + logo_skip + y * length_y,
-		(width - 2 * logo_skip) / 8, 8)) {
-	    if (y == height - SKIP_Y - 1) {
-		y = height - 1;
-	    }
-	    y2 = y;
-	    break;
-	}
-    }
-    //
-    //	search left
-    //
-    for (x = SKIP_X; x < x1; x += 8) {
-	if (!AutoCropIsBlackLineY(data_y + x + SKIP_Y * length_y,
-		height - 2 * SKIP_Y, length_y)) {
-	    if (x == SKIP_X) {
-		x = 0;
-	    }
-	    x1 = x;
-	    break;
-	}
-    }
-    //
-    //	search right
-    //
-    for (x = width - SKIP_X - 8; x > x2; x -= 8) {
-	if (!AutoCropIsBlackLineY(data_y + x + SKIP_Y * length_y,
-		height - 2 * SKIP_Y * 8, length_y)) {
-	    if (x == width - SKIP_X - 8) {
-		x = width - 1;
-	    }
-	    x2 = x;
-	    break;
-	}
-    }
-
-    if (0 && (y1 > SKIP_Y || x1 > SKIP_X)) {
-	Debug(3, "video/autocrop: top=%d bottom=%d left=%d right=%d\n", y1, y2,
-	    x1, x2);
-    }
-
-    autocrop->X1 = x1;
-    autocrop->X2 = x2;
-    autocrop->Y1 = y1;
-    autocrop->Y2 = y2;
-}
-
-#endif
-
-//----------------------------------------------------------------------------
 //	CUVID
 //----------------------------------------------------------------------------
 
@@ -1513,12 +1339,6 @@ typedef struct _cuvid_decoder_
     int CropWidth;			///< video crop width
     int CropHeight;			///< video crop height
 
-#ifdef USE_AUTOCROP
-    void *AutoCropBuffer;		///< auto-crop buffer cache
-    unsigned AutoCropBufferSize;	///< auto-crop buffer size
-    AutoCropCtx AutoCrop[1];		///< auto-crop variables
-#endif
-	
 	int grabwidth,grabheight,grab;   // Grab Data
 	void *grabbase;
 
@@ -1794,12 +1614,6 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 		}
 	}
 #ifdef PLACEBO
-#ifdef CUVID1
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y[0]);
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV[0]);
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_Y[1]);
-	pl_buf_destroy(p->gpu,&decoder->pl_buf_UV[1]);
-#endif
 	pl_renderer_destroy(&p->renderer);
 	p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
@@ -2213,12 +2027,6 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
     decoder->OutputHeight = VideoWindowHeight;
     decoder->PixFmt = AV_PIX_FMT_NONE;
 
-
-#ifdef USE_AUTOCROP
-    //decoder->AutoCropBuffer = NULL;	// done by calloc
-    //decoder->AutoCropBufferSize = 0;
-#endif
-
     decoder->Stream = stream;
     if (!CuvidDecoderN) {		// FIXME: hack sync on audio
 		decoder->SyncOnAudio = 1;
@@ -2302,9 +2110,7 @@ Debug(3,"cuvid del hw decoder \n");
 			}
 //			CuvidCleanup(decoder);
 			CuvidPrintFrames(decoder);
-#ifdef USE_AUTOCROP
-			free(decoder->AutoCropBuffer);
-#endif
+
 			free(decoder);
 			return;
 		}
@@ -2361,10 +2167,7 @@ static void CuvidUpdateOutput(CuvidDecoder * decoder)
 	&decoder->OutputX, &decoder->OutputY, &decoder->OutputWidth,
 	&decoder->OutputHeight, &decoder->CropX, &decoder->CropY,
 	&decoder->CropWidth, &decoder->CropHeight);
-#ifdef USE_AUTOCROP
-    decoder->AutoCrop->State = 0;
-    decoder->AutoCrop->Count = AutoCropDelay;
-#endif
+
 }
 
 void SDK_CHECK_ERROR_GL() {
@@ -2374,7 +2177,30 @@ void SDK_CHECK_ERROR_GL() {
        Fatal(_("video/cuvid: SDL error %d\n"),gl_error);
     }
 }
+	
+#ifdef CUVID
+// copy image and process using CUDA
+void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
+{
+    int n;
+    for (n = 0; n < 2; n++) { // 
+        // widthInBytes must account for the chroma plane
+        // elements being two samples wide.
+        CUDA_MEMCPY2D cpy = {
+            .srcMemoryType = CU_MEMORYTYPE_DEVICE,
+		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
+            .srcDevice     = (CUdeviceptr)frame->data[n],
+            .srcPitch      = frame->linesize[n],
+            .srcY          = 0,
+			.dstArray      = decoder->cu_array[index][n],
+            .WidthInBytes  = image_width * bytes, 
+            .Height        = n==0?image_height:image_height/2 , 
+        };
+        checkCudaErrors(cuMemcpy2D(&cpy));        
+    }
+}
 
+#endif
 
 #ifdef PLACEBO
 void
@@ -2485,107 +2311,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 		img->height = size_y;
 		img->num_overlays = 0;
 	}
-#ifdef CUVID1	
-	decoder->pl_buf_Y[0] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for Y texture upload
-		.type = PL_BUF_TEX_TRANSFER,
-		.size = size_x * size_y * size,
-		.host_mapped = false,
-		.host_writable = false,
-		.memory_type = PL_BUF_MEM_DEVICE,
-		.handle_type = PL_HANDLE_FD,
-		});
-	decoder->ebuf[0].fd = dup(decoder->pl_buf_Y[0]->shared_mem.handle.fd);		// dup fd
 
-	decoder->pl_buf_UV[0] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for UV texture upload
-		.type = PL_BUF_TEX_TRANSFER,
-		.size = size_x * size_y * size / 2,
-		.host_mapped = false,
-		.host_writable = false,
-		.memory_type = PL_BUF_MEM_DEVICE,
-		.handle_type = PL_HANDLE_FD,
-		});
-	decoder->ebuf[1].fd = dup(decoder->pl_buf_UV[0]->shared_mem.handle.fd);	// dup fd 
-
-	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc  = {
-		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-		.handle.fd   = decoder->ebuf[0].fd,
-		.size = decoder->pl_buf_Y[0]->shared_mem.size,   // image_width * image_height * bytes,
-		.flags = 0,
-	};
-	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[0].mem, &ext_desc));	// Import Memory segment
-
-	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc = {
-		.offset = decoder->pl_buf_Y[0]->shared_mem.offset,
-		.size = size_x * size_y * size,
-		.flags = 0,
-	};
-	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[0].buf, decoder->ebuf[0].mem, &buf_desc)); // get Pointer
-	
-	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc1 = {
-		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-		.handle.fd   = decoder->ebuf[1].fd,
-		.size = decoder->pl_buf_UV[0]->shared_mem.size,   // image_width * image_height * bytes / 2,
-		.flags = 0,
-	};
-	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[1].mem, &ext_desc1)); // Import Memory Segment  
-
-	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc1 = {
-		.offset = decoder->pl_buf_UV[0]->shared_mem.offset,
-		.size = size_x * size_y * size / 2,
-		.flags = 0,
-	};
-	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[1].buf, decoder->ebuf[1].mem, &buf_desc1));	// get pointer
-// ----------------------------
-		decoder->pl_buf_Y[1] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for Y texture upload
-		.type = PL_BUF_TEX_TRANSFER,
-		.size = size_x * size_y * size,
-		.host_mapped = false,
-		.host_writable = false,
-		.memory_type = PL_BUF_MEM_DEVICE,
-		.handle_type = PL_HANDLE_FD,
-		});
-	decoder->ebuf[2].fd = dup(decoder->pl_buf_Y[1]->shared_mem.handle.fd);		// dup fd
-
-	decoder->pl_buf_UV[1] = pl_buf_create(p->gpu, &(struct pl_buf_params) {   // buffer for UV texture upload
-		.type = PL_BUF_TEX_TRANSFER,
-		.size = size_x * size_y * size / 2,
-		.host_mapped = false,
-		.host_writable = false,
-		.memory_type = PL_BUF_MEM_DEVICE,
-		.handle_type = PL_HANDLE_FD,
-		});
-	decoder->ebuf[3].fd = dup(decoder->pl_buf_UV[1]->shared_mem.handle.fd);	// dup fd 
-
-	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc2  = {
-		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-		.handle.fd   = decoder->ebuf[2].fd,
-		.size = decoder->pl_buf_Y[1]->shared_mem.size,   // image_width * image_height * bytes,
-		.flags = 0,
-	};
-	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[2].mem, &ext_desc2));	// Import Memory segment
-
-	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc2 = {
-		.offset = decoder->pl_buf_Y[1]->shared_mem.offset,
-		.size = size_x * size_y * size,
-		.flags = 0,
-	};
-	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[2].buf, decoder->ebuf[2].mem, &buf_desc2)); // get Pointer
-	
-	CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc3 = {
-		.type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
-		.handle.fd   = decoder->ebuf[3].fd,
-		.size = decoder->pl_buf_UV[1]->shared_mem.size,   // image_width * image_height * bytes / 2,
-		.flags = 0,
-	};
-	checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[3].mem, &ext_desc3)); // Import Memory Segment  
-
-	CUDA_EXTERNAL_MEMORY_BUFFER_DESC buf_desc3 = {
-		.offset = decoder->pl_buf_UV[1]->shared_mem.offset,
-		.size = size_x * size_y * size / 2,
-		.flags = 0,
-	};
-	checkCudaErrors(cuExternalMemoryGetMappedBuffer(&decoder->ebuf[3].buf, decoder->ebuf[3].mem, &buf_desc3));	// get pointer
-#endif	
 }
 #ifdef VAAPI
 
@@ -2650,12 +2376,6 @@ void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,i
 //printf("vor create  Object %d with fd %d import size %u offset  %d  %dx%d\n",id,fd,size,offset, tex_params.w,tex_params.h);
 
 			if (decoder->pl_images[index].planes[n].texture) {
-#if 0
-				if (decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd) {
-					close(decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd);
-					printf("close FD %d\n",decoder->pl_images[index].planes[n].texture->params.shared_mem.handle.fd);
-				}
-#endif
 				pl_tex_destroy(p->gpu,&decoder->pl_images[index].planes[n].texture);
 
 			}
@@ -2665,97 +2385,7 @@ void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,i
 
 }
 #endif
-#ifdef CUVID
-// copy image and process using CUDA
-void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
-{
-    int n;
-    for (n = 0; n < 2; n++) { // 
-        // widthInBytes must account for the chroma plane
-        // elements being two samples wide.
-        CUDA_MEMCPY2D cpy = {
-            .srcMemoryType = CU_MEMORYTYPE_DEVICE,
-		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
-            .srcDevice     = (CUdeviceptr)frame->data[n],
-            .srcPitch      = frame->linesize[n],
-            .srcY          = 0,
-			.dstArray      = decoder->cu_array[index][n],
-            .WidthInBytes  = image_width * bytes, 
-            .Height        = n==0?image_height:image_height/2 , 
-        };
-        checkCudaErrors(cuMemcpy2D(&cpy));        
-    }
-}
-#if 0						
-void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
-{
-    int n;
-	static int toggle = 0;
-	uint64_t first_time;
-//	struct ext_buf ebuf[2];
-first_time = GetusTicks();
-	VideoThreadLock();
-		
-//printf("Upload buf to texture for frame %d in size %d-%d\n",index,image_width,image_height);
-	if (decoder->pl_buf_Y[toggle])
-		while (pl_buf_poll(p->gpu,decoder->pl_buf_Y[toggle], 000000)) {   //  5 ms
-			VideoThreadUnlock();
-			usleep(100);
-			VideoThreadLock();
-		}
-	else {
-		VideoThreadUnlock();
-		return;
-	}
-	if (decoder->pl_buf_UV[toggle])
-		while (pl_buf_poll(p->gpu,decoder->pl_buf_UV[toggle], 000000)) {
-			VideoThreadUnlock();
-			usleep(100);
-			VideoThreadLock();
-		}
-	else {
-		VideoThreadUnlock();
-		return;
-	}
-//	printf("1 got Image buffers %2.2f\n",(float)(GetusTicks()-first_time)/1000000.0);	
 
-    for (n = 0; n < 2; n++) { 									//  Copy 2 Planes from Cuda decoder to upload Buffer 
-        // widthInBytes must account for the chroma plane
-        // elements being two samples wide.
-        CUDA_MEMCPY2D cpy = {
-            .srcMemoryType = CU_MEMORYTYPE_DEVICE,
-            .srcDevice     = (CUdeviceptr)frame->data[n],
-            .srcPitch      = frame->linesize[n],
-            .srcY          = 0,	
-            .WidthInBytes  = image_width * bytes, 
-            .Height        = n==0?image_height:image_height/2 , 
-			.dstMemoryType = CU_MEMORYTYPE_DEVICE,
-            .dstDevice 	   = decoder->ebuf[toggle*2+n].buf,
-            .dstPitch  	   = image_width * bytes,
-        };
-        checkCudaErrors(cuMemcpy2D(&cpy));        
-    }
-
-	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {  	// upload Y 
-		.tex = decoder->pl_images[index].planes[0].texture,
-		.buf = decoder->pl_buf_Y[toggle],
-	});
-	pl_tex_upload(p->gpu,&(struct pl_tex_transfer_params) {		// upload UV
-		.tex = decoder->pl_images[index].planes[1].texture,
-		.buf = decoder->pl_buf_UV[toggle],
-	});
-
-	pl_buf_export(p->gpu,decoder->pl_buf_Y[toggle]);
-	pl_buf_export(p->gpu,decoder->pl_buf_UV[toggle]);
-//	toggle = toggle==0?1:0;
-//	pl_gpu_flush(p->gpu);
-	VideoThreadUnlock();
-	if (((float)(GetusTicks()-first_time)/1000000.0) > 15.0) {
- //		printf("made Image buffers %2.2f ms\n",(float)(GetusTicks()-first_time)/1000000.0);
-	}
-}
-#endif
-#endif
 #else
 
 void
@@ -2809,28 +2439,7 @@ createTextureDst(CuvidDecoder * decoder,int anz, unsigned int size_x, unsigned i
 	OSD_release_context();
 #endif
 }
-#ifdef CUVID
-// copy image and process using CUDA
-void generateCUDAImage(CuvidDecoder * decoder,int index, const AVFrame *frame,int image_width , int image_height, int bytes)
-{
-    int n;
-    for (n = 0; n < 2; n++) { // 
-        // widthInBytes must account for the chroma plane
-        // elements being two samples wide.
-        CUDA_MEMCPY2D cpy = {
-            .srcMemoryType = CU_MEMORYTYPE_DEVICE,
-		 	.dstMemoryType = CU_MEMORYTYPE_ARRAY,
-            .srcDevice     = (CUdeviceptr)frame->data[n],
-            .srcPitch      = frame->linesize[n],
-            .srcY          = 0,
-			.dstArray      = decoder->cu_array[index][n],
-            .WidthInBytes  = image_width * bytes, 
-            .Height        = n==0?image_height:image_height/2 , 
-        };
-        checkCudaErrors(cuMemcpy2D(&cpy));        
-    }
-}
-#endif
+
 #ifdef VAAPI
 #define MP_ARRAY_SIZE(s) (sizeof(s) / sizeof((s)[0]))
 #define ADD_ATTRIB(name, value)                         \
@@ -2880,16 +2489,8 @@ void generateVAAPIImage(CuvidDecoder * decoder,int index, const AVFrame *frame,i
 		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
 		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
 		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
-
 		ADD_PLANE_ATTRIBS(0);
-#if 0
-		if (desc.layers[n].num_planes > 1)
-			ADD_PLANE_ATTRIBS(1);
-		if (desc.layers[n].num_planes > 2)
-			ADD_PLANE_ATTRIBS(2);
-		if (desc.layers[n].num_planes > 3)
-			ADD_PLANE_ATTRIBS(3);
-#endif	
+
 		decoder->images[index*2+n] = CreateImageKHR(eglGetCurrentDisplay(),EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
 
 		if (!decoder->images[index*2+n])
@@ -3242,11 +2843,6 @@ end:
 
 #endif
 
-extern void AudioPlay(void);
-typedef struct CUVIDContext {
-    AVBufferRef *hw_frames_ctx;
-    AVFrame *tmp_frame;
-} CUVIDContext;
 
 ///
 ///	Callback to negotiate the PixelFormat.
@@ -3263,7 +2859,6 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
     int bitformat16 = 0,deint=0;
    
     VideoDecoder *ist = video_ctx->opaque;
-
 
     //
     //	look through formats
@@ -3370,7 +2965,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 #endif
 		} 
 
-  		CuvidMessage(2,"CUVID Init ok %dx%d\n",video_ctx->width,video_ctx->height);
+  		CuvidMessage(2,"GetFormat Init ok %dx%d\n",video_ctx->width,video_ctx->height);
 		decoder->InputAspect = video_ctx->sample_aspect_ratio;
 #ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
@@ -3443,10 +3038,6 @@ int get_RGB(CuvidDecoder *decoder) {
 	glViewport(0,0,width, height);
 	GlxCheck();
 	
-//	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglThreadContext);	
-//	EglCheck();
-	
-
 	if (gl_prog == 0)
 		gl_prog = sc_generate(gl_prog, decoder->ColorSpace);    // generate shader programm
 	
@@ -3693,214 +3284,8 @@ static uint8_t *CuvidGrabOutputSurface(int *ret_size, int *ret_width,  int *ret_
 {
     uint8_t *img;
 
-//    pthread_mutex_lock(&CuvidGrabMutex);
-//	pthread_mutex_lock(&VideoLockMutex);
     img = CuvidGrabOutputSurfaceLocked(ret_size, ret_width, ret_height, mitosd);
-//	pthread_mutex_unlock(&VideoLockMutex);
-//    pthread_mutex_unlock(&CuvidGrabMutex);
     return img;
-}
-
-#endif
-
-#ifdef USE_AUTOCROP
-
-///
-///	CUVID auto-crop support.
-///
-///	@param decoder	CUVID hw decoder
-///
-static void CuvidAutoCrop(CuvidDecoder * decoder)
-{
-    int surface;
-
-    uint32_t size;
-    uint32_t width;
-    uint32_t height;
-    void *base;
-    void *data[3];
-    uint32_t pitches[3];
-    int crop14;
-    int crop16;
-    int next_state;
-    int format;
-
-    surface = decoder->SurfacesRb[(decoder->SurfaceRead + 1) %  VIDEO_SURFACES_MAX];
-
-    //	get real surface size (can be different)
-    status =
-	CuvidVideoSurfaceGetParameters(surface, &chroma_type, &width, &height);
-    if (status != VDP_STATUS_OK) {
-	Error(_("video/vdpau: can't get video surface parameters: %s\n"),
-	    CuvidGetErrorString(status));
-	return;
-    }
-    switch (chroma_type) {
-	case VDP_CHROMA_TYPE_420:
-	case VDP_CHROMA_TYPE_422:
-	case VDP_CHROMA_TYPE_444:
-	    size = width * height + ((width + 1) / 2) * ((height + 1) / 2)
-		+ ((width + 1) / 2) * ((height + 1) / 2);
-	    // cache buffer for reuse
-	    base = decoder->AutoCropBuffer;
-	    if (size > decoder->AutoCropBufferSize) {
-		free(base);
-		decoder->AutoCropBuffer = malloc(size);
-		base = decoder->AutoCropBuffer;
-	    }
-	    if (!base) {
-		Error(_("video/vdpau: out of memory\n"));
-		return;
-	    }
-	    pitches[0] = width;
-	    pitches[1] = width / 2;
-	    pitches[2] = width / 2;
-	    data[0] = base;
-	    data[1] = base + width * height;
-	    data[2] = base + width * height + width * height / 4;
-	    format = VDP_YCBCR_FORMAT_YV12;
-	    break;
-	default:
-	    Error(_("video/vdpau: unsupported chroma type %d\n"), chroma_type);
-	    return;
-    }
-    status = CuvidVideoSurfaceGetBitsYCbCr(surface, format, data, pitches);
-    if (status != VDP_STATUS_OK) {
-	Error(_("video/vdpau: can't get video surface bits: %s\n"),
-	    CuvidGetErrorString(status));
-	return;
-    }
-
-    AutoCropDetect(decoder->AutoCrop, width, height, data, pitches);
-
-    // ignore black frames
-    if (decoder->AutoCrop->Y1 >= decoder->AutoCrop->Y2) {
-	return;
-    }
-
-    crop14 =
-	(decoder->InputWidth * decoder->InputAspect.num * 9) /
-	(decoder->InputAspect.den * 14);
-    crop14 = (decoder->InputHeight - crop14) / 2;
-    crop16 =
-	(decoder->InputWidth * decoder->InputAspect.num * 9) /
-	(decoder->InputAspect.den * 16);
-    crop16 = (decoder->InputHeight - crop16) / 2;
-
-    if (decoder->AutoCrop->Y1 >= crop16 - AutoCropTolerance
-	&& decoder->InputHeight - decoder->AutoCrop->Y2 >=
-	crop16 - AutoCropTolerance) {
-	next_state = 16;
-    } else if (decoder->AutoCrop->Y1 >= crop14 - AutoCropTolerance
-	&& decoder->InputHeight - decoder->AutoCrop->Y2 >=
-	crop14 - AutoCropTolerance) {
-	next_state = 14;
-    } else {
-	next_state = 0;
-    }
-
-    if (decoder->AutoCrop->State == next_state) {
-	return;
-    }
-
-    Debug(3, "video: crop aspect %d:%d %d/%d %d%+d\n",
-	decoder->InputAspect.num, decoder->InputAspect.den, crop14, crop16,
-	decoder->AutoCrop->Y1, decoder->InputHeight - decoder->AutoCrop->Y2);
-
-    Debug(3, "video: crop aspect %d -> %d\n", decoder->AutoCrop->State,	next_state);
-
-    switch (decoder->AutoCrop->State) {
-	case 16:
-	case 14:
-	    if (decoder->AutoCrop->Count++ < AutoCropDelay / 2) {
-		return;
-	    }
-	    break;
-	case 0:
-	    if (decoder->AutoCrop->Count++ < AutoCropDelay) {
-		return;
-	    }
-	    break;
-    }
-
-    decoder->AutoCrop->State = next_state;
-    if (next_state) {
-		decoder->CropX = VideoCutLeftRight[decoder->Resolution];
-		decoder->CropY =
-			(next_state ==
-			16 ? crop16 : crop14) + VideoCutTopBottom[decoder->Resolution];
-		decoder->CropWidth = decoder->InputWidth - decoder->CropX * 2;
-		decoder->CropHeight = decoder->InputHeight - decoder->CropY * 2;
-
-		// FIXME: this overwrites user choosen output position
-		// FIXME: resize kills the auto crop values
-		// FIXME: support other 4:3 zoom modes
-		decoder->OutputX = decoder->VideoX;
-		decoder->OutputY = decoder->VideoY;
-		decoder->OutputWidth = (decoder->VideoHeight * next_state) / 9;
-		decoder->OutputHeight = (decoder->VideoWidth * 9) / next_state;
-		if (decoder->OutputWidth > decoder->VideoWidth) {
-			decoder->OutputWidth = decoder->VideoWidth;
-			decoder->OutputY =
-			(decoder->VideoHeight - decoder->OutputHeight) / 2;
-		} else if (decoder->OutputHeight > decoder->VideoHeight) {
-			decoder->OutputHeight = decoder->VideoHeight;
-			decoder->OutputX =
-			(decoder->VideoWidth - decoder->OutputWidth) / 2;
-		}
-		Debug(3, "video: aspect output %dx%d %dx%d%+d%+d\n",
-			decoder->InputWidth, decoder->InputHeight, decoder->OutputWidth,
-			decoder->OutputHeight, decoder->OutputX, decoder->OutputY);
-    } else {
-		// sets AutoCrop->Count
-		CuvidUpdateOutput(decoder);
-    }
-    decoder->AutoCrop->Count = 0;
-}
-
-///
-///	CUVID check if auto-crop todo.
-///
-///	@param decoder	CUVID hw decoder
-///
-///	@note a copy of VaapiCheckAutoCrop
-///	@note auto-crop only supported with normal 4:3 display mode
-///
-static void CuvidCheckAutoCrop(CuvidDecoder * decoder)
-{
-    // reduce load, check only n frames
-    if (Video4to3ZoomMode == VideoNormal && AutoCropInterval
-	&& !(decoder->FrameCounter % AutoCropInterval)) {
-	AVRational input_aspect_ratio;
-	AVRational tmp_ratio;
-
-	av_reduce(&input_aspect_ratio.num, &input_aspect_ratio.den,
-	    decoder->InputWidth * decoder->InputAspect.num,
-	    decoder->InputHeight * decoder->InputAspect.den, 1024 * 1024);
-
-	tmp_ratio.num = 4;
-	tmp_ratio.den = 3;
-	// only 4:3 with 16:9/14:9 inside supported
-	if (!av_cmp_q(input_aspect_ratio, tmp_ratio)) {
-	    CuvidAutoCrop(decoder);
-	} else {
-	    decoder->AutoCrop->Count = 0;
-	    decoder->AutoCrop->State = 0;
-	}
-    }
-}
-
-///
-///	CUVID reset auto-crop.
-///
-static void CuvidResetAutoCrop(void)
-{
-    int i;
-
-    for (i = 0; i < CuvidDecoderN; ++i) {
-	CuvidDecoders[i]->AutoCrop->State = 0;
-	CuvidDecoders[i]->AutoCrop->Count = 0;
-    }
 }
 
 #endif
@@ -4039,11 +3424,11 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 			av_frame_free(&frame);
 			return;	
 		}
-		
+#if 0		
 		if (!decoder->Closing) {
 			VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
 		}
-
+#endif
 #if defined (VAAPI) && defined (PLACEBO)   // old copy via host ram
 		{
 		AVFrame *output;	
@@ -4226,11 +3611,6 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 	float xcropf, ycropf;
 	GLint texLoc;
 
-#ifdef USE_AUTOCROP
-	// FIXME: can move to render frame
-	CuvidCheckAutoCrop(decoder);
-#endif
-
 #ifdef PLACEBO
 	if (level) {
 		dst_rect.x0 = decoder->VideoX;	// video window output (clip)
@@ -4260,7 +3640,11 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))int lev
 	dst_video_rect.y1 = decoder->OutputY + decoder->OutputHeight;
 #endif
 	current = decoder->SurfacesRb[decoder->SurfaceRead];
-
+	
+	if (!decoder->Closing) {
+		VideoSetPts(&decoder->PTS, decoder->Interlaced, 0, decoder->frames[current]);
+	}
+	
 	// Render Progressive frame and simple interlaced
 #ifndef PLACEBO
 	y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
@@ -4798,7 +4182,7 @@ static int64_t CuvidGetClock(const CuvidDecoder * decoder)
 		return decoder->PTS - 20 * 90 * (2 * atomic_read(&decoder->SurfacesFilled) - decoder->SurfaceField - 2 + 2);
 	}
 	// + 2 in driver queue
-	return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled)+SWAP_BUFFER_SIZE-1 +2);  // +2
+	return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled)+SWAP_BUFFER_SIZE-1 );  // +2
 }
 
 ///
@@ -4877,7 +4261,8 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 	int err = 0;
 	static uint64_t last_time;
 
-	video_clock = CuvidGetClock(decoder);
+//	video_clock = CuvidGetClock(decoder);
+	video_clock = decoder->PTS;
 	filled = atomic_read(&decoder->SurfacesFilled);
 
 	if (!decoder->SyncOnAudio) {
@@ -4940,7 +4325,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 
 #if 0
   if (abs(diff/90)> 0  ) {
-        printf("      Diff %d filled %d                      \n",diff/90,filled);
+        printf("      Diff %d filled %d                      \r",diff/90,filled);
   }
 #endif
 		if (abs(diff) > 5000 * 90) {	// more than 5s
@@ -4968,7 +4353,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 			else if ((diff < -65 * 90))  // give it some time to get frames to drop
 				AudioDelayms(abs(diff/90));
 
-			decoder->SyncCounter = 3;
+			decoder->SyncCounter = 1;
 		}
 #if defined(DEBUG) || defined(AV_INFO)
 		if (!decoder->SyncCounter && decoder->StartCounter < 1000) {
@@ -5289,7 +4674,7 @@ static const VideoModule CuvidModule = {
 	    int *, float *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
     .SetVideoMode = CuvidSetVideoMode,
-  //  .ResetAutoCrop = CuvidResetAutoCrop,
+
     .DisplayHandlerThread = CuvidDisplayHandlerThread,
 //    .OsdClear = GlxOsdClear,
 //    .OsdDrawARGB = GlxOsdDrawARGB,
@@ -5461,7 +4846,7 @@ static const VideoModule NoopModule = {
 #endif
     .SetBackground = NoopSetBackground,
     .SetVideoMode = NoopVoid,
-    .ResetAutoCrop = NoopVoid,
+
     .DisplayHandlerThread = NoopDisplayHandlerThread,
     .OsdClear = NoopVoid,
     .OsdDrawARGB = NoopOsdDrawARGB,
@@ -7246,19 +6631,9 @@ void VideoSetAudioDelay(int ms)
 ///
 void VideoSetAutoCrop(int interval, int delay, int tolerance)
 {
-#ifdef USE_AUTOCROP
-    AutoCropInterval = interval;
-    AutoCropDelay = delay;
-    AutoCropTolerance = tolerance;
-
-    VideoThreadLock();
-    VideoUsedModule->ResetAutoCrop();
-    VideoThreadUnlock();
-#else
     (void)interval;
     (void)delay;
     (void)tolerance;
-#endif
 }
 
 ///
