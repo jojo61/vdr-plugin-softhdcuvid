@@ -4095,7 +4095,8 @@ static void CuvidDisplayFrame(void)
 		
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		
+		glViewport(0, 0, VideoWindowWidth,VideoWindowHeight);
+		GlxCheck();
 		if (gl_prog_osd == 0)
 			gl_prog_osd = sc_generate_osd(gl_prog_osd);    // generate shader programm
 
@@ -6324,6 +6325,9 @@ void VideoSetVideoMode( __attribute__ ((unused))
     VideoThreadLock();
     VideoWindowWidth = width;
     VideoWindowHeight = height;
+#ifdef PLACEBO
+	VideoSetOsdSize(width,height);
+#endif
     VideoUsedModule->SetVideoMode();
     VideoThreadUnlock();
    
