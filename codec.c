@@ -439,17 +439,19 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 */
 void CodecVideoClose(VideoDecoder *video_decoder)
 {
-		
+	AVFrame *frame;	
     // FIXME: play buffered data
 //	av_frame_free(&video_decoder->Frame);	// callee does checks
 
 	Debug(3,"CodecVideoClose\n");
     if (video_decoder->VideoCtx) {
 		pthread_mutex_lock(&CodecLockMutex);
-		
-//		avcodec_send_packet(video_ctx, NULL);
-//		while (avcodec_receive_frame(video_ctx,video_decoder->Frame) >= 0);
-		
+#if 1		
+		frame = av_frame_alloc();
+		avcodec_send_packet(video_decoder->VideoCtx, NULL);
+		while (avcodec_receive_frame(video_decoder->VideoCtx,frame) >= 0);
+		av_frame_free(&frame);
+#endif
 		avcodec_close(video_decoder->VideoCtx);
 		av_freep(&video_decoder->VideoCtx);
 		pthread_mutex_unlock(&CodecLockMutex);

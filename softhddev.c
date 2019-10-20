@@ -1910,23 +1910,22 @@ int VideoDecodeInput(VideoStream * stream)
     }
 #if 0
     // clearing for normal channel switch has no advantage
-    if (stream->ClearClose /*|| stream->ClosingStream */ ) {
+    if (stream->ClearClose || stream->ClosingStream  ) {
 	int f;
 
 	// FIXME: during replay all packets are always checked
 
 	// flush buffers, if close is in the queue
 	for (f = 0; f < filled; ++f) {
-	    if (stream->CodecIDRb[(stream->PacketRead + f) % VIDEO_PACKET_MAX]
-		== AV_CODEC_ID_NONE) {
-		if (f) {
-		    Debug(3, "video: cleared upto close\n");
-		    atomic_sub(f, &stream->PacketsFilled);
-		    stream->PacketRead =
-			(stream->PacketRead + f) % VIDEO_PACKET_MAX;
-		    stream->ClearClose = 0;
-		}
-		break;
+	    if (stream->CodecIDRb[(stream->PacketRead + f) % VIDEO_PACKET_MAX] == AV_CODEC_ID_NONE) {
+			if (f) {
+				Debug(3, "video: cleared upto close\n");
+				atomic_sub(f, &stream->PacketsFilled);
+				stream->PacketRead =
+				(stream->PacketRead + f) % VIDEO_PACKET_MAX;
+				stream->ClearClose = 0;
+			}
+			break;
 	    }
 	}
 	stream->ClosingStream = 0;

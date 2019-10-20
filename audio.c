@@ -1035,8 +1035,7 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough)
     }
     // open none blocking; if device is already used, we don't want wait
     if ((err =
-	    snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,
-		SND_PCM_NONBLOCK)) < 0) {
+	    snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK,SND_PCM_NONBLOCK)) < 0) {
 		Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
 		return NULL;
     }
@@ -1247,20 +1246,20 @@ static int AlsaSetup(int *freq, int *channels, int passthrough)
 				SND_PCM_ACCESS_RW_INTERLEAVED, *channels, *freq, 1,
 				72 * 1000))) {
 
-			/*
-			   if ( err == -EBADFD ) {
-			   snd_pcm_close(AlsaPCMHandle);
-			   AlsaPCMHandle = NULL;
-			   continue;
-			   }
-			 */
+				/*
+				   if ( err == -EBADFD ) {
+				   snd_pcm_close(AlsaPCMHandle);
+				   AlsaPCMHandle = NULL;
+				   continue;
+				   }
+				 */
 
-			if (!AudioDoingInit) {
-				Error(_("audio/alsa: set params error: %s\n"),
-				snd_strerror(err));
-			}
-			// FIXME: must stop sound, AudioChannels ... invalid
-			return -1;
+				if (!AudioDoingInit) {
+					Error(_("audio/alsa: set params error: %s\n"),
+					snd_strerror(err));
+				}
+				// FIXME: must stop sound, AudioChannels ... invalid
+				return -1;
 			}
 		}
 		break;
@@ -1303,12 +1302,12 @@ static int AlsaSetup(int *freq, int *channels, int passthrough)
 
     snd_pcm_get_params(AlsaPCMHandle, &buffer_size, &period_size);
     Debug(3, "audio/alsa: buffer size %lu %zdms, period size %lu %zdms\n",
-	buffer_size, snd_pcm_frames_to_bytes(AlsaPCMHandle,
+		buffer_size, snd_pcm_frames_to_bytes(AlsaPCMHandle,
 	    buffer_size) * 1000 / (*freq * *channels * AudioBytesProSample),
-	period_size, snd_pcm_frames_to_bytes(AlsaPCMHandle,
+		period_size, snd_pcm_frames_to_bytes(AlsaPCMHandle,
 	    period_size) * 1000 / (*freq * *channels * AudioBytesProSample));
     Debug(3, "audio/alsa: state %s\n",
-	snd_pcm_state_name(snd_pcm_state(AlsaPCMHandle)));
+		snd_pcm_state_name(snd_pcm_state(AlsaPCMHandle)));
 
     AudioStartThreshold = snd_pcm_frames_to_bytes(AlsaPCMHandle, period_size);
     // buffer time/delay in ms
@@ -1317,7 +1316,7 @@ static int AlsaSetup(int *freq, int *channels, int passthrough)
 		delay += VideoAudioDelay / 90;
     }
     if (AudioStartThreshold <
-	(*freq * *channels * AudioBytesProSample * delay) / 1000U) {
+		(*freq * *channels * AudioBytesProSample * delay) / 1000U) {
 		AudioStartThreshold = (*freq * *channels * AudioBytesProSample * delay) / 1000U;
     }
     // no bigger, than 1/3 the buffer
@@ -2810,12 +2809,12 @@ void AudioSetStereoDescent(int delta)
 void AudioSetDevice(const char *device)
 {
     if (!AudioModuleName) {
-	AudioModuleName = "alsa";	// detect alsa/OSS
-	if (!device[0]) {
-	    AudioModuleName = "noop";
-	} else if (device[0] == '/') {
-	    AudioModuleName = "oss";
-	}
+		AudioModuleName = "alsa";	// detect alsa/OSS
+		if (!device[0]) {
+			AudioModuleName = "noop";
+		} else if (device[0] == '/') {
+			AudioModuleName = "oss";
+		}
     }
     AudioPCMDevice = device;
 }
@@ -2830,12 +2829,12 @@ void AudioSetDevice(const char *device)
 void AudioSetPassthroughDevice(const char *device)
 {
     if (!AudioModuleName) {
-	AudioModuleName = "alsa";	// detect alsa/OSS
-	if (!device[0]) {
-	    AudioModuleName = "noop";
-	} else if (device[0] == '/') {
-	    AudioModuleName = "oss";
-	}
+		AudioModuleName = "alsa";	// detect alsa/OSS
+		if (!device[0]) {
+			AudioModuleName = "noop";
+		} else if (device[0] == '/') {
+			AudioModuleName = "oss";
+		}
     }
     AudioPassthroughDevice = device;
 }
@@ -2860,9 +2859,9 @@ void AudioSetChannel(const char *channel)
 void AudioSetAutoAES(int onoff)
 {
     if (onoff < 0) {
-	AudioAppendAES ^= 1;
+		AudioAppendAES ^= 1;
     } else {
-	AudioAppendAES = onoff;
+		AudioAppendAES = onoff;
     }
 }
 
@@ -2886,17 +2885,17 @@ void AudioInit(void)
     name = "alsa";
 #endif
     if (AudioModuleName) {
-	name = AudioModuleName;
+		name = AudioModuleName;
     }
     //
     //	search selected audio module.
     //
     for (u = 0; u < sizeof(AudioModules) / sizeof(*AudioModules); ++u) {
-	if (!strcasecmp(name, AudioModules[u]->Name)) {
-	    AudioUsedModule = AudioModules[u];
-	    Info(_("audio: '%s' output module used\n"), AudioUsedModule->Name);
-	    goto found;
-	}
+		if (!strcasecmp(name, AudioModules[u]->Name)) {
+			AudioUsedModule = AudioModules[u];
+			Info(_("audio: '%s' output module used\n"), AudioUsedModule->Name);
+			goto found;
+		}
     }
     Error(_("audio: '%s' output module isn't supported\n"), name);
     AudioUsedModule = &NoopModule;
@@ -2914,53 +2913,53 @@ void AudioInit(void)
     freq = 44100;
     AudioRatesInHw[Audio44100] = 0;
     for (chan = 1; chan < 9; ++chan) {
-	int tchan;
-	int tfreq;
+		int tchan;
+		int tfreq;
 
-	tchan = chan;
-	tfreq = freq;
-	if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-	    AudioChannelsInHw[chan] = 0;
-	} else {
-	    AudioChannelsInHw[chan] = chan;
-	    AudioRatesInHw[Audio44100] |= (1 << chan);
-	}
+		tchan = chan;
+		tfreq = freq;
+		if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+			AudioChannelsInHw[chan] = 0;
+		} else {
+			AudioChannelsInHw[chan] = chan;
+			AudioRatesInHw[Audio44100] |= (1 << chan);
+		}
     }
     freq = 48000;
     AudioRatesInHw[Audio48000] = 0;
     for (chan = 1; chan < 9; ++chan) {
-	int tchan;
-	int tfreq;
+		int tchan;
+		int tfreq;
 
-	if (!AudioChannelsInHw[chan]) {
-	    continue;
-	}
-	tchan = chan;
-	tfreq = freq;
-	if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-	    //AudioChannelsInHw[chan] = 0;
-	} else {
-	    AudioChannelsInHw[chan] = chan;
-	    AudioRatesInHw[Audio48000] |= (1 << chan);
-	}
+		if (!AudioChannelsInHw[chan]) {
+			continue;
+		}
+		tchan = chan;
+		tfreq = freq;
+		if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+			//AudioChannelsInHw[chan] = 0;
+		} else {
+			AudioChannelsInHw[chan] = chan;
+			AudioRatesInHw[Audio48000] |= (1 << chan);
+		}
     }
     freq = 192000;
     AudioRatesInHw[Audio192000] = 0;
     for (chan = 1; chan < 9; ++chan) {
-	int tchan;
-	int tfreq;
+		int tchan;
+		int tfreq;
 
-	if (!AudioChannelsInHw[chan]) {
-	    continue;
-	}
-	tchan = chan;
-	tfreq = freq;
-	if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-	    //AudioChannelsInHw[chan] = 0;
-	} else {
-	    AudioChannelsInHw[chan] = chan;
-	    AudioRatesInHw[Audio192000] |= (1 << chan);
-	}
+		if (!AudioChannelsInHw[chan]) {
+			continue;
+		}
+		tchan = chan;
+		tfreq = freq;
+		if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+			//AudioChannelsInHw[chan] = 0;
+		} else {
+			AudioChannelsInHw[chan] = chan;
+			AudioRatesInHw[Audio192000] |= (1 << chan);
+		}
     }
     //	build channel support and conversion table
     for (u = 0; u < AudioRatesMax; ++u) {
