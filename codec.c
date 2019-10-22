@@ -63,16 +63,6 @@
 #include <libavutil/opt.h>
 #include <libavutil/mem.h>
 
-// support old ffmpeg versions <1.0
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,18,102)
-#define AVCodecID CodecID
-#define AV_CODEC_ID_AC3 CODEC_ID_AC3
-#define AV_CODEC_ID_EAC3 CODEC_ID_EAC3
-#define AV_CODEC_ID_MPEG2VIDEO CODEC_ID_MPEG2VIDEO
-#define AV_CODEC_ID_H264 CODEC_ID_H264
-#endif
-
-
 #ifdef USE_SWRESAMPLE
 #include <libswresample/swresample.h>
 #endif
@@ -94,16 +84,6 @@
 #include "video.h"
 #include "audio.h"
 #include "codec.h"
-
-//----------------------------------------------------------------------------
-
-    // correct is AV_VERSION_INT(56,35,101) but some gentoo i* think
-    // they must change it.
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(56,26,100)
-    /// ffmpeg 2.6 started to show artifacts after channel switch
-    /// to SDTV channels
-#define FFMPEG_WORKAROUND_ARTIFACTS	1
-#endif
 
 //----------------------------------------------------------------------------
 //	Global
@@ -141,9 +121,6 @@ struct _video_decoder_
     int GetFormatDone;			///< flag get format called!
     AVCodec *VideoCodec;		///< video codec
     AVCodecContext *VideoCtx;		///< video codec context
-#ifdef FFMPEG_WORKAROUND_ARTIFACTS
-    int FirstKeyFrame;			///< flag first frame
-#endif
     AVFrame *Frame;			///< decoded video frame
 };
 #endif
@@ -194,10 +171,6 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
 
     decoder = video_ctx->opaque;
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54,86,100)
-    // ffmpeg has this already fixed
-    // libav 0.8.5 53.35.0 still needs this
-#endif
     if (!decoder->GetFormatDone) {	// get_format missing
 		enum AVPixelFormat fmts[2];
 
@@ -426,9 +399,6 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 #ifdef YADIF
 	decoder->filter = 0;
 #endif
-#ifdef FFMPEG_WORKAROUND_ARTIFACTS
-    decoder->FirstKeyFrame = 1;
-#endif
 }
 
 
@@ -621,26 +591,9 @@ next_part:
 					}
 				}
 #endif			
-#ifdef FFMPEG_WORKAROUND_ARTIFACTS
-
-				if (!CodecUsePossibleDefectFrames && decoder->FirstKeyFrame) {
-					decoder->FirstKeyFrame++;
-					if (frame->key_frame || (decoder->FirstKeyFrame > 3)) {  // key frame is not reliable
-						Debug(3, "codec: key frame after %d frames\n",decoder->FirstKeyFrame);
-						decoder->FirstKeyFrame = 0;
-						VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);	
-					}
-//					av_frame_unref(frame);	
-				} else {
-					//DisplayPts(video_ctx, frame);
-					VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
-//					av_frame_unref(frame);
-				}
-#else
 				//DisplayPts(video_ctx, frame);
 				VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
 //				av_frame_unref(frame);
-#endif
 			} else {
 				av_frame_free(&frame);
 //				printf("codec: got no frame %d  send %d\n",ret,ret1);
@@ -698,9 +651,7 @@ struct _audio_decoder_
     int HwSampleRate;			///< hw sample rate
     int HwChannels;			///< hw channels
 
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(56,28,1)
     AVFrame *Frame;			///< decoded audio frame buffer
-#endif
 
 #if !defined(USE_SWRESAMPLE) && !defined(USE_AVRESAMPLE)
     ReSampleContext *ReSample;		///< old resampling context
@@ -778,11 +729,9 @@ AudioDecoder *CodecAudioNewDecoder(void)
     if (!(audio_decoder = calloc(1, sizeof(*audio_decoder)))) {
 	Fatal(_("codec: can't allocate audio decoder\n"));
     }
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(56,28,1)
     if (!(audio_decoder->Frame = av_frame_alloc())) {
 	Fatal(_("codec: can't allocate audio decoder frame buffer\n"));
     }
-#endif
 
     return audio_decoder;
 }
@@ -794,9 +743,7 @@ AudioDecoder *CodecAudioNewDecoder(void)
 */
 void CodecAudioDelDecoder(AudioDecoder * decoder)
 {
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(56,28,1)
     av_frame_free(&decoder->Frame);	// callee does checks
-#endif
     free(decoder);
 }
 
@@ -824,24 +771,11 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
     }
 
     if (CodecDownmix) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(53,61,100)
-	audio_decoder->AudioCtx->request_channels = 2;
-#endif
 	audio_decoder->AudioCtx->request_channel_layout =
 	    AV_CH_LAYOUT_STEREO_DOWNMIX;
     }
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,61,100)
-    // this has no effect (with ffmpeg and libav)
-    // audio_decoder->AudioCtx->request_sample_fmt = AV_SAMPLE_FMT_S16;
-#endif
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
-#if LIBAVCODEC_VERSION_INT <= AV_VERSION_INT(53,5,0)
-    if (avcodec_open(audio_decoder->AudioCtx, audio_codec) < 0) {
-	pthread_mutex_unlock(&CodecLockMutex);
-	Fatal(_("codec: can't open audio codec\n"));
-    }
-#else
     if (1) {
 	AVDictionary *av_dict;
 
@@ -856,7 +790,6 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 	}
 	av_dict_free(&av_dict);
     }
-#endif
     pthread_mutex_unlock(&CodecLockMutex);
     Debug(3, "codec: audio '%s'\n", audio_decoder->AudioCodec->long_name);
 
@@ -1919,9 +1852,7 @@ void CodecInit(void)
 #else
     (void)CodecNoopCallback;
 #endif
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,9,100)
     avcodec_register_all();		// register all formats and codecs
-#endif
 }
 
 /**

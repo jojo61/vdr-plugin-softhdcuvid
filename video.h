@@ -55,7 +55,6 @@ extern VideoHwDecoder *VideoNewHwDecoder(VideoStream *);
     /// Deallocate video hardware decoder.
 extern void VideoDelHwDecoder(VideoHwDecoder *);
 
-#ifdef LIBAVCODEC_VERSION
     /// Get and allocate a video hardware surface.
 extern unsigned VideoGetSurface(VideoHwDecoder *, const AVCodecContext *);
 
@@ -77,7 +76,6 @@ extern void *VideoGetHwAccelContext(VideoHwDecoder *);
     /// Draw vdpau render state.
 extern void VideoDrawRenderState(VideoHwDecoder *,
     struct vdpau_render_state *);
-#endif
 #endif
 
 #ifdef USE_OPENGLOSD
