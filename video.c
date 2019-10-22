@@ -188,7 +188,6 @@ typedef void *EGLImageKHR;
 #include <libplacebo/renderer.h>
 #endif
 
-
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 
@@ -198,23 +197,22 @@ typedef void *EGLImageKHR;
 #include <libavutil/opt.h>
 #endif
 
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(54,86,100)
-    ///
-    /// ffmpeg version 1.1.1 calls get_format with zero width and height
-    /// for H264 codecs.
-    /// since version 1.1.3 get_format is called twice.
-    /// ffmpeg 1.2 still buggy
-    ///
-#define FFMPEG_BUG1_WORKAROUND		///< get_format bug workaround
-#endif
-
 #include "iatomic.h"			// portable atomic_t
 #include "misc.h"
 #include "video.h"
 #include "audio.h"
 #include "codec.h"
 
- 
+#if defined(APIVERSNUM) && APIVERSNUM < 20400
+#error "VDR 2.4.0 or greater is required!"
+#endif
+
+#define HAS_FFMPEG_3_4_API (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57,107,100))
+#define HAS_FFMPEG_4_API (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58,18,100))
+
+#if !HAS_FFMPEG_3_4_API
+#error "FFmpeg 3.4 or greater is required!"
+#endif
 
 //----------------------------------------------------------------------------
 //	Declarations
@@ -2557,7 +2555,9 @@ int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
     AVFilterInOut *inputs  = avfilter_inout_alloc();
 	AVBufferSrcParameters *src_params;
 
+#ifdef YADIF
     enum AVPixelFormat pix_fmts[] = { format, AV_PIX_FMT_NONE };
+#endif
 
 	if (decoder->filter_graph)
 		avfilter_graph_free(&decoder->filter_graph);
@@ -3163,7 +3163,6 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 	}
 	
     // update aspect ratio changes
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,60,100)
     if (decoder->InputWidth && decoder->InputHeight
 		&& av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
 		Debug(3, "video/vdpau: aspect ratio changed\n");
@@ -3172,15 +3171,6 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 //printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_ratio.den);
 		CuvidUpdateOutput(decoder);
     }
-#else
-    if (decoder->InputWidth && decoder->InputHeight
-		&& av_cmp_q(decoder->InputAspect, video_ctx->sample_aspect_ratio)) {
-		Debug(3, "video/vdpau: aspect ratio changed\n");
-
-		decoder->InputAspect = video_ctx->sample_aspect_ratio;
-		CuvidUpdateOutput(decoder);
-    }
-#endif
 
 	color = frame->colorspace;
 	if (color == AVCOL_SPC_UNSPECIFIED)   // if unknown
