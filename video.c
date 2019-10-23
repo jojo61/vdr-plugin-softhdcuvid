@@ -2545,6 +2545,7 @@ int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 #endif
 #ifdef YADIF
 	const char *filters_descr = "yadif_cuda=1:0:1";   // mode=send_field,parity=tff,deint=interlaced";
+	enum AVPixelFormat pix_fmts[] = { format, AV_PIX_FMT_NONE };
 #endif
 	enum AVPixelFormat format = PIXEL_FORMAT;
     char args[512];
@@ -2554,10 +2555,6 @@ int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
     AVFilterInOut *outputs = avfilter_inout_alloc();
     AVFilterInOut *inputs  = avfilter_inout_alloc();
 	AVBufferSrcParameters *src_params;
-
-#ifdef YADIF
-    enum AVPixelFormat pix_fmts[] = { format, AV_PIX_FMT_NONE };
-#endif
 
 	if (decoder->filter_graph)
 		avfilter_graph_free(&decoder->filter_graph);
@@ -2731,8 +2728,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
 
-	if (1 || video_ctx->width  != decoder->InputWidth
-		|| video_ctx->height != decoder->InputHeight) { 
+//	if ((1 || video_ctx->width  != decoder->InputWidth
+//		|| video_ctx->height != decoder->InputHeight) &&
+		
+	if (decoder->TrickSpeed == 0)   { 
 #ifdef PLACEBO
 			VideoThreadLock();
 #endif
@@ -3156,7 +3155,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder,
 	uint64_t first_time;
     int surface;
 	enum AVColorSpace color;
-	
+
 	if (decoder->Closing == 1) {
 		av_frame_free(&frame);
 		return;
@@ -4129,9 +4128,10 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
 				++decoder->FramesDropped;
 				CuvidAdvanceDecoderFrame(decoder);
 			}
-			else if ((diff < -65 * 90))  // give it some time to get frames to drop
+			else if ((diff < -65 * 90)) { // give it some time to get frames to drop
+				Debug(3,"Delay Audio %d ms\n",abs(diff/90));
 				AudioDelayms(abs(diff/90));
-
+			}
 			decoder->SyncCounter = 1;
 		}
 #if defined(DEBUG) || defined(AV_INFO)
