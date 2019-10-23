@@ -794,7 +794,7 @@ bool cSoftOsdProvider::StartOpenGlThread(void) {
 void cSoftOsdProvider::StopOpenGlThread(void) {
     dsyslog("[softhddev]stopping OpenGL Worker Thread ");
     if (oglThread) {
-		OsdClose();
+//		OsdClose();
         oglThread->Stop();
     }
     oglThread.reset();
