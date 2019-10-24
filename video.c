@@ -2540,6 +2540,7 @@ int push_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 
 int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 {	
+	enum AVPixelFormat format = PIXEL_FORMAT;
 #ifdef VAAPI
 	const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";   //
 #endif
@@ -2547,7 +2548,7 @@ int init_filters(AVCodecContext * dec_ctx,CuvidDecoder * decoder,AVFrame *frame)
 	const char *filters_descr = "yadif_cuda=1:0:1";   // mode=send_field,parity=tff,deint=interlaced";
 	enum AVPixelFormat pix_fmts[] = { format, AV_PIX_FMT_NONE };
 #endif
-	enum AVPixelFormat format = PIXEL_FORMAT;
+	
     char args[512];
     int ret = 0;
     const AVFilter *buffersrc  = avfilter_get_by_name("buffer");
@@ -2728,10 +2729,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder,
 			ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
 
-//	if ((1 || video_ctx->width  != decoder->InputWidth
-//		|| video_ctx->height != decoder->InputHeight) &&
+//	if ((video_ctx->width  != decoder->InputWidth
+//		|| video_ctx->height != decoder->InputHeight) && decoder->TrickSpeed == 0) {
 		
-	if (decoder->TrickSpeed == 0)   { 
+		if (decoder->TrickSpeed == 0)   { 
 #ifdef PLACEBO
 			VideoThreadLock();
 #endif
