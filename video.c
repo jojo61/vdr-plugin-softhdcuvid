@@ -921,13 +921,11 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContex
     // set gl context
 #ifdef CUVID
 	if (!glXMakeCurrent(XlibDisplay, window, context)) {
-#else
-    if (!eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, context )) {
-#endif
 		Fatal(_("video/egl: GlxSetupWindow can't make egl/glx context current\n"));
 		EglEnabled = 0;
 		return;
-    }
+	}
+#endif
     Debug(3, "video/egl: ok\n");
 
 #ifdef CUVID
