@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2019-10-04 14:23+0200\n"
+"POT-Creation-Date: 2019-10-26 18:41+0200\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -792,7 +792,13 @@ msgstr ""
 msgid "[softhddev] ready%s\n"
 msgstr ""
 
-msgid "video/egl: GlxSetupWindow can't make egl context current\n"
+msgid "video: can't lock thread\n"
+msgstr ""
+
+msgid "video: can't unlock thread\n"
+msgstr ""
+
+msgid "video/egl: GlxSetupWindow can't make egl/glx context current\n"
 msgstr ""
 
 msgid "video/glx: no v-sync\n"
@@ -892,21 +898,6 @@ msgid "Failed rendering frame!\n"
 msgstr ""
 
 #, c-format
-msgid "video/vdpau: can't get video surface parameters: %s\n"
-msgstr ""
-
-msgid "video/vdpau: out of memory\n"
-msgstr ""
-
-#, c-format
-msgid "video/vdpau: unsupported chroma type %d\n"
-msgstr ""
-
-#, c-format
-msgid "video/vdpau: can't get video surface bits: %s\n"
-msgstr ""
-
-#, c-format
 msgid "video/vdpau: output buffer full, dropping frame (%d/%d)\n"
 msgstr ""
 
@@ -924,20 +915,11 @@ msgstr ""
 msgid "video: decoder buffer empty, duping frame (%d/%d) %d v-buf\n"
 msgstr ""
 
-msgid "Failed creating vulkan swapchain!"
-msgstr ""
-
 msgid "video: fatal i/o error\n"
 msgstr ""
 
 #, c-format
 msgid "video/event: No symbol for %d\n"
-msgstr ""
-
-msgid "video: can't lock thread\n"
-msgstr ""
-
-msgid "video: can't unlock thread\n"
 msgstr ""
 
 msgid "Cant get memory for PLACEBO struct"
@@ -950,6 +932,9 @@ msgid "Failed to create XCB Surface\n"
 msgstr ""
 
 msgid "Failed to create Vulkan Device"
+msgstr ""
+
+msgid "Failed creating vulkan swapchain!"
 msgstr ""
 
 msgid "Failed initializing libplacebo renderer\n"

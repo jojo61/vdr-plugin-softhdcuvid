@@ -1,26 +1,26 @@
 ///
-///	@file softhddevice.cpp	@brief A software HD device plugin for VDR.
+/// @file softhddevice.cpp  @brief A software HD device plugin for VDR.
 ///
-///	Copyright (c) 2011 - 2015 by Johns.  All Rights Reserved.
+/// Copyright (c) 2011 - 2015 by Johns.  All Rights Reserved.
 ///
-///	Contributor(s):
+/// Contributor(s):
 ///
-///	License: AGPLv3
+/// License: AGPLv3
 ///
-///	This program is free software: you can redistribute it and/or modify
-///	it under the terms of the GNU Affero General Public License as
-///	published by the Free Software Foundation, either version 3 of the
-///	License.
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU Affero General Public License as
+/// published by the Free Software Foundation, either version 3 of the
+/// License.
 ///
-///	This program is distributed in the hope that it will be useful,
-///	but WITHOUT ANY WARRANTY; without even the implied warranty of
-///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-///	GNU Affero General Public License for more details.
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU Affero General Public License for more details.
 ///
-///	$Id: fa6a877682f47297580ff5f502425fc7948cb2fa $
+/// $Id: fa6a877682f47297580ff5f502425fc7948cb2fa $
 //////////////////////////////////////////////////////////////////////////////
 
-#define __STDC_CONSTANT_MACROS		///< needed for ffmpeg UINT64_C
+#define __STDC_CONSTANT_MACROS          ///< needed for ffmpeg UINT64_C
 
 #include <vdr/interface.h>
 #include <vdr/plugin.h>
@@ -46,12 +46,12 @@ extern "C"
 #include <stdint.h>
 #include <libavcodec/avcodec.h>
 #ifndef USE_OPENGLOSD
-	#include "audio.h"
-	#include "video.h"
-	#include "codec.h"
+#include "audio.h"
+#include "video.h"
+#include "codec.h"
 #endif
 #if PLACEBO
-	#include <libplacebo/filters.h>
+#include <libplacebo/filters.h>
 #endif
 }
 
@@ -74,8 +74,7 @@ static const char *const VERSION = "2.1.0"
     ;
 
     /// vdr-plugin description.
-static const char *const DESCRIPTION =
-trNOOP("A software and GPU emulated UHD device");
+static const char *const DESCRIPTION = trNOOP("A software and GPU emulated UHD device");
 
     /// vdr-plugin text of main menu entry
 static const char *MAINMENUENTRY = trNOOP("SoftUHD");
@@ -85,38 +84,37 @@ static class cSoftHdDevice *MyDevice;
 
 //////////////////////////////////////////////////////////////////////////////
 
-#define RESOLUTIONS 5			///< number of resolutions
+#define RESOLUTIONS 5                   ///< number of resolutions
 
     /// resolutions names
 static const char *const Resolution[RESOLUTIONS] = {
     "576i", "720p", "1080i_fake", "1080i", "UHD"
 };
 
+static char ConfigMakePrimary;          ///< config primary wanted
+static char ConfigHideMainMenuEntry;    ///< config hide main menu entry
+static char ConfigDetachFromMainMenu;   ///< detach from main menu entry instead of suspend
+static char ConfigSuspendClose;         ///< suspend should close devices
+static char ConfigSuspendX11;           ///< suspend should stop x11
 
-static char ConfigMakePrimary;		///< config primary wanted
-static char ConfigHideMainMenuEntry;	///< config hide main menu entry
-static char ConfigDetachFromMainMenu;	///< detach from main menu entry instead of suspend
-static char ConfigSuspendClose;		///< suspend should close devices
-static char ConfigSuspendX11;		///< suspend should stop x11
+static char Config4to3DisplayFormat = 1;    ///< config 4:3 display format
+static char ConfigOtherDisplayFormat = 1;   ///< config other display format
+static uint32_t ConfigVideoBackground;  ///< config video background color
+static int ConfigOsdWidth;              ///< config OSD width
+static int ConfigOsdHeight;             ///< config OSD height
+static char ConfigVideoStudioLevels;    ///< config use studio levels
+static char ConfigVideo60HzMode;        ///< config use 60Hz display mode
+static char ConfigVideoSoftStartSync;   ///< config use softstart sync
+static char ConfigVideoBlackPicture;    ///< config enable black picture mode
+char ConfigVideoClearOnSwitch;          ///< config enable Clear on channel switch
 
-static char Config4to3DisplayFormat = 1;	///< config 4:3 display format
-static char ConfigOtherDisplayFormat = 1;	///< config other display format
-static uint32_t ConfigVideoBackground;	///< config video background color
-static int ConfigOsdWidth;		///< config OSD width
-static int ConfigOsdHeight;		///< config OSD height
-static char ConfigVideoStudioLevels;	///< config use studio levels
-static char ConfigVideo60HzMode;	///< config use 60Hz display mode
-static char ConfigVideoSoftStartSync;	///< config use softstart sync
-static char ConfigVideoBlackPicture;	///< config enable black picture mode
-char ConfigVideoClearOnSwitch;		///< config enable Clear on channel switch
-
-static int ConfigVideoBrightness;	///< config video brightness
-static int ConfigVideoContrast = 100;	///< config video contrast
-static int ConfigVideoSaturation = 100;	///< config video saturation
-static int ConfigVideoHue;		///< config video hue
-static int ConfigGamma;			///< config Gamma
-static int ConfigTargetColorSpace; ///< config Target Colrospace
-static int ConfigScalerTest;	/// Test for Scalers
+static int ConfigVideoBrightness;       ///< config video brightness
+static int ConfigVideoContrast = 100;   ///< config video contrast
+static int ConfigVideoSaturation = 100; ///< config video saturation
+static int ConfigVideoHue;              ///< config video hue
+static int ConfigGamma;                 ///< config Gamma
+static int ConfigTargetColorSpace;      ///< config Target Colrospace
+static int ConfigScalerTest;            /// Test for Scalers
 static int ConfigColorBlindness;
 static int ConfigColorBlindnessFaktor;
 
@@ -144,68 +142,68 @@ static int ConfigVideoCutTopBottom[RESOLUTIONS];
     /// config cut left and right pixels
 static int ConfigVideoCutLeftRight[RESOLUTIONS];
 
-static int ConfigAutoCropEnabled;	///< auto crop detection enabled
-static int ConfigAutoCropInterval;	///< auto crop detection interval
-static int ConfigAutoCropDelay;		///< auto crop detection delay
-static int ConfigAutoCropTolerance;	///< auto crop detection tolerance
+static int ConfigAutoCropEnabled;       ///< auto crop detection enabled
+static int ConfigAutoCropInterval;      ///< auto crop detection interval
+static int ConfigAutoCropDelay;         ///< auto crop detection delay
+static int ConfigAutoCropTolerance;     ///< auto crop detection tolerance
 
-static int ConfigVideoAudioDelay;	///< config audio delay
-static char ConfigAudioDrift;		///< config audio drift
-static char ConfigAudioPassthrough;	///< config audio pass-through mask
-static char AudioPassthroughState;	///< flag audio pass-through on/off
-static char ConfigAudioDownmix;		///< config ffmpeg audio downmix
-static char ConfigAudioSoftvol;		///< config use software volume
-static char ConfigAudioNormalize;	///< config use normalize volume
-static int ConfigAudioMaxNormalize;	///< config max normalize factor
-static char ConfigAudioCompression;	///< config use volume compression
-static int ConfigAudioMaxCompression;	///< config max volume compression
-static int ConfigAudioStereoDescent;	///< config reduce stereo loudness
-int ConfigAudioBufferTime;		///< config size ms of audio buffer
-static int ConfigAudioAutoAES;		///< config automatic AES handling
+static int ConfigVideoAudioDelay;       ///< config audio delay
+static char ConfigAudioDrift;           ///< config audio drift
+static char ConfigAudioPassthrough;     ///< config audio pass-through mask
+static char AudioPassthroughState;      ///< flag audio pass-through on/off
+static char ConfigAudioDownmix;         ///< config ffmpeg audio downmix
+static char ConfigAudioSoftvol;         ///< config use software volume
+static char ConfigAudioNormalize;       ///< config use normalize volume
+static int ConfigAudioMaxNormalize;     ///< config max normalize factor
+static char ConfigAudioCompression;     ///< config use volume compression
+static int ConfigAudioMaxCompression;   ///< config max volume compression
+static int ConfigAudioStereoDescent;    ///< config reduce stereo loudness
+int ConfigAudioBufferTime;              ///< config size ms of audio buffer
+static int ConfigAudioAutoAES;          ///< config automatic AES handling
 
-static char *ConfigX11Display;		///< config x11 display
-static char *ConfigAudioDevice;		///< config audio stereo device
-static char *ConfigPassthroughDevice;	///< config audio pass-through device
+static char *ConfigX11Display;          ///< config x11 display
+static char *ConfigAudioDevice;         ///< config audio stereo device
+static char *ConfigPassthroughDevice;   ///< config audio pass-through device
 
 #ifdef USE_PIP
-static int ConfigPipX = 100 - 3 - 18;	///< config pip pip x in %
-static int ConfigPipY = 100 - 4 - 18;	///< config pip pip y in %
-static int ConfigPipWidth = 18;		///< config pip pip width in %
-static int ConfigPipHeight = 18;	///< config pip pip height in %
-static int ConfigPipVideoX;		///< config pip video x in %
-static int ConfigPipVideoY;		///< config pip video y in %
-static int ConfigPipVideoWidth;		///< config pip video width in %
-static int ConfigPipVideoHeight;	///< config pip video height in %
-static int ConfigPipAltX;		///< config pip alt. pip x in %
-static int ConfigPipAltY = 50;		///< config pip alt. pip y in %
-static int ConfigPipAltWidth;		///< config pip alt. pip width in %
-static int ConfigPipAltHeight = 50;	///< config pip alt. pip height in %
-static int ConfigPipAltVideoX;		///< config pip alt. video x in %
-static int ConfigPipAltVideoY;		///< config pip alt. video y in %
-static int ConfigPipAltVideoWidth;	///< config pip alt. video width in %
-static int ConfigPipAltVideoHeight = 50;	///< config pip alt. video height in %
+static int ConfigPipX = 100 - 3 - 18;   ///< config pip pip x in %
+static int ConfigPipY = 100 - 4 - 18;   ///< config pip pip y in %
+static int ConfigPipWidth = 18;         ///< config pip pip width in %
+static int ConfigPipHeight = 18;        ///< config pip pip height in %
+static int ConfigPipVideoX;             ///< config pip video x in %
+static int ConfigPipVideoY;             ///< config pip video y in %
+static int ConfigPipVideoWidth;         ///< config pip video width in %
+static int ConfigPipVideoHeight;        ///< config pip video height in %
+static int ConfigPipAltX;               ///< config pip alt. pip x in %
+static int ConfigPipAltY = 50;          ///< config pip alt. pip y in %
+static int ConfigPipAltWidth;           ///< config pip alt. pip width in %
+static int ConfigPipAltHeight = 50;     ///< config pip alt. pip height in %
+static int ConfigPipAltVideoX;          ///< config pip alt. video x in %
+static int ConfigPipAltVideoY;          ///< config pip alt. video y in %
+static int ConfigPipAltVideoWidth;      ///< config pip alt. video width in %
+static int ConfigPipAltVideoHeight = 50;    ///< config pip alt. video height in %
 #endif
 
 #ifdef USE_SCREENSAVER
-static char ConfigEnableDPMSatBlackScreen;	///< Enable DPMS(Screensaver) while displaying black screen(radio)
+static char ConfigEnableDPMSatBlackScreen;  ///< Enable DPMS(Screensaver) while displaying black screen(radio)
 #endif
 
 #ifdef USE_OPENGLOSD
-static int ConfigMaxSizeGPUImageCache = 128;  ///< maximum size of GPU mem to be used for image caching
+static int ConfigMaxSizeGPUImageCache = 128;    ///< maximum size of GPU mem to be used for image caching
 #endif
 
-static volatile int DoMakePrimary;	///< switch primary device to this
+static volatile int DoMakePrimary;      ///< switch primary device to this
 
-#define SUSPEND_EXTERNAL	-1	///< play external suspend mode
-#define NOT_SUSPENDED		0	///< not suspend mode
-#define SUSPEND_NORMAL		1	///< normal suspend mode
-#define SUSPEND_DETACHED	2	///< detached suspend mode
-static signed char SuspendMode;		///< suspend mode
-
-//////////////////////////////////////////////////////////////////////////////
+#define SUSPEND_EXTERNAL	-1          ///< play external suspend mode
+#define NOT_SUSPENDED		0           ///< not suspend mode
+#define SUSPEND_NORMAL		1           ///< normal suspend mode
+#define SUSPEND_DETACHED	2           ///< detached suspend mode
+static signed char SuspendMode;         ///< suspend mode
 
 //////////////////////////////////////////////////////////////////////////////
-//	C Callbacks
+
+//////////////////////////////////////////////////////////////////////////////
+//  C Callbacks
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -232,7 +230,7 @@ class cSoftRemote:public cRemote
     **	@param release	flag key released
     */
     bool Put(const char *code, bool repeat = false, bool release = false) {
-		return cRemote::Put(code, repeat, release);
+        return cRemote::Put(code, repeat, release);
     }
 };
 
@@ -245,47 +243,46 @@ class cSoftRemote:public cRemote
 **	@param release	released key flag
 **	@param letter	x11 character string (system setting locale)
 */
-extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat,
-    int release, const char *letter)
+extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat, int release, const char *letter)
 {
     cRemote *remote;
-    cSoftRemote *csoft; 
+    cSoftRemote *csoft;
 
     if (!keymap || !key) {
-		return;
+        return;
     }
     // find remote
     for (remote = Remotes.First(); remote; remote = Remotes.Next(remote)) {
-		if (!strcmp(remote->Name(), keymap)) {
-			break;
-		}
+        if (!strcmp(remote->Name(), keymap)) {
+            break;
+        }
     }
     // if remote not already exists, create it
     if (remote) {
-		csoft = (cSoftRemote *) remote;
+        csoft = (cSoftRemote *) remote;
     } else {
-		dsyslog("[softhddev]%s: remote '%s' not found\n", __FUNCTION__, keymap);
-		csoft = new cSoftRemote(keymap);
+        dsyslog("[softhddev]%s: remote '%s' not found\n", __FUNCTION__, keymap);
+        csoft = new cSoftRemote(keymap);
     }
 
     //dsyslog("[softhddev]%s %s, %s, %s\n", __FUNCTION__, keymap, key, letter);
-    if (key[1]) {			// no single character
-		if (!csoft->Put(key, repeat, release) && letter && !cRemote::IsLearning()) {
-			cCharSetConv conv;
-			unsigned code;
+    if (key[1]) {                       // no single character
+        if (!csoft->Put(key, repeat, release) && letter && !cRemote::IsLearning()) {
+            cCharSetConv conv;
+            unsigned code;
 
-			code = Utf8CharGet(conv.Convert(letter));
-			if (code <= 0xFF) {
-				cRemote::Put(KBDKEY(code));	// feed it for edit mode
-			}
-		}
+            code = Utf8CharGet(conv.Convert(letter));
+            if (code <= 0xFF) {
+                cRemote::Put(KBDKEY(code)); // feed it for edit mode
+            }
+        }
     } else if (!csoft->Put(key, repeat, release)) {
-		cRemote::Put(KBDKEY(key[0]));	// feed it for edit mode
+        cRemote::Put(KBDKEY(key[0]));   // feed it for edit mode
     }
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	OSD
+//  OSD
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -294,18 +291,18 @@ extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat,
 class cSoftOsd:public cOsd
 {
   public:
-    static volatile char Dirty;		///< flag force redraw everything
-    int OsdLevel;			///< current osd level FIXME: remove
+    static volatile char Dirty;         ///< flag force redraw everything
+    int OsdLevel;                       ///< current osd level FIXME: remove
 
-     cSoftOsd(int, int, uint);		///< osd constructor
-     virtual ~ cSoftOsd(void);		///< osd destructor
+     cSoftOsd(int, int, uint);          ///< osd constructor
+     virtual ~ cSoftOsd(void);          ///< osd destructor
     /// set the sub-areas to the given areas
     virtual eOsdError SetAreas(const tArea *, int);
-    virtual void Flush(void);		///< commits all data to the hardware
-    virtual void SetActive(bool);	///< sets OSD to be the active one
+    virtual void Flush(void);           ///< commits all data to the hardware
+    virtual void SetActive(bool);       ///< sets OSD to be the active one
 };
 
-volatile char cSoftOsd::Dirty;		///< flag force redraw everything
+volatile char cSoftOsd::Dirty;          ///< flag force redraw everything
 
 /**
 **	Sets this OSD to be the active one.
@@ -322,18 +319,18 @@ void cSoftOsd::SetActive(bool on)
 #endif
 
     if (Active() == on) {
-		return;				// already active, no action
+        return;                         // already active, no action
     }
     cOsd::SetActive(on);
 
     if (on) {
-		Dirty = 1;
-		// only flush here if there are already bitmaps
-		if (GetBitmap(0)) {
-			Flush();
-		}
+        Dirty = 1;
+        // only flush here if there are already bitmaps
+        if (GetBitmap(0)) {
+            Flush();
+        }
     } else {
-		OsdClose();
+        OsdClose();
     }
 }
 
@@ -352,8 +349,7 @@ cSoftOsd::cSoftOsd(int left, int top, uint level)
 #ifdef OSD_DEBUG
     /* FIXME: OsdWidth/OsdHeight not correct!
      */
-    dsyslog("[softhddev]%s: %dx%d%+d%+d, %d\n", __FUNCTION__, OsdWidth(),
-	OsdHeight(), left, top, level);
+    dsyslog("[softhddev]%s: %dx%d%+d%+d, %d\n", __FUNCTION__, OsdWidth(), OsdHeight(), left, top, level);
 #endif
 
     OsdLevel = level;
@@ -375,14 +371,14 @@ cSoftOsd::~cSoftOsd(void)
 
 #ifdef USE_YAEPG
     // support yaepghd, video window
-    if (vidWin.bpp) {			// restore fullsized video
-	int width;
-	int height;
-	double video_aspect;
+    if (vidWin.bpp) {                   // restore fullsized video
+        int width;
+        int height;
+        double video_aspect;
 
-	::GetOsdSize(&width, &height, &video_aspect);
-	// works osd relative
-	::ScaleVideo(0, 0, width, height);
+        ::GetOsdSize(&width, &height, &video_aspect);
+        // works osd relative
+        ::ScaleVideo(0, 0, width, height);
     }
 #endif
 }
@@ -398,16 +394,16 @@ eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
 
     // clear old OSD, when new areas are set
     if (!IsTrueColor()) {
-		cBitmap *bitmap;
-		int i;
+        cBitmap *bitmap;
+        int i;
 
-		for (i = 0; (bitmap = GetBitmap(i)); i++) {
-			bitmap->Clean();
-		}
+        for (i = 0; (bitmap = GetBitmap(i)); i++) {
+            bitmap->Clean();
+        }
     }
     if (Active()) {
-		VideoOsdClear();
-		Dirty = 1;
+        VideoOsdClear();
+        Dirty = 1;
     }
     return cOsd::SetAreas(areas, n);
 }
@@ -420,260 +416,335 @@ void cSoftOsd::Flush(void)
     cPixmapMemory *pm;
 
 #ifdef OSD_DEBUG
-    dsyslog("[softhddev]%s: level %d active %d\n", __FUNCTION__, OsdLevel,
-	Active());
+    dsyslog("[softhddev]%s: level %d active %d\n", __FUNCTION__, OsdLevel, Active());
 #endif
 
-    if (!Active()) {			// this osd is not active
-		return;
+    if (!Active()) {                    // this osd is not active
+        return;
     }
 #ifdef USE_YAEPG
     // support yaepghd, video window
     if (vidWin.bpp) {
 #ifdef OSD_DEBUG
-		dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, vidWin.Width(), vidWin.Height(), vidWin.x1, vidWin.y2);
+        dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, vidWin.Width(), vidWin.Height(), vidWin.x1, vidWin.y2);
 #endif
-		// FIXME: vidWin is OSD relative not video window.
-		// FIXME: doesn't work if fixed OSD width != real window width
-		// FIXME: solved in VideoSetOutputPosition
-		::ScaleVideo(Left() + vidWin.x1, Top() + vidWin.y1, vidWin.Width(), vidWin.Height());
+        // FIXME: vidWin is OSD relative not video window.
+        // FIXME: doesn't work if fixed OSD width != real window width
+        // FIXME: solved in VideoSetOutputPosition
+        ::ScaleVideo(Left() + vidWin.x1, Top() + vidWin.y1, vidWin.Width(), vidWin.Height());
     }
 #endif
 
     if (!IsTrueColor()) {
-	cBitmap *bitmap;
-	int i;
+        cBitmap *bitmap;
+        int i;
 
 #ifdef OSD_DEBUG
-	static char warned;
+        static char warned;
 
-	if (!warned) {
-	    dsyslog("[softhddev]%s: FIXME: should be truecolor\n",
-		__FUNCTION__);
-	    warned = 1;
-	}
+        if (!warned) {
+            dsyslog("[softhddev]%s: FIXME: should be truecolor\n", __FUNCTION__);
+            warned = 1;
+        }
 #endif
-	// draw all bitmaps
-	for (i = 0; (bitmap = GetBitmap(i)); ++i) {
-	    uint8_t *argb;
-	    int xs;
-	    int ys;
-	    int x;
-	    int y;
-	    int w;
-	    int h;
-	    int x1;
-	    int y1;
-	    int x2;
-	    int y2;
+        // draw all bitmaps
+        for (i = 0; (bitmap = GetBitmap(i)); ++i) {
+            uint8_t *argb;
+            int xs;
+            int ys;
+            int x;
+            int y;
+            int w;
+            int h;
+            int x1;
+            int y1;
+            int x2;
+            int y2;
 
-	    // get dirty bounding box
-	    if (Dirty) {		// forced complete update
-		x1 = 0;
-		y1 = 0;
-		x2 = bitmap->Width() - 1;
-		y2 = bitmap->Height() - 1;
-	    } else if (!bitmap->Dirty(x1, y1, x2, y2)) {
-		continue;		// nothing dirty continue
-	    }
-	    // convert and upload only visible dirty areas
-	    xs = bitmap->X0() + Left();
-	    ys = bitmap->Y0() + Top();
-	    // FIXME: negtative position bitmaps
-	    w = x2 - x1 + 1;
-	    h = y2 - y1 + 1;
-	    // clip to screen
-	    if (1) {			// just for the case it makes trouble
-		int width;
-		int height;
-		double video_aspect;
+            // get dirty bounding box
+            if (Dirty) {                // forced complete update
+                x1 = 0;
+                y1 = 0;
+                x2 = bitmap->Width() - 1;
+                y2 = bitmap->Height() - 1;
+            } else if (!bitmap->Dirty(x1, y1, x2, y2)) {
+                continue;               // nothing dirty continue
+            }
+            // convert and upload only visible dirty areas
+            xs = bitmap->X0() + Left();
+            ys = bitmap->Y0() + Top();
+            // FIXME: negtative position bitmaps
+            w = x2 - x1 + 1;
+            h = y2 - y1 + 1;
+            // clip to screen
+            if (1) {                    // just for the case it makes trouble
+                int width;
+                int height;
+                double video_aspect;
 
-		if (xs < 0) {
-		    if (xs + x1 < 0) {
-			x1 -= xs + x1;
-			w += xs + x1;
-			if (w <= 0) {
-			    continue;
-			}
-		    }
-		    xs = 0;
-		}
-		if (ys < 0) {
-		    if (ys + y1 < 0) {
-			y1 -= ys + y1;
-			h += ys + y1;
-			if (h <= 0) {
-			    continue;
-			}
-		    }
-		    ys = 0;
-		}
-		::GetOsdSize(&width, &height, &video_aspect);
-		if (w > width - xs - x1) {
-		    w = width - xs - x1;
-		    if (w <= 0) {
-			continue;
-		    }
-		    x2 = x1 + w - 1;
-		}
-		if (h > height - ys - y1) {
-		    h = height - ys - y1;
-		    if (h <= 0) {
-			continue;
-		    }
-		    y2 = y1 + h - 1;
-		}
-	    }
+                if (xs < 0) {
+                    if (xs + x1 < 0) {
+                        x1 -= xs + x1;
+                        w += xs + x1;
+                        if (w <= 0) {
+                            continue;
+                        }
+                    }
+                    xs = 0;
+                }
+                if (ys < 0) {
+                    if (ys + y1 < 0) {
+                        y1 -= ys + y1;
+                        h += ys + y1;
+                        if (h <= 0) {
+                            continue;
+                        }
+                    }
+                    ys = 0;
+                }
+                ::GetOsdSize(&width, &height, &video_aspect);
+                if (w > width - xs - x1) {
+                    w = width - xs - x1;
+                    if (w <= 0) {
+                        continue;
+                    }
+                    x2 = x1 + w - 1;
+                }
+                if (h > height - ys - y1) {
+                    h = height - ys - y1;
+                    if (h <= 0) {
+                        continue;
+                    }
+                    y2 = y1 + h - 1;
+                }
+            }
 #ifdef DEBUG
-	    if (w > bitmap->Width() || h > bitmap->Height()) {
-		esyslog(tr("[softhddev]: dirty area too big\n"));
-		abort();
-	    }
+            if (w > bitmap->Width() || h > bitmap->Height()) {
+                esyslog(tr("[softhddev]: dirty area too big\n"));
+                abort();
+            }
 #endif
-	    argb = (uint8_t *) malloc(w * h * sizeof(uint32_t));
-	    for (y = y1; y <= y2; ++y) {
-		for (x = x1; x <= x2; ++x) {
-		    ((uint32_t *) argb)[x - x1 + (y - y1) * w] =
-			bitmap->GetColor(x, y);
-		}
-	    }
+            argb = (uint8_t *) malloc(w * h * sizeof(uint32_t));
+            for (y = y1; y <= y2; ++y) {
+                for (x = x1; x <= x2; ++x) {
+                    ((uint32_t *) argb)[x - x1 + (y - y1) * w] = bitmap->GetColor(x, y);
+                }
+            }
 #ifdef OSD_DEBUG
-	    dsyslog("[softhddev]%s: draw %dx%d%+d%+d bm\n", __FUNCTION__, w, h,
-		xs + x1, ys + y1);
+            dsyslog("[softhddev]%s: draw %dx%d%+d%+d bm\n", __FUNCTION__, w, h, xs + x1, ys + y1);
 #endif
-	    OsdDrawARGB(0, 0, w, h, w * sizeof(uint32_t), argb, xs + x1,
-		ys + y1);
+            OsdDrawARGB(0, 0, w, h, w * sizeof(uint32_t), argb, xs + x1, ys + y1);
 
-	    bitmap->Clean();
-	    // FIXME: reuse argb
-	    free(argb);
-	}
-	Dirty = 0;
-	return;
+            bitmap->Clean();
+            // FIXME: reuse argb
+            free(argb);
+        }
+        Dirty = 0;
+        return;
     }
 
     LOCK_PIXMAPS;
     while ((pm = (dynamic_cast < cPixmapMemory * >(RenderPixmaps())))) {
-	int xp;
-	int yp;
-	int stride;
-	int x;
-	int y;
-	int w;
-	int h;
+        int xp;
+        int yp;
+        int stride;
+        int x;
+        int y;
+        int w;
+        int h;
 
-	x = pm->ViewPort().X();
-	y = pm->ViewPort().Y();
-	w = pm->ViewPort().Width();
-	h = pm->ViewPort().Height();
-	stride = w * sizeof(tColor);
+        x = pm->ViewPort().X();
+        y = pm->ViewPort().Y();
+        w = pm->ViewPort().Width();
+        h = pm->ViewPort().Height();
+        stride = w * sizeof(tColor);
 
-	// clip to osd
-	xp = 0;
-	if (x < 0) {
-	    xp = -x;
-	    w -= xp;
-	    x = 0;
-	}
+        // clip to osd
+        xp = 0;
+        if (x < 0) {
+            xp = -x;
+            w -= xp;
+            x = 0;
+        }
 
-	yp = 0;
-	if (y < 0) {
-	    yp = -y;
-	    h -= yp;
-	    y = 0;
-	}
+        yp = 0;
+        if (y < 0) {
+            yp = -y;
+            h -= yp;
+            y = 0;
+        }
 
-	if (w > Width() - x) {
-	    w = Width() - x;
-	}
-	if (h > Height() - y) {
-	    h = Height() - y;
-	}
+        if (w > Width() - x) {
+            w = Width() - x;
+        }
+        if (h > Height() - y) {
+            h = Height() - y;
+        }
 
-	x += Left();
-	y += Top();
+        x += Left();
+        y += Top();
 
-	// clip to screen
-	if (1) {			// just for the case it makes trouble
-	    // and it can happen!
-	    int width;
-	    int height;
-	    double video_aspect;
+        // clip to screen
+        if (1) {                        // just for the case it makes trouble
+            // and it can happen!
+            int width;
+            int height;
+            double video_aspect;
 
-	    if (x < 0) {
-		w += x;
-		xp += -x;
-		x = 0;
-	    }
-	    if (y < 0) {
-		h += y;
-		yp += -y;
-		y = 0;
-	    }
+            if (x < 0) {
+                w += x;
+                xp += -x;
+                x = 0;
+            }
+            if (y < 0) {
+                h += y;
+                yp += -y;
+                y = 0;
+            }
 
-	    ::GetOsdSize(&width, &height, &video_aspect);
-	    if (w > width - x) {
-		w = width - x;
-	    }
-	    if (h > height - y) {
-		h = height - y;
-	    }
-	}
+            ::GetOsdSize(&width, &height, &video_aspect);
+            if (w > width - x) {
+                w = width - x;
+            }
+            if (h > height - y) {
+                h = height - y;
+            }
+        }
 #ifdef OSD_DEBUG
-	dsyslog("[softhddev]%s: draw %dx%d%+d%+d*%d -> %+d%+d %p\n",
-	    __FUNCTION__, w, h, xp, yp, stride, x, y, pm->Data());
+        dsyslog("[softhddev]%s: draw %dx%d%+d%+d*%d -> %+d%+d %p\n", __FUNCTION__, w, h, xp, yp, stride, x, y,
+            pm->Data());
 #endif
-	OsdDrawARGB(xp, yp, w, h, stride, pm->Data(), x, y);
+        OsdDrawARGB(xp, yp, w, h, stride, pm->Data(), x, y);
 
 #if APIVERSNUM >= 20110
-	DestroyPixmap(pm);
+        DestroyPixmap(pm);
 #else
-	delete pm;
+        delete pm;
 #endif
     }
     Dirty = 0;
 }
 
 #ifdef USE_OPENGLOSD
-//Dummy OSD for OpenGL OSD if no X Server is available 
-class cDummyOsd : public cOsd {
+//Dummy OSD for OpenGL OSD if no X Server is available
+class cDummyOsd:public cOsd
+{
   public:
-    cDummyOsd(int Left, int Top, uint Level) : cOsd(Left, Top, Level) {}
-    virtual ~cDummyOsd() {}
-    virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null) { 
-        (void)Layer; (void)ViewPort; (void)DrawPort;
-        return NULL; 
+    cDummyOsd(int Left, int Top, uint Level):cOsd(Left, Top, Level)
+    {
     }
-    virtual void DestroyPixmap(cPixmap *Pixmap) { (void)Pixmap; }
-    virtual void DrawImage(const cPoint &Point, const cImage &Image) { (void)Point; (void)Image; }
-    virtual void DrawImage(const cPoint &Point, int ImageHandle) { (void) Point; (void)ImageHandle; }
-    virtual eOsdError CanHandleAreas(const tArea *Areas, int NumAreas) { (void)Areas; (void)NumAreas; return oeOk; }
-    virtual eOsdError SetAreas(const tArea *Areas, int NumAreas) { (void)Areas; (void)NumAreas; return oeOk; }
-    virtual void SaveRegion(int x1, int y1, int x2, int y2) { (void)x1; (void)y1; (void)x2; (void)y2; }
-    virtual void RestoreRegion(void) {}
-    virtual eOsdError SetPalette(const cPalette &Palette, int Area) { (void)Palette; (void)Area; return oeOk; }
-    virtual void DrawPixel(int x, int y, tColor Color) { (void)x; (void)y; (void)Color; }
-    virtual void DrawBitmap(int x, int y, const cBitmap &Bitmap, tColor ColorFg = 0, tColor ColorBg = 0, bool ReplacePalette = false, bool Overlay = false) {
-        (void)x; (void)y; (void)Bitmap; (void)ColorFg; (void)ColorBg; (void)ReplacePalette; (void)Overlay;
+    virtual ~ cDummyOsd()
+    {
     }
-    virtual void DrawText(int x, int y, const char *s, tColor ColorFg, tColor ColorBg, const cFont *Font, int Width = 0, int Height = 0, int Alignment = taDefault) {
-        (void)x; (void)y; (void)s; (void)ColorFg; (void)ColorBg; (void)Font; (void)Width; (void)Height; (void)Alignment;
+    virtual cPixmap *CreatePixmap(int Layer, const cRect & ViewPort, const cRect & DrawPort = cRect::Null) {
+        (void)Layer;
+        (void)ViewPort;
+        (void)DrawPort;
+        return NULL;
     }
-    virtual void DrawRectangle(int x1, int y1, int x2, int y2, tColor Color) {
-        (void)x1; (void)y1; (void)x2; (void)y2; (void)Color;
+    virtual void DestroyPixmap(cPixmap * Pixmap)
+    {
+        (void)Pixmap;
+    }
+    virtual void DrawImage(const cPoint & Point, const cImage & Image)
+    {
+        (void)Point;
+        (void)Image;
+    }
+    virtual void DrawImage(const cPoint & Point, int ImageHandle)
+    {
+        (void)Point;
+        (void)ImageHandle;
+    }
+    virtual eOsdError CanHandleAreas(const tArea * Areas, int NumAreas)
+    {
+        (void)Areas;
+        (void)NumAreas;
+        return oeOk;
+    }
+    virtual eOsdError SetAreas(const tArea * Areas, int NumAreas)
+    {
+        (void)Areas;
+        (void)NumAreas;
+        return oeOk;
+    }
+    virtual void SaveRegion(int x1, int y1, int x2, int y2)
+    {
+        (void)x1;
+        (void)y1;
+        (void)x2;
+        (void)y2;
+    }
+    virtual void RestoreRegion(void)
+    {
+    }
+    virtual eOsdError SetPalette(const cPalette & Palette, int Area)
+    {
+        (void)Palette;
+        (void)Area;
+        return oeOk;
+    }
+    virtual void DrawPixel(int x, int y, tColor Color)
+    {
+        (void)x;
+        (void)y;
+        (void)Color;
+    }
+    virtual void DrawBitmap(int x, int y, const cBitmap & Bitmap, tColor ColorFg = 0, tColor ColorBg =
+        0, bool ReplacePalette = false, bool Overlay = false) {
+        (void)x;
+        (void)y;
+        (void)Bitmap;
+        (void)ColorFg;
+        (void)ColorBg;
+        (void)ReplacePalette;
+        (void)Overlay;
+    }
+    virtual void DrawText(int x, int y, const char *s, tColor ColorFg, tColor ColorBg, const cFont * Font, int Width =
+        0, int Height = 0, int Alignment = taDefault) {
+        (void)x;
+        (void)y;
+        (void)s;
+        (void)ColorFg;
+        (void)ColorBg;
+        (void)Font;
+        (void)Width;
+        (void)Height;
+        (void)Alignment;
+    }
+    virtual void DrawRectangle(int x1, int y1, int x2, int y2, tColor Color)
+    {
+        (void)x1;
+        (void)y1;
+        (void)x2;
+        (void)y2;
+        (void)Color;
     }
     virtual void DrawEllipse(int x1, int y1, int x2, int y2, tColor Color, int Quadrants = 0) {
-        (void)x1; (void)y1; (void)x2; (void)y2; (void)Color; (void)Quadrants;
+        (void)x1;
+        (void)y1;
+        (void)x2;
+        (void)y2;
+        (void)Color;
+        (void)Quadrants;
     }
-    virtual void DrawSlope(int x1, int y1, int x2, int y2, tColor Color, int Type) {
-        (void)x1; (void)y1; (void)x2; (void)y2; (void)Color; (void)Type;
+    virtual void DrawSlope(int x1, int y1, int x2, int y2, tColor Color, int Type)
+    {
+        (void)x1;
+        (void)y1;
+        (void)x2;
+        (void)y2;
+        (void)Color;
+        (void)Type;
     }
-    virtual void Flush(void) {}
+    virtual void Flush(void)
+    {
+    }
 };
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-//	OSD provider
+//  OSD provider
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -682,35 +753,36 @@ class cDummyOsd : public cOsd {
 class cSoftOsdProvider:public cOsdProvider
 {
   private:
-    static cOsd *Osd;			///< single OSD
+    static cOsd *Osd;                   ///< single OSD
 #ifdef USE_OPENGLOSD
-    static std::shared_ptr<cOglThread> oglThread;
+    static std::shared_ptr < cOglThread > oglThread;
     static bool StartOpenGlThread(void);
-protected:
-    virtual int StoreImageData(const cImage &Image);
+  protected:
+     virtual int StoreImageData(const cImage & Image);
     virtual void DropImageData(int ImageHandle);
 #endif
   public:
-    virtual cOsd * CreateOsd(int, int, uint);
+     virtual cOsd * CreateOsd(int, int, uint);
     virtual bool ProvidesTrueColor(void);
 #ifdef USE_OPENGLOSD
     static void StopOpenGlThread(void);
     static const cImage *GetImageData(int ImageHandle);
     static void OsdSizeChanged(void);
 #endif
-    cSoftOsdProvider(void);		///< OSD provider constructor
-    virtual ~cSoftOsdProvider();	///< OSD provider destructor
+     cSoftOsdProvider(void);            ///< OSD provider constructor
+     virtual ~ cSoftOsdProvider();      ///< OSD provider destructor
 };
 
-cOsd *cSoftOsdProvider::Osd;		///< single osd
+cOsd *cSoftOsdProvider::Osd;            ///< single osd
 
 #ifdef USE_OPENGLOSD
-std::shared_ptr<cOglThread> cSoftOsdProvider::oglThread;    ///< openGL worker Thread
+std::shared_ptr < cOglThread > cSoftOsdProvider::oglThread; ///< openGL worker Thread
 
-int cSoftOsdProvider::StoreImageData(const cImage &Image)
+int cSoftOsdProvider::StoreImageData(const cImage & Image)
 {
     if (StartOpenGlThread()) {
         int imgHandle = oglThread->StoreImage(Image);
+
         return imgHandle;
     }
     return 0;
@@ -722,6 +794,7 @@ void cSoftOsdProvider::DropImageData(int ImageHandle)
         oglThread->DropImageData(ImageHandle);
 }
 #endif
+
 /**
 **	Create a new OSD.
 **
@@ -755,18 +828,20 @@ bool cSoftOsdProvider::ProvidesTrueColor(void)
 }
 
 #ifdef USE_OPENGLOSD
-const cImage *cSoftOsdProvider::GetImageData(int ImageHandle) {
+const cImage *cSoftOsdProvider::GetImageData(int ImageHandle)
+{
     return cOsdProvider::GetImageData(ImageHandle);
 }
 
-void cSoftOsdProvider::OsdSizeChanged(void) {
+void cSoftOsdProvider::OsdSizeChanged(void)
+{
     //cleanup OpenGl Context
     cSoftOsdProvider::StopOpenGlThread();
     cOsdProvider::UpdateOsdSize();
 }
 
-
-bool cSoftOsdProvider::StartOpenGlThread(void) {
+bool cSoftOsdProvider::StartOpenGlThread(void)
+{
     //only try to start worker thread if shd is attached
     //otherwise glutInit() crashes
     if (SuspendMode != NOT_SUSPENDED) {
@@ -780,6 +855,7 @@ bool cSoftOsdProvider::StartOpenGlThread(void) {
         oglThread.reset();
     }
     cCondWait wait;
+
     dsyslog("[softhddev]Trying to start OpenGL Worker Thread");
     oglThread.reset(new cOglThread(&wait, ConfigMaxSizeGPUImageCache));
     wait.Wait();
@@ -791,10 +867,11 @@ bool cSoftOsdProvider::StartOpenGlThread(void) {
     return false;
 }
 
-void cSoftOsdProvider::StopOpenGlThread(void) {
+void cSoftOsdProvider::StopOpenGlThread(void)
+{
     dsyslog("[softhddev]stopping OpenGL Worker Thread ");
     if (oglThread) {
-//		OsdClose();
+//  OsdClose();
         oglThread->Stop();
     }
     oglThread.reset();
@@ -806,7 +883,7 @@ void cSoftOsdProvider::StopOpenGlThread(void) {
 **	Create cOsdProvider class.
 */
 cSoftOsdProvider::cSoftOsdProvider(void)
-:  cOsdProvider()
+:cOsdProvider()
 {
 #ifdef OSD_DEBUG
     dsyslog("[softhddev]%s:\n", __FUNCTION__);
@@ -832,7 +909,7 @@ cSoftOsdProvider::~cSoftOsdProvider()
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	cMenuSetupPage
+//  cMenuSetupPage
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -869,11 +946,11 @@ class cMenuSetupSoft:public cMenuSetupPage
     int Contrast;
     int Saturation;
     int Hue;
-	int Gamma;
-	int TargetColorSpace;
-	int ScalerTest;
-	int ColorBlindnessFaktor;
-	int ColorBlindness;
+    int Gamma;
+    int TargetColorSpace;
+    int ScalerTest;
+    int ColorBlindnessFaktor;
+    int ColorBlindness;
 
     int ResolutionShown[RESOLUTIONS];
     int Scaling[RESOLUTIONS];
@@ -936,12 +1013,12 @@ class cMenuSetupSoft:public cMenuSetupPage
     /// @}
   private:
      inline cOsdItem * CollapsedItem(const char *, int &, const char * = NULL);
-    void Create(void);			// create sub-menu
+    void Create(void);                  // create sub-menu
   protected:
      virtual void Store(void);
   public:
      cMenuSetupSoft(void);
-    virtual eOSState ProcessKey(eKeys);	// handle input
+    virtual eOSState ProcessKey(eKeys); // handle input
 };
 
 /**
@@ -966,12 +1043,11 @@ static inline cOsdItem *SeparatorItem(const char *label)
 **	@param flag	flag handling collapsed or opened
 **	@param msg	open message
 */
-inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag,
-    const char *msg)
+inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag, const char *msg)
 {
     cOsdItem *item;
 
-    item = new cMenuEditBoolItem(cString::sprintf("* %s", label), &flag,msg ? msg : tr("show"), tr("hide"));
+    item = new cMenuEditBoolItem(cString::sprintf("* %s", label), &flag, msg ? msg : tr("show"), tr("hide"));
 
     return item;
 }
@@ -982,232 +1058,217 @@ inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag,
 void cMenuSetupSoft::Create(void)
 {
     static const char *const osd_size[] = {
-	"auto", "1920x1080", "1280x720", "custom",
+        "auto", "1920x1080", "1280x720", "custom",
     };
     static const char *const video_display_formats_4_3[] = {
-	"pan&scan", "letterbox", "center cut-out",
+        "pan&scan", "letterbox", "center cut-out",
     };
     static const char *const video_display_formats_16_9[] = {
-	"pan&scan", "pillarbox", "center cut-out",
+        "pan&scan", "pillarbox", "center cut-out",
     };
 #ifdef YADIF
     static const char *const deinterlace[] = {
-	"Cuda", "Yadif",
+        "Cuda", "Yadif",
     };
     static const char *const deinterlace_short[] = {
-	"C", "Y",
+        "C", "Y",
     };
 #endif
 
     static const char *const audiodrift[] = {
-	"None", "PCM", "AC-3", "PCM + AC-3"
+        "None", "PCM", "AC-3", "PCM + AC-3"
     };
     static const char *const resolution[RESOLUTIONS] = {
-	"576i", "720p", "fake 1080", "1080" ,"2160p"
+        "576i", "720p", "fake 1080", "1080", "2160p"
     };
 #ifdef PLACEBO
-	static const char *const target_colorspace[] = {
-	"Monitor", "sRGB", "BT709", "HDR-HLG", "HDR10",
+    static const char *const target_colorspace[] = {
+        "Monitor", "sRGB", "BT709", "HDR-HLG", "HDR10",
     };
-	static const char *const target_colorblindness[] = {
-	"None", "Protanomaly", "Deuteranomaly", "Tritanomaly", "Monochromacy", 
+    static const char *const target_colorblindness[] = {
+        "None", "Protanomaly", "Deuteranomaly", "Tritanomaly", "Monochromacy",
     };
 #endif
     int current;
     int i;
 
 #ifdef PLACEBO
-	static int scalers=0;
-	static char *scaling[100];
-	static char *scalingtest[100];
-	if (scalers == 0) {
-		scalingtest[0] = "Off";
-		for (scalers = 0;pl_named_filters[scalers].filter != NULL ; scalers++) {
-			scaling[scalers] = (char*)pl_named_filters[scalers].name;
-			scalingtest[scalers+1] = (char*)pl_named_filters[scalers].name;
-//			printf("Scaler %s\n",pl_named_filters[scalers].name);
-		}
-//		scalers -= 2;
-	}
-#endif	
-	
-	
-    current = Current();		// get current menu item index
-    Clear();				// clear the menu
+    static int scalers = 0;
+    static char *scaling[100];
+    static char *scalingtest[100];
+
+    if (scalers == 0) {
+        scalingtest[0] = "Off";
+        for (scalers = 0; pl_named_filters[scalers].filter != NULL; scalers++) {
+            scaling[scalers] = (char *)pl_named_filters[scalers].name;
+            scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
+//      printf("Scaler %s\n",pl_named_filters[scalers].name);
+        }
+//  scalers -= 2;
+    }
+#endif
+
+    current = Current();                // get current menu item index
+    Clear();                            // clear the menu
 
     //
-    //	general
+    //  general
     //
     Add(CollapsedItem(tr("General"), General));
 
     if (General) {
-	Add(new cMenuEditBoolItem(tr("Make primary device"), &MakePrimary,	trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Hide main menu entry"),&HideMainMenuEntry, trVDR("no"), trVDR("yes")));
-	//
-	//	osd
-	//
-	Add(new cMenuEditStraItem(tr("Osd size"), &OsdSize, 4, osd_size));
-	if (OsdSize == 3) {
-	    Add(new cMenuEditIntItem(tr("Osd width"), &OsdWidth, 0, 4096));
-	    Add(new cMenuEditIntItem(tr("Osd height"), &OsdHeight, 0, 4096));
-	}
-#ifdef USE_OPENGLOSD    
-    Add(new cMenuEditIntItem(tr("GPU mem used for image caching (MB)"), &MaxSizeGPUImageCache, 0, 4000));
+        Add(new cMenuEditBoolItem(tr("Make primary device"), &MakePrimary, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Hide main menu entry"), &HideMainMenuEntry, trVDR("no"), trVDR("yes")));
+        //
+        //  osd
+        //
+        Add(new cMenuEditStraItem(tr("Osd size"), &OsdSize, 4, osd_size));
+        if (OsdSize == 3) {
+            Add(new cMenuEditIntItem(tr("Osd width"), &OsdWidth, 0, 4096));
+            Add(new cMenuEditIntItem(tr("Osd height"), &OsdHeight, 0, 4096));
+        }
+#ifdef USE_OPENGLOSD
+        Add(new cMenuEditIntItem(tr("GPU mem used for image caching (MB)"), &MaxSizeGPUImageCache, 0, 4000));
 #endif
-	//
-	//	suspend
-	//
-	Add(SeparatorItem(tr("Suspend")));
-	Add(new cMenuEditBoolItem(tr("Detach from main menu entry"),&DetachFromMainMenu, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Suspend closes video+audio"),	&SuspendClose, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Suspend stops x11"), &SuspendX11,	trVDR("no"), trVDR("yes")));
+        //
+        //  suspend
+        //
+        Add(SeparatorItem(tr("Suspend")));
+        Add(new cMenuEditBoolItem(tr("Detach from main menu entry"), &DetachFromMainMenu, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Suspend closes video+audio"), &SuspendClose, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Suspend stops x11"), &SuspendX11, trVDR("no"), trVDR("yes")));
     }
     //
-    //	video
+    //  video
     //
     Add(CollapsedItem(tr("Video"), Video));
     if (Video) {
 #ifdef USE_SCREENSAVER
-	Add(new
-	    cMenuEditBoolItem(tr("Enable Screensaver(DPMS) at black screen"),
-		&EnableDPMSatBlackScreen, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Enable Screensaver(DPMS) at black screen"), &EnableDPMSatBlackScreen,
+                trVDR("no"), trVDR("yes")));
 #endif
-	Add(new cMenuEditStraItem(trVDR("4:3 video display format"),
-		&Video4to3DisplayFormat, 3, video_display_formats_4_3));
-	Add(new cMenuEditStraItem(trVDR("16:9+other video display format"),
-		&VideoOtherDisplayFormat, 3, video_display_formats_16_9));
+        Add(new cMenuEditStraItem(trVDR("4:3 video display format"), &Video4to3DisplayFormat, 3,
+                video_display_formats_4_3));
+        Add(new cMenuEditStraItem(trVDR("16:9+other video display format"), &VideoOtherDisplayFormat, 3,
+                video_display_formats_16_9));
 
 #if 0
-	// FIXME: switch config gray/color configuration
-	Add(new cMenuEditIntItem(tr("Video background color (RGB)"),
-		(int *)&Background, 0, 0x00FFFFFF));
-	Add(new cMenuEditIntItem(tr("Video background color (Alpha)"),
-		(int *)&BackgroundAlpha, 0, 0xFF));
+        // FIXME: switch config gray/color configuration
+        Add(new cMenuEditIntItem(tr("Video background color (RGB)"), (int *)&Background, 0, 0x00FFFFFF));
+        Add(new cMenuEditIntItem(tr("Video background color (Alpha)"), (int *)&BackgroundAlpha, 0, 0xFF));
 #endif
 #ifdef PLACEBO
-	Add(new cMenuEditBoolItem(tr("Use studio levels"),
-		&StudioLevels, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Use studio levels"), &StudioLevels, trVDR("no"), trVDR("yes")));
 #endif
-	Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode,
-		trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync,
-		trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Black during channel switch"),
-		&BlackPicture, trVDR("no"), trVDR("yes")));
-	Add(new cMenuEditBoolItem(tr("Clear decoder on channel switch"),
-		&ClearOnSwitch, trVDR("no"), trVDR("yes")));
-		
+        Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Black during channel switch"), &BlackPicture, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Clear decoder on channel switch"), &ClearOnSwitch, trVDR("no"), trVDR("yes")));
+
 #if PLACEBO
-	Add(new cMenuEditStraItem(tr("Scaler Test"), &ConfigScalerTest, scalers+1, scalingtest));
+        Add(new cMenuEditStraItem(tr("Scaler Test"), &ConfigScalerTest, scalers + 1, scalingtest));
 
-	Add(new cMenuEditIntItem(tr("Brightness (-100..100)"),
-		&Brightness, -100, 100, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Contrast (0..100)"), &Contrast,
-		0, 100, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Saturation (0..100)"),
-		&Saturation, 0, 100, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Gamma (0..100)"),
-		&Gamma, 0, 100, tr("min"), tr("max")));
-	Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314, 314, tr("min"), tr("max")));
-	Add(new cMenuEditStraItem(tr("Monitor Colorspace"), &TargetColorSpace, 5, target_colorspace));	
-	Add(new cMenuEditStraItem(tr("Color Blindness"), &ColorBlindness, 5, target_colorblindness));
-	Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100,
-		100, tr("min"), tr("max")));
+        Add(new cMenuEditIntItem(tr("Brightness (-100..100)"), &Brightness, -100, 100, tr("min"), tr("max")));
+        Add(new cMenuEditIntItem(tr("Contrast (0..100)"), &Contrast, 0, 100, tr("min"), tr("max")));
+        Add(new cMenuEditIntItem(tr("Saturation (0..100)"), &Saturation, 0, 100, tr("min"), tr("max")));
+        Add(new cMenuEditIntItem(tr("Gamma (0..100)"), &Gamma, 0, 100, tr("min"), tr("max")));
+        Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314, 314, tr("min"), tr("max")));
+        Add(new cMenuEditStraItem(tr("Monitor Colorspace"), &TargetColorSpace, 5, target_colorspace));
+        Add(new cMenuEditStraItem(tr("Color Blindness"), &ColorBlindness, 5, target_colorblindness));
+        Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100, 100, tr("min"),
+                tr("max")));
 #endif
-		
-	for (i = 0; i < RESOLUTIONS; ++i) {
-	    cString msg;
 
-	    // short hidden informations
-	    msg = cString::sprintf("show");
-	    Add(CollapsedItem(resolution[i], ResolutionShown[i], msg));
+        for (i = 0; i < RESOLUTIONS; ++i) {
+            cString msg;
 
-	    if (ResolutionShown[i]) {
+            // short hidden informations
+            msg = cString::sprintf("show");
+            Add(CollapsedItem(resolution[i], ResolutionShown[i], msg));
+
+            if (ResolutionShown[i]) {
 #ifdef PLACEBO
-			Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], scalers, scaling));
+                Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], scalers, scaling));
 #endif
 #ifdef YADIF
-			if ( i == 0 || i == 2 || i == 3) {
-				Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i],2, deinterlace));
-			}
+                if (i == 0 || i == 2 || i == 3) {
+                    Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i], 2, deinterlace));
+                }
 #endif
 #if 0
-			Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"),
-				&SkipChromaDeinterlace[i], trVDR("no"), trVDR("yes")));
-			Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"),
-				&InverseTelecine[i], trVDR("no"), trVDR("yes")));
-			Add(new cMenuEditIntItem(tr("Denoise (0..1000) (vdpau)"),
-				&Denoise[i], 0, 1000, tr("off"), tr("max")));
-			Add(new cMenuEditIntItem(tr("Sharpen (-1000..1000) (vdpau)"),
-				&Sharpen[i], -1000, 1000, tr("blur max"),
-				tr("sharpen max")));
+                Add(new cMenuEditBoolItem(tr("SkipChromaDeinterlace (vdpau)"), &SkipChromaDeinterlace[i], trVDR("no"),
+                        trVDR("yes")));
+                Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"), &InverseTelecine[i], trVDR("no"),
+                        trVDR("yes")));
+                Add(new cMenuEditIntItem(tr("Denoise (0..1000) (vdpau)"), &Denoise[i], 0, 1000, tr("off"), tr("max")));
+                Add(new cMenuEditIntItem(tr("Sharpen (-1000..1000) (vdpau)"), &Sharpen[i], -1000, 1000, tr("blur max"),
+                        tr("sharpen max")));
 #endif
-			Add(new cMenuEditIntItem(tr("Cut top and bottom (pixel)"),
-				&CutTopBottom[i], 0, 250));
-			Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"),
-				&CutLeftRight[i], 0, 250));
-	    }
-	}
+                Add(new cMenuEditIntItem(tr("Cut top and bottom (pixel)"), &CutTopBottom[i], 0, 250));
+                Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"), &CutLeftRight[i], 0, 250));
+            }
+        }
 #ifdef USE_AUTOCROP
-	//
-	//  auto-crop
-	//
-	Add(SeparatorItem(tr("Auto-crop")));
-	Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"),	&AutoCropInterval, 0, 200, tr("off")));
-	Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"),	&AutoCropDelay, 0, 200));
-	Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"),	&AutoCropTolerance, 0, 32));
+        //
+        //  auto-crop
+        //
+        Add(SeparatorItem(tr("Auto-crop")));
+        Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"), &AutoCropInterval, 0, 200, tr("off")));
+        Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"), &AutoCropDelay, 0, 200));
+        Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"), &AutoCropTolerance, 0, 32));
 #endif
     }
     //
-    //	audio
+    //  audio
     //
     Add(CollapsedItem(tr("Audio"), Audio));
 
     if (Audio) {
-		Add(new cMenuEditIntItem(tr("Audio/Video delay (ms)"), &AudioDelay,	-1000, 1000));
-		Add(new cMenuEditStraItem(tr("Audio drift correction"), &AudioDrift, 4,	audiodrift));
-		Add(new cMenuEditBoolItem(tr("Pass-through default"), &AudioPassthroughDefault, trVDR("off"), trVDR("on")));
-		Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"), &AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"),&AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"),&AudioPassthroughEAC3, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"),	&AudioDownmix, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditBoolItem(tr("Volume control"), &AudioSoftvol,tr("Hardware"), tr("Software")));
-		Add(new cMenuEditBoolItem(tr("Enable normalize volume"),&AudioNormalize, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditIntItem(tr("  Max normalize factor (/1000)"),&AudioMaxNormalize, 0, 10000));
-		Add(new cMenuEditBoolItem(tr("Enable volume compression"),	&AudioCompression, trVDR("no"), trVDR("yes")));
-		Add(new cMenuEditIntItem(tr("  Max compression factor (/1000)"),&AudioMaxCompression, 0, 10000));
-		Add(new cMenuEditIntItem(tr("Reduce stereo volume (/1000)"),&AudioStereoDescent, 0, 1000));
-		Add(new cMenuEditIntItem(tr("Audio buffer size (ms)"),&AudioBufferTime, 0, 1000));
-		Add(new cMenuEditBoolItem(tr("Enable automatic AES"), &AudioAutoAES,trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditIntItem(tr("Audio/Video delay (ms)"), &AudioDelay, -1000, 1000));
+        Add(new cMenuEditStraItem(tr("Audio drift correction"), &AudioDrift, 4, audiodrift));
+        Add(new cMenuEditBoolItem(tr("Pass-through default"), &AudioPassthroughDefault, trVDR("off"), trVDR("on")));
+        Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"), &AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"), &AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"), &AudioPassthroughEAC3, trVDR("no"),
+                trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"), &AudioDownmix, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("Volume control"), &AudioSoftvol, tr("Hardware"), tr("Software")));
+        Add(new cMenuEditBoolItem(tr("Enable normalize volume"), &AudioNormalize, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditIntItem(tr("  Max normalize factor (/1000)"), &AudioMaxNormalize, 0, 10000));
+        Add(new cMenuEditBoolItem(tr("Enable volume compression"), &AudioCompression, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditIntItem(tr("  Max compression factor (/1000)"), &AudioMaxCompression, 0, 10000));
+        Add(new cMenuEditIntItem(tr("Reduce stereo volume (/1000)"), &AudioStereoDescent, 0, 1000));
+        Add(new cMenuEditIntItem(tr("Audio buffer size (ms)"), &AudioBufferTime, 0, 1000));
+        Add(new cMenuEditBoolItem(tr("Enable automatic AES"), &AudioAutoAES, trVDR("no"), trVDR("yes")));
     }
 #ifdef USE_PIP
     //
-    //	PIP
+    //  PIP
     //
     Add(CollapsedItem(tr("Picture-In-Picture"), Pip));
     if (Pip) {
-		// FIXME: predefined modes/custom mode
-		Add(new cMenuEditIntItem(tr("Pip X (%)"), &PipX, 0, 100));
-		Add(new cMenuEditIntItem(tr("Pip Y (%)"), &PipY, 0, 100));
-		Add(new cMenuEditIntItem(tr("Pip Width (%)"), &PipWidth, 0, 100));
-		Add(new cMenuEditIntItem(tr("Pip Height (%)"), &PipHeight, 0, 100));
-		Add(new cMenuEditIntItem(tr("Video X (%)"), &PipVideoX, 0, 100));
-		Add(new cMenuEditIntItem(tr("Video Y (%)"), &PipVideoY, 0, 100));
-		Add(new cMenuEditIntItem(tr("Video Width (%)"), &PipVideoWidth, 0,100));
-		Add(new cMenuEditIntItem(tr("Video Height (%)"), &PipVideoHeight, 0,100));
-		Add(new cMenuEditIntItem(tr("Alternative Pip X (%)"), &PipAltX, 0,100));
-		Add(new cMenuEditIntItem(tr("Alternative Pip Y (%)"), &PipAltY, 0,100));
-		Add(new cMenuEditIntItem(tr("Alternative Pip Width (%)"), &PipAltWidth,	0, 100));
-		Add(new cMenuEditIntItem(tr("Alternative Pip Height (%)"),&PipAltHeight, 0, 100));
-		Add(new cMenuEditIntItem(tr("Alternative Video X (%)"), &PipAltVideoX,0, 100));
-		Add(new cMenuEditIntItem(tr("Alternative Video Y (%)"), &PipAltVideoY,0, 100));
-		Add(new cMenuEditIntItem(tr("Alternative Video Width (%)"),	&PipAltVideoWidth, 0, 100));
-		Add(new cMenuEditIntItem(tr("Alternative Video Height (%)"),&PipAltVideoHeight, 0, 100));
+        // FIXME: predefined modes/custom mode
+        Add(new cMenuEditIntItem(tr("Pip X (%)"), &PipX, 0, 100));
+        Add(new cMenuEditIntItem(tr("Pip Y (%)"), &PipY, 0, 100));
+        Add(new cMenuEditIntItem(tr("Pip Width (%)"), &PipWidth, 0, 100));
+        Add(new cMenuEditIntItem(tr("Pip Height (%)"), &PipHeight, 0, 100));
+        Add(new cMenuEditIntItem(tr("Video X (%)"), &PipVideoX, 0, 100));
+        Add(new cMenuEditIntItem(tr("Video Y (%)"), &PipVideoY, 0, 100));
+        Add(new cMenuEditIntItem(tr("Video Width (%)"), &PipVideoWidth, 0, 100));
+        Add(new cMenuEditIntItem(tr("Video Height (%)"), &PipVideoHeight, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Pip X (%)"), &PipAltX, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Pip Y (%)"), &PipAltY, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Pip Width (%)"), &PipAltWidth, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Pip Height (%)"), &PipAltHeight, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Video X (%)"), &PipAltVideoX, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Video Y (%)"), &PipAltVideoY, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Video Width (%)"), &PipAltVideoWidth, 0, 100));
+        Add(new cMenuEditIntItem(tr("Alternative Video Height (%)"), &PipAltVideoHeight, 0, 100));
     }
 #endif
 
-    SetCurrent(Get(current));		// restore selected menu entry
-    Display();				// display build menu
+    SetCurrent(Get(current));           // restore selected menu entry
+    Display();                          // display build menu
 }
 
 /**
@@ -1238,22 +1299,22 @@ eOSState cMenuSetupSoft::ProcessKey(eKeys key)
     state = cMenuSetupPage::ProcessKey(key);
 
     if (key != kNone) {
-		// update menu only, if something on the structure has changed
-		// this is needed because VDR menus are evil slow
-		if (old_general != General || old_video != Video || old_audio != Audio
+        // update menu only, if something on the structure has changed
+        // this is needed because VDR menus are evil slow
+        if (old_general != General || old_video != Video || old_audio != Audio
 #ifdef USE_PIP
-			|| old_pip != Pip
+            || old_pip != Pip
 #endif
-			|| old_osd_size != OsdSize) {
-			Create();			// update menu
-		} else {
-			for (i = 0; i < RESOLUTIONS; ++i) {
-				if (old_resolution_shown[i] != ResolutionShown[i]) {
-					Create();		// update menu
-					break;
-				}
-			}
-		}
+            || old_osd_size != OsdSize) {
+            Create();                   // update menu
+        } else {
+            for (i = 0; i < RESOLUTIONS; ++i) {
+                if (old_resolution_shown[i] != ResolutionShown[i]) {
+                    Create();           // update menu
+                    break;
+                }
+            }
+        }
     }
 
     return state;
@@ -1269,34 +1330,34 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     int i;
 
     //
-    //	general
+    //  general
     //
     General = 0;
     MakePrimary = ConfigMakePrimary;
     HideMainMenuEntry = ConfigHideMainMenuEntry;
     DetachFromMainMenu = ConfigDetachFromMainMenu;
     //
-    //	osd
+    //  osd
     //
     OsdWidth = ConfigOsdWidth;
     OsdHeight = ConfigOsdHeight;
     if (!OsdWidth && !OsdHeight) {
-	OsdSize = 0;
+        OsdSize = 0;
     } else if (OsdWidth == 1920 && OsdHeight == 1080) {
-	OsdSize = 1;
+        OsdSize = 1;
     } else if (OsdWidth == 1280 && OsdHeight == 720) {
-	OsdSize = 2;
+        OsdSize = 2;
     } else {
-	OsdSize = 3;
+        OsdSize = 3;
     }
     //
-    //	suspend
+    //  suspend
     //
     SuspendClose = ConfigSuspendClose;
     SuspendX11 = ConfigSuspendX11;
 
     //
-    //	video
+    //  video
     //
     Video = 0;
     Video4to3DisplayFormat = Config4to3DisplayFormat;
@@ -1314,33 +1375,33 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     Contrast = ConfigVideoContrast;
     Saturation = ConfigVideoSaturation;
     Hue = ConfigVideoHue;
-	Gamma = ConfigGamma;
-	TargetColorSpace = ConfigTargetColorSpace;
-	ColorBlindness = ConfigColorBlindness;
-	ColorBlindnessFaktor = ConfigColorBlindnessFaktor;
-//	ScalerTest = ConfigScalerTest;
+    Gamma = ConfigGamma;
+    TargetColorSpace = ConfigTargetColorSpace;
+    ColorBlindness = ConfigColorBlindness;
+    ColorBlindnessFaktor = ConfigColorBlindnessFaktor;
+//  ScalerTest = ConfigScalerTest;
 
     for (i = 0; i < RESOLUTIONS; ++i) {
-		ResolutionShown[i] = 0;
-		Scaling[i] = ConfigVideoScaling[i];
-		Deinterlace[i] = ConfigVideoDeinterlace[i];
-		SkipChromaDeinterlace[i] = ConfigVideoSkipChromaDeinterlace[i];
-		InverseTelecine[i] = ConfigVideoInverseTelecine[i];
-		Denoise[i] = ConfigVideoDenoise[i];
-		Sharpen[i] = ConfigVideoSharpen[i];
+        ResolutionShown[i] = 0;
+        Scaling[i] = ConfigVideoScaling[i];
+        Deinterlace[i] = ConfigVideoDeinterlace[i];
+        SkipChromaDeinterlace[i] = ConfigVideoSkipChromaDeinterlace[i];
+        InverseTelecine[i] = ConfigVideoInverseTelecine[i];
+        Denoise[i] = ConfigVideoDenoise[i];
+        Sharpen[i] = ConfigVideoSharpen[i];
 
-		CutTopBottom[i] = ConfigVideoCutTopBottom[i];
-		CutLeftRight[i] = ConfigVideoCutLeftRight[i];
+        CutTopBottom[i] = ConfigVideoCutTopBottom[i];
+        CutLeftRight[i] = ConfigVideoCutLeftRight[i];
     }
     //
-    //	auto-crop
+    //  auto-crop
     //
     AutoCropInterval = ConfigAutoCropInterval;
     AutoCropDelay = ConfigAutoCropDelay;
     AutoCropTolerance = ConfigAutoCropTolerance;
 
     //
-    //	audio
+    //  audio
     //
     Audio = 0;
     AudioDelay = ConfigVideoAudioDelay;
@@ -1361,7 +1422,7 @@ cMenuSetupSoft::cMenuSetupSoft(void)
 
 #ifdef USE_PIP
     //
-    //	PIP
+    //  PIP
     //
     Pip = 0;
     PipX = ConfigPipX;
@@ -1401,29 +1462,26 @@ void cMenuSetupSoft::Store(void)
     int i;
 
     SetupStore("MakePrimary", ConfigMakePrimary = MakePrimary);
-    SetupStore("HideMainMenuEntry", ConfigHideMainMenuEntry =
-	HideMainMenuEntry);
-    SetupStore("DetachFromMainMenu", ConfigDetachFromMainMenu =
-	DetachFromMainMenu);
+    SetupStore("HideMainMenuEntry", ConfigHideMainMenuEntry = HideMainMenuEntry);
+    SetupStore("DetachFromMainMenu", ConfigDetachFromMainMenu = DetachFromMainMenu);
     switch (OsdSize) {
-	case 0:
-	    OsdWidth = 0;
-	    OsdHeight = 0;
-	    break;
-	case 1:
-	    OsdWidth = 1920;
-	    OsdHeight = 1080;
-	    break;
-	case 2:
-	    OsdWidth = 1280;
-	    OsdHeight = 720;
-	default:
-	    break;
+        case 0:
+            OsdWidth = 0;
+            OsdHeight = 0;
+            break;
+        case 1:
+            OsdWidth = 1920;
+            OsdHeight = 1080;
+            break;
+        case 2:
+            OsdWidth = 1280;
+            OsdHeight = 720;
+        default:
+            break;
     }
     if (ConfigOsdWidth != OsdWidth || ConfigOsdHeight != OsdHeight) {
-	VideoSetOsdSize(ConfigOsdWidth = OsdWidth, ConfigOsdHeight =
-	    OsdHeight);
-	// FIXME: shown osd size not updated
+        VideoSetOsdSize(ConfigOsdWidth = OsdWidth, ConfigOsdHeight = OsdHeight);
+        // FIXME: shown osd size not updated
     }
     SetupStore("Osd.Width", ConfigOsdWidth);
     SetupStore("Osd.Height", ConfigOsdHeight);
@@ -1431,11 +1489,9 @@ void cMenuSetupSoft::Store(void)
     SetupStore("Suspend.Close", ConfigSuspendClose = SuspendClose);
     SetupStore("Suspend.X11", ConfigSuspendX11 = SuspendX11);
 
-    SetupStore("Video4to3DisplayFormat", Config4to3DisplayFormat =
-	Video4to3DisplayFormat);
+    SetupStore("Video4to3DisplayFormat", Config4to3DisplayFormat = Video4to3DisplayFormat);
     VideoSet4to3DisplayFormat(Config4to3DisplayFormat);
-    SetupStore("VideoOtherDisplayFormat", ConfigOtherDisplayFormat =
-	VideoOtherDisplayFormat);
+    SetupStore("VideoOtherDisplayFormat", ConfigOtherDisplayFormat = VideoOtherDisplayFormat);
     VideoSetOtherDisplayFormat(ConfigOtherDisplayFormat);
 
     ConfigVideoBackground = Background << 8 | (BackgroundAlpha & 0xFF);
@@ -1457,41 +1513,39 @@ void cMenuSetupSoft::Store(void)
     VideoSetContrast(ConfigVideoContrast);
     SetupStore("Saturation", ConfigVideoSaturation = Saturation);
     VideoSetSaturation(ConfigVideoSaturation);
-	SetupStore("Gamma", ConfigGamma = Gamma);
+    SetupStore("Gamma", ConfigGamma = Gamma);
     VideoSetGamma(ConfigGamma);
-	SetupStore("TargetColorSpace", ConfigTargetColorSpace = TargetColorSpace);
+    SetupStore("TargetColorSpace", ConfigTargetColorSpace = TargetColorSpace);
     VideoSetTargetColor(ConfigTargetColorSpace);
     SetupStore("Hue", ConfigVideoHue = Hue);
     VideoSetHue(ConfigVideoHue);
-	SetupStore("CBlindness", ConfigColorBlindness = ColorBlindness);
+    SetupStore("CBlindness", ConfigColorBlindness = ColorBlindness);
     VideoSetColorBlindness(ConfigColorBlindness);
-	SetupStore("CBlindnessFaktor", ConfigColorBlindnessFaktor = ColorBlindnessFaktor);
+    SetupStore("CBlindnessFaktor", ConfigColorBlindnessFaktor = ColorBlindnessFaktor);
     VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor);
 //    SetupStore("ScalerTest", ConfigScalerTest = ScalerTest);
     VideoSetScalerTest(ConfigScalerTest);
-	
+
     for (i = 0; i < RESOLUTIONS; ++i) {
-		char buf[128];
+        char buf[128];
 
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
-		SetupStore(buf, ConfigVideoScaling[i] = Scaling[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
-		SetupStore(buf, ConfigVideoDeinterlace[i] = Deinterlace[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
-			"SkipChromaDeinterlace");
-		SetupStore(buf, ConfigVideoSkipChromaDeinterlace[i] =
-			SkipChromaDeinterlace[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
-		SetupStore(buf, ConfigVideoInverseTelecine[i] = InverseTelecine[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
-		SetupStore(buf, ConfigVideoDenoise[i] = Denoise[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
-		SetupStore(buf, ConfigVideoSharpen[i] = Sharpen[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
+        SetupStore(buf, ConfigVideoScaling[i] = Scaling[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
+        SetupStore(buf, ConfigVideoDeinterlace[i] = Deinterlace[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "SkipChromaDeinterlace");
+        SetupStore(buf, ConfigVideoSkipChromaDeinterlace[i] = SkipChromaDeinterlace[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
+        SetupStore(buf, ConfigVideoInverseTelecine[i] = InverseTelecine[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
+        SetupStore(buf, ConfigVideoDenoise[i] = Denoise[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
+        SetupStore(buf, ConfigVideoSharpen[i] = Sharpen[i]);
 
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
-		SetupStore(buf, ConfigVideoCutTopBottom[i] = CutTopBottom[i]);
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
-		SetupStore(buf, ConfigVideoCutLeftRight[i] = CutLeftRight[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
+        SetupStore(buf, ConfigVideoCutTopBottom[i] = CutTopBottom[i]);
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
+        SetupStore(buf, ConfigVideoCutLeftRight[i] = CutLeftRight[i]);
     }
     VideoSetScaling(ConfigVideoScaling);
     VideoSetDeinterlace(ConfigVideoDeinterlace);
@@ -1504,10 +1558,8 @@ void cMenuSetupSoft::Store(void)
 
     SetupStore("AutoCrop.Interval", ConfigAutoCropInterval = AutoCropInterval);
     SetupStore("AutoCrop.Delay", ConfigAutoCropDelay = AutoCropDelay);
-    SetupStore("AutoCrop.Tolerance", ConfigAutoCropTolerance =
-	AutoCropTolerance);
-    VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay,
-	ConfigAutoCropTolerance);
+    SetupStore("AutoCrop.Tolerance", ConfigAutoCropTolerance = AutoCropTolerance);
+    VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance);
     ConfigAutoCropEnabled = ConfigAutoCropInterval != 0;
 
     SetupStore("AudioDelay", ConfigVideoAudioDelay = AudioDelay);
@@ -1518,33 +1570,30 @@ void cMenuSetupSoft::Store(void)
     // FIXME: can handle more audio state changes here
     // downmix changed reset audio, to get change direct
     if (ConfigAudioDownmix != AudioDownmix) {
-		ResetChannelId();
+        ResetChannelId();
     }
     ConfigAudioPassthrough = (AudioPassthroughPCM ? CodecPCM : 0)
-	| (AudioPassthroughAC3 ? CodecAC3 : 0)
-	| (AudioPassthroughEAC3 ? CodecEAC3 : 0);
+        | (AudioPassthroughAC3 ? CodecAC3 : 0)
+        | (AudioPassthroughEAC3 ? CodecEAC3 : 0);
     AudioPassthroughState = AudioPassthroughDefault;
     if (AudioPassthroughState) {
-		SetupStore("AudioPassthrough", ConfigAudioPassthrough);
-		CodecSetAudioPassthrough(ConfigAudioPassthrough);
+        SetupStore("AudioPassthrough", ConfigAudioPassthrough);
+        CodecSetAudioPassthrough(ConfigAudioPassthrough);
     } else {
-		SetupStore("AudioPassthrough", -ConfigAudioPassthrough);
-		CodecSetAudioPassthrough(0);
+        SetupStore("AudioPassthrough", -ConfigAudioPassthrough);
+        CodecSetAudioPassthrough(0);
     }
     SetupStore("AudioDownmix", ConfigAudioDownmix = AudioDownmix);
     CodecSetAudioDownmix(ConfigAudioDownmix);
     SetupStore("AudioSoftvol", ConfigAudioSoftvol = AudioSoftvol);
     AudioSetSoftvol(ConfigAudioSoftvol);
     SetupStore("AudioNormalize", ConfigAudioNormalize = AudioNormalize);
-    SetupStore("AudioMaxNormalize", ConfigAudioMaxNormalize =
-	AudioMaxNormalize);
+    SetupStore("AudioMaxNormalize", ConfigAudioMaxNormalize = AudioMaxNormalize);
     AudioSetNormalize(ConfigAudioNormalize, ConfigAudioMaxNormalize);
     SetupStore("AudioCompression", ConfigAudioCompression = AudioCompression);
-    SetupStore("AudioMaxCompression", ConfigAudioMaxCompression =
-	AudioMaxCompression);
+    SetupStore("AudioMaxCompression", ConfigAudioMaxCompression = AudioMaxCompression);
     AudioSetCompression(ConfigAudioCompression, ConfigAudioMaxCompression);
-    SetupStore("AudioStereoDescent", ConfigAudioStereoDescent =
-	AudioStereoDescent);
+    SetupStore("AudioStereoDescent", ConfigAudioStereoDescent = AudioStereoDescent);
     AudioSetStereoDescent(ConfigAudioStereoDescent);
     SetupStore("AudioBufferTime", ConfigAudioBufferTime = AudioBufferTime);
     SetupStore("AudioAutoAES", ConfigAudioAutoAES = AudioAutoAES);
@@ -1565,26 +1614,22 @@ void cMenuSetupSoft::Store(void)
     SetupStore("pip.Alt.Height", ConfigPipAltHeight = PipAltHeight);
     SetupStore("pip.Alt.VideoX", ConfigPipAltVideoX = PipAltVideoX);
     SetupStore("pip.Alt.VideoY", ConfigPipAltVideoY = PipAltVideoY);
-    SetupStore("pip.Alt.VideoWidth", ConfigPipAltVideoWidth =
-	PipAltVideoWidth);
-    SetupStore("pip.Alt.VideoHeight", ConfigPipAltVideoHeight =
-	PipAltVideoHeight);
+    SetupStore("pip.Alt.VideoWidth", ConfigPipAltVideoWidth = PipAltVideoWidth);
+    SetupStore("pip.Alt.VideoHeight", ConfigPipAltVideoHeight = PipAltVideoHeight);
 #endif
 
 #ifdef USE_SCREENSAVER
-    SetupStore("EnableDPMSatBlackScreen", ConfigEnableDPMSatBlackScreen =
-	EnableDPMSatBlackScreen);
+    SetupStore("EnableDPMSatBlackScreen", ConfigEnableDPMSatBlackScreen = EnableDPMSatBlackScreen);
     SetDPMSatBlackScreen(ConfigEnableDPMSatBlackScreen);
 #endif
 
 #ifdef USE_OPENGLOSD
-    SetupStore("MaxSizeGPUImageCache", ConfigMaxSizeGPUImageCache =
-    MaxSizeGPUImageCache);
+    SetupStore("MaxSizeGPUImageCache", ConfigMaxSizeGPUImageCache = MaxSizeGPUImageCache);
 #endif
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	cPlayer
+//  cPlayer
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -1608,7 +1653,7 @@ cSoftHdPlayer::~cSoftHdPlayer()
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	cControl
+//  cControl
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -1617,18 +1662,18 @@ cSoftHdPlayer::~cSoftHdPlayer()
 class cSoftHdControl:public cControl
 {
   public:
-    static cSoftHdPlayer *Player;	///< dummy player
-    virtual void Hide(void)		///< hide control
+    static cSoftHdPlayer *Player;       ///< dummy player
+    virtual void Hide(void)             ///< hide control
     {
     }
-    virtual eOSState ProcessKey(eKeys);	///< process input events
+    virtual eOSState ProcessKey(eKeys); ///< process input events
 
-    cSoftHdControl(void);		///< control constructor
+    cSoftHdControl(void);               ///< control constructor
 
-    virtual ~ cSoftHdControl();		///< control destructor
+    virtual ~ cSoftHdControl();         ///< control destructor
 };
 
-cSoftHdPlayer *cSoftHdControl::Player;	///< dummy player instance
+cSoftHdPlayer *cSoftHdControl::Player;  ///< dummy player instance
 
 /**
 **	Handle a key event.
@@ -1638,13 +1683,13 @@ cSoftHdPlayer *cSoftHdControl::Player;	///< dummy player instance
 eOSState cSoftHdControl::ProcessKey(eKeys key)
 {
     if (SuspendMode == SUSPEND_NORMAL && (!ISMODELESSKEY(key)
-	    || key == kMenu || key == kBack || key == kStop)) {
-		delete Player;
+            || key == kMenu || key == kBack || key == kStop)) {
+        delete Player;
 
-		Player = NULL;
-		Resume();
-		SuspendMode = NOT_SUSPENDED;
-		return osEnd;
+        Player = NULL;
+        Resume();
+        SuspendMode = NOT_SUSPENDED;
+        return osEnd;
     }
     return osContinue;
 }
@@ -1653,7 +1698,7 @@ eOSState cSoftHdControl::ProcessKey(eKeys key)
 **	Player control constructor.
 */
 cSoftHdControl::cSoftHdControl(void)
-:  cControl(Player = new cSoftHdPlayer)
+:cControl(Player = new cSoftHdPlayer)
 {
 }
 
@@ -1667,24 +1712,24 @@ cSoftHdControl::~cSoftHdControl()
     Player = NULL;
     // loose control resume
     if (SuspendMode == SUSPEND_NORMAL) {
-		Resume();
-		SuspendMode = NOT_SUSPENDED;
+        Resume();
+        SuspendMode = NOT_SUSPENDED;
     }
 
     dsyslog("[softhddev]%s: dummy player stopped\n", __FUNCTION__);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	PIP
+//  PIP
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_PIP
 
-extern "C" void DelPip(void);		///< remove PIP
-static int PipAltPosition;		///< flag alternative position
+extern "C" void DelPip(void);           ///< remove PIP
+static int PipAltPosition;              ///< flag alternative position
 
 //////////////////////////////////////////////////////////////////////////////
-//	cReceiver
+//  cReceiver
 //////////////////////////////////////////////////////////////////////////////
 
 #include <vdr/receiver.h>
@@ -1702,8 +1747,8 @@ class cSoftReceiver:public cReceiver
     virtual void Receive(uchar *, int);
 #endif
   public:
-     cSoftReceiver(const cChannel *);	///< receiver constructor
-     virtual ~ cSoftReceiver();		///< receiver destructor
+     cSoftReceiver(const cChannel *);   ///< receiver constructor
+     virtual ~ cSoftReceiver();         ///< receiver destructor
 };
 
 /**
@@ -1711,8 +1756,7 @@ class cSoftReceiver:public cReceiver
 **
 **	@param channel	channel to receive
 */
-cSoftReceiver::cSoftReceiver(const cChannel * channel):cReceiver(NULL,
-    MINPRIORITY)
+cSoftReceiver::cSoftReceiver(const cChannel * channel):cReceiver(NULL, MINPRIORITY)
 {
     // cReceiver::channelID not setup, this can cause trouble
     // we want video only
@@ -1735,44 +1779,36 @@ cSoftReceiver::~cSoftReceiver()
 void cSoftReceiver::Activate(bool on)
 {
     if (on) {
-	int width;
-	int height;
-	double video_aspect;
+        int width;
+        int height;
+        double video_aspect;
 
-	GetOsdSize(&width, &height, &video_aspect);
-	if (PipAltPosition) {
-	    PipStart((ConfigPipAltVideoX * width) / 100,
-		(ConfigPipAltVideoY * height) / 100,
-		ConfigPipAltVideoWidth ? (ConfigPipAltVideoWidth * width) /
-		100 : width,
-		ConfigPipAltVideoHeight ? (ConfigPipAltVideoHeight * height) /
-		100 : height, (ConfigPipAltX * width) / 100,
-		(ConfigPipAltY * height) / 100,
-		ConfigPipAltWidth ? (ConfigPipAltWidth * width) / 100 : width,
-		ConfigPipAltHeight ? (ConfigPipAltHeight * height) /
-		100 : height);
-	} else {
-	    PipStart((ConfigPipVideoX * width) / 100,
-		(ConfigPipVideoY * height) / 100,
-		ConfigPipVideoWidth ? (ConfigPipVideoWidth * width) /
-		100 : width,
-		ConfigPipVideoHeight ? (ConfigPipVideoHeight * height) /
-		100 : height, (ConfigPipX * width) / 100,
-		(ConfigPipY * height) / 100,
-		ConfigPipWidth ? (ConfigPipWidth * width) / 100 : width,
-		ConfigPipHeight ? (ConfigPipHeight * height) / 100 : height);
-	}
+        GetOsdSize(&width, &height, &video_aspect);
+        if (PipAltPosition) {
+            PipStart((ConfigPipAltVideoX * width) / 100, (ConfigPipAltVideoY * height) / 100,
+                ConfigPipAltVideoWidth ? (ConfigPipAltVideoWidth * width) / 100 : width,
+                ConfigPipAltVideoHeight ? (ConfigPipAltVideoHeight * height) / 100 : height,
+                (ConfigPipAltX * width) / 100, (ConfigPipAltY * height) / 100,
+                ConfigPipAltWidth ? (ConfigPipAltWidth * width) / 100 : width,
+                ConfigPipAltHeight ? (ConfigPipAltHeight * height) / 100 : height);
+        } else {
+            PipStart((ConfigPipVideoX * width) / 100, (ConfigPipVideoY * height) / 100,
+                ConfigPipVideoWidth ? (ConfigPipVideoWidth * width) / 100 : width,
+                ConfigPipVideoHeight ? (ConfigPipVideoHeight * height) / 100 : height, (ConfigPipX * width) / 100,
+                (ConfigPipY * height) / 100, ConfigPipWidth ? (ConfigPipWidth * width) / 100 : width,
+                ConfigPipHeight ? (ConfigPipHeight * height) / 100 : height);
+        }
     } else {
-		PipStop();
+        PipStop();
     }
 }
 
 ///
-///	Parse packetized elementary stream.
+/// Parse packetized elementary stream.
 ///
-///	@param data	payload data of transport stream
-///	@param size	number of payload data bytes
-///	@param is_start flag, start of pes packet
+/// @param data payload data of transport stream
+/// @param size number of payload data bytes
+/// @param is_start flag, start of pes packet
 ///
 static void PipPesParse(const uint8_t * data, int size, int is_start)
 {
@@ -1783,41 +1819,39 @@ static void PipPesParse(const uint8_t * data, int size, int is_start)
     // FIXME: quick&dirty
 
     if (!pes_buf) {
-	pes_size = 500 * 1024 * 1024;
-	pes_buf = (uint8_t *) malloc(pes_size);
-	if (!pes_buf) {			// out of memory, should never happen
-	    return;
-	}
-	pes_index = 0;
+        pes_size = 500 * 1024 * 1024;
+        pes_buf = (uint8_t *) malloc(pes_size);
+        if (!pes_buf) {                 // out of memory, should never happen
+            return;
+        }
+        pes_index = 0;
     }
-    if (is_start) {			// start of pes packet
-	if (pes_index) {
-	    if (0) {
-		fprintf(stderr, "pip: PES packet %8d %02x%02x\n", pes_index,
-		    pes_buf[2], pes_buf[3]);
-	    }
-	    if (pes_buf[0] || pes_buf[1] || pes_buf[2] != 0x01) {
-		// FIXME: first should always fail
-		esyslog(tr("[softhddev]pip: invalid PES packet %d\n"),
-		    pes_index);
-	    } else {
-		PipPlayVideo(pes_buf, pes_index);
-		// FIXME: buffer full: pes packet is dropped
-	    }
-	    pes_index = 0;
-	}
+    if (is_start) {                     // start of pes packet
+        if (pes_index) {
+            if (0) {
+                fprintf(stderr, "pip: PES packet %8d %02x%02x\n", pes_index, pes_buf[2], pes_buf[3]);
+            }
+            if (pes_buf[0] || pes_buf[1] || pes_buf[2] != 0x01) {
+                // FIXME: first should always fail
+                esyslog(tr("[softhddev]pip: invalid PES packet %d\n"), pes_index);
+            } else {
+                PipPlayVideo(pes_buf, pes_index);
+                // FIXME: buffer full: pes packet is dropped
+            }
+            pes_index = 0;
+        }
     }
 
     if (pes_index + size > pes_size) {
-	esyslog(tr("[softhddev]pip: pes buffer too small\n"));
-	pes_size *= 2;
-	if (pes_index + size > pes_size) {
-	    pes_size = (pes_index + size) * 2;
-	}
-	pes_buf = (uint8_t *) realloc(pes_buf, pes_size);
-	if (!pes_buf) {			// out of memory, should never happen
-	    return;
-	}
+        esyslog(tr("[softhddev]pip: pes buffer too small\n"));
+        pes_size *= 2;
+        if (pes_index + size > pes_size) {
+            pes_size = (pes_index + size) * 2;
+        }
+        pes_buf = (uint8_t *) realloc(pes_buf, pes_size);
+        if (!pes_buf) {                 // out of memory, should never happen
+            return;
+        }
     }
     memcpy(pes_buf + pes_index, data, size);
     pes_index += size;
@@ -1844,58 +1878,57 @@ void cSoftReceiver::Receive(uchar * data, int size)
 
     p = data;
     while (size >= TS_PACKET_SIZE) {
-	int payload;
+        int payload;
 
-	if (p[0] != TS_PACKET_SYNC) {
-	    esyslog(tr("[softhddev]tsdemux: transport stream out of sync\n"));
-	    // FIXME: kill all buffers
-	    return;
-	}
-	if (p[1] & 0x80) {		// error indicatord
-	    dsyslog("[softhddev]tsdemux: transport error\n");
-	    // FIXME: kill all buffers
-	    goto next_packet;
-	}
-	if (0) {
-	    int pid;
+        if (p[0] != TS_PACKET_SYNC) {
+            esyslog(tr("[softhddev]tsdemux: transport stream out of sync\n"));
+            // FIXME: kill all buffers
+            return;
+        }
+        if (p[1] & 0x80) {              // error indicatord
+            dsyslog("[softhddev]tsdemux: transport error\n");
+            // FIXME: kill all buffers
+            goto next_packet;
+        }
+        if (0) {
+            int pid;
 
-	    pid = (p[1] & 0x1F) << 8 | p[2];
-	    fprintf(stderr, "tsdemux: PID: %#04x%s%s\n", pid,
-		p[1] & 0x40 ? " start" : "", p[3] & 0x10 ? " payload" : "");
-	}
-	// skip adaptation field
-	switch (p[3] & 0x30) {		// adaption field
-	    case 0x00:			// reserved
-	    case 0x20:			// adaptation field only
-	    default:
-		goto next_packet;
-	    case 0x10:			// only payload
-		payload = 4;
-		break;
-	    case 0x30:			// skip adapation field
-		payload = 5 + p[4];
-		// illegal length, ignore packet
-		if (payload >= TS_PACKET_SIZE) {
-		    dsyslog
-			("[softhddev]tsdemux: illegal adaption field length\n");
-		    goto next_packet;
-		}
-		break;
-	}
+            pid = (p[1] & 0x1F) << 8 | p[2];
+            fprintf(stderr, "tsdemux: PID: %#04x%s%s\n", pid, p[1] & 0x40 ? " start" : "",
+                p[3] & 0x10 ? " payload" : "");
+        }
+        // skip adaptation field
+        switch (p[3] & 0x30) {          // adaption field
+            case 0x00:                 // reserved
+            case 0x20:                 // adaptation field only
+            default:
+                goto next_packet;
+            case 0x10:                 // only payload
+                payload = 4;
+                break;
+            case 0x30:                 // skip adapation field
+                payload = 5 + p[4];
+                // illegal length, ignore packet
+                if (payload >= TS_PACKET_SIZE) {
+                    dsyslog("[softhddev]tsdemux: illegal adaption field length\n");
+                    goto next_packet;
+                }
+                break;
+        }
 
-	PipPesParse(p + payload, TS_PACKET_SIZE - payload, p[1] & 0x40);
+        PipPesParse(p + payload, TS_PACKET_SIZE - payload, p[1] & 0x40);
 
       next_packet:
-	p += TS_PACKET_SIZE;
-	size -= TS_PACKET_SIZE;
+        p += TS_PACKET_SIZE;
+        size -= TS_PACKET_SIZE;
     }
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-static cSoftReceiver *PipReceiver;	///< PIP receiver
-static int PipChannelNr;		///< last PIP channel number
-static const cChannel *PipChannel;	///< current PIP channel
+static cSoftReceiver *PipReceiver;      ///< PIP receiver
+static int PipChannelNr;                ///< last PIP channel number
+static const cChannel *PipChannel;      ///< current PIP channel
 
 /**
 **	Stop PIP.
@@ -1922,26 +1955,26 @@ static void NewPip(int channel_nr)
 #ifdef DEBUG
     // is device replaying?
     if (cDevice::PrimaryDevice()->Replaying() && cControl::Control()) {
-	dsyslog("[softhddev]%s: replay active\n", __FUNCTION__);
-	// FIXME: need to find PID
+        dsyslog("[softhddev]%s: replay active\n", __FUNCTION__);
+        // FIXME: need to find PID
     }
 #endif
 
     if (!channel_nr) {
-	channel_nr = cDevice::CurrentChannel();
+        channel_nr = cDevice::CurrentChannel();
     }
     LOCK_CHANNELS_READ;
     if (channel_nr && (channel = Channels MURKS GetByNumber(channel_nr))
-	&& (device = cDevice::GetDevice(channel, 0, false, false))) {
+        && (device = cDevice::GetDevice(channel, 0, false, false))) {
 
-	DelPip();
+        DelPip();
 
-	device->SwitchChannel(channel, false);
-	receiver = new cSoftReceiver(channel);
-	device->AttachReceiver(receiver);
-	PipReceiver = receiver;
-	PipChannel = channel;
-	PipChannelNr = channel_nr;
+        device->SwitchChannel(channel, false);
+        receiver = new cSoftReceiver(channel);
+        device->AttachReceiver(receiver);
+        PipReceiver = receiver;
+        PipChannel = channel;
+        PipChannelNr = channel_nr;
     }
 }
 
@@ -1951,13 +1984,13 @@ static void NewPip(int channel_nr)
 static void TogglePip(void)
 {
     if (PipReceiver) {
-		int attached;
+        int attached;
 
-		attached = PipReceiver->IsAttached();
-		DelPip();
-		if (attached) {			// turn off only if last PIP was on
-			return;
-		}
+        attached = PipReceiver->IsAttached();
+        DelPip();
+        if (attached) {                 // turn off only if last PIP was on
+            return;
+        }
     }
     NewPip(PipChannelNr);
 }
@@ -1975,30 +2008,29 @@ static void PipNextAvailableChannel(int direction)
     channel = PipChannel;
     first = channel;
 
-    DelPip();				// disable PIP to free the device
+    DelPip();                           // disable PIP to free the device
 
     LOCK_CHANNELS_READ;
     while (channel) {
-	bool ndr;
-	cDevice *device;
+        bool ndr;
+        cDevice *device;
 
-	channel = direction > 0 ? Channels MURKS Next(channel)
-	    : Channels MURKS Prev(channel);
-	if (!channel && Setup.ChannelsWrap) {
-	    channel =
-		direction > 0 ? Channels MURKS First() : Channels MURKS Last();
-	}
-	if (channel && !channel->GroupSep()
-	    && (device = cDevice::GetDevice(channel, 0, false, true))
-	    && device->ProvidesChannel(channel, 0, &ndr) && !ndr) {
+        channel = direction > 0 ? Channels MURKS Next(channel)
+            : Channels MURKS Prev(channel);
+        if (!channel && Setup.ChannelsWrap) {
+            channel = direction > 0 ? Channels MURKS First() : Channels MURKS Last();
+        }
+        if (channel && !channel->GroupSep()
+            && (device = cDevice::GetDevice(channel, 0, false, true))
+            && device->ProvidesChannel(channel, 0, &ndr) && !ndr) {
 
-	    NewPip(channel->Number());
-	    return;
-	}
-	if (channel == first) {
-	    Skins.Message(mtError, tr("Channel not available!"));
-	    break;
-	}
+            NewPip(channel->Number());
+            return;
+        }
+        if (channel == first) {
+            Skins.Message(mtError, tr("Channel not available!"));
+            break;
+        }
     }
 }
 
@@ -2015,9 +2047,9 @@ static void SwapPipChannels(void)
     NewPip(0);
 
     if (channel) {
-	LOCK_CHANNELS_READ;
+        LOCK_CHANNELS_READ;
 
-	Channels MURKS SwitchTo(channel->Number());
+        Channels MURKS SwitchTo(channel->Number());
     }
 }
 
@@ -2031,37 +2063,30 @@ static void SwapPipPosition(void)
     double video_aspect;
 
     PipAltPosition ^= 1;
-    if (!PipReceiver) {			// no PIP visible, no update needed
-	return;
+    if (!PipReceiver) {                 // no PIP visible, no update needed
+        return;
     }
 
     GetOsdSize(&width, &height, &video_aspect);
     if (PipAltPosition) {
-	PipSetPosition((ConfigPipAltVideoX * width) / 100,
-	    (ConfigPipAltVideoY * height) / 100,
-	    ConfigPipAltVideoWidth ? (ConfigPipAltVideoWidth * width) /
-	    100 : width,
-	    ConfigPipAltVideoHeight ? (ConfigPipAltVideoHeight * height) /
-	    100 : height, (ConfigPipAltX * width) / 100,
-	    (ConfigPipAltY * height) / 100,
-	    ConfigPipAltWidth ? (ConfigPipAltWidth * width) / 100 : width,
-	    ConfigPipAltHeight ? (ConfigPipAltHeight * height) / 100 : height);
+        PipSetPosition((ConfigPipAltVideoX * width) / 100, (ConfigPipAltVideoY * height) / 100,
+            ConfigPipAltVideoWidth ? (ConfigPipAltVideoWidth * width) / 100 : width,
+            ConfigPipAltVideoHeight ? (ConfigPipAltVideoHeight * height) / 100 : height, (ConfigPipAltX * width) / 100,
+            (ConfigPipAltY * height) / 100, ConfigPipAltWidth ? (ConfigPipAltWidth * width) / 100 : width,
+            ConfigPipAltHeight ? (ConfigPipAltHeight * height) / 100 : height);
     } else {
-	PipSetPosition((ConfigPipVideoX * width) / 100,
-	    (ConfigPipVideoY * height) / 100,
-	    ConfigPipVideoWidth ? (ConfigPipVideoWidth * width) / 100 : width,
-	    ConfigPipVideoHeight ? (ConfigPipVideoHeight * height) /
-	    100 : height, (ConfigPipX * width) / 100,
-	    (ConfigPipY * height) / 100,
-	    ConfigPipWidth ? (ConfigPipWidth * width) / 100 : width,
-	    ConfigPipHeight ? (ConfigPipHeight * height) / 100 : height);
+        PipSetPosition((ConfigPipVideoX * width) / 100, (ConfigPipVideoY * height) / 100,
+            ConfigPipVideoWidth ? (ConfigPipVideoWidth * width) / 100 : width,
+            ConfigPipVideoHeight ? (ConfigPipVideoHeight * height) / 100 : height, (ConfigPipX * width) / 100,
+            (ConfigPipY * height) / 100, ConfigPipWidth ? (ConfigPipWidth * width) / 100 : width,
+            ConfigPipHeight ? (ConfigPipHeight * height) / 100 : height);
     }
 }
 
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-//	cOsdMenu
+//  cOsdMenu
 //////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -2069,10 +2094,10 @@ static void SwapPipPosition(void)
 */
 typedef enum
 {
-    HksInitial,				///< initial state
-    HksBlue,				///< blue button pressed
-    HksBlue1,				///< blue and 1 number pressed
-    HksRed,				///< red button pressed
+    HksInitial,                         ///< initial state
+    HksBlue,                            ///< blue button pressed
+    HksBlue1,                           ///< blue and 1 number pressed
+    HksRed,                             ///< red button pressed
 } HkState;
 
 /**
@@ -2081,12 +2106,12 @@ typedef enum
 class cSoftHdMenu:public cOsdMenu
 {
   private:
-    HkState HotkeyState;		///< current hot-key state
-    int HotkeyCode;			///< current hot-key code
-    void Create(void);			///< create plugin main menu
+    HkState HotkeyState;                ///< current hot-key state
+    int HotkeyCode;                     ///< current hot-key code
+    void Create(void);                  ///< create plugin main menu
   public:
-    cSoftHdMenu(const char *, int = 0, int = 0, int = 0, int = 0, int = 0);
-    virtual ~ cSoftHdMenu();
+     cSoftHdMenu(const char *, int = 0, int = 0, int = 0, int = 0, int = 0);
+     virtual ~ cSoftHdMenu();
     virtual eOSState ProcessKey(eKeys);
 };
 
@@ -2100,53 +2125,53 @@ void cSoftHdMenu::Create(void)
     int duped;
     int dropped;
     int counter;
-	float frametime;
+    float frametime;
 
-    current = Current();		// get current menu item index
-    Clear();				// clear the menu
+    current = Current();                // get current menu item index
+    Clear();                            // clear the menu
 
     SetHasHotkeys();
 
     if (ConfigDetachFromMainMenu) {
-	Add(new cOsdItem(hk(tr("Detach SoftHdDevice")), osUser1));
+        Add(new cOsdItem(hk(tr("Detach SoftHdDevice")), osUser1));
     } else {
-	Add(new cOsdItem(hk(tr("Suspend SoftHdDevice")), osUser1));
+        Add(new cOsdItem(hk(tr("Suspend SoftHdDevice")), osUser1));
     }
 #ifdef USE_PIP
     if (PipReceiver) {
-	Add(new cOsdItem(hk(tr("PIP toggle on/off: off")), osUser2));
+        Add(new cOsdItem(hk(tr("PIP toggle on/off: off")), osUser2));
     } else {
-	Add(new cOsdItem(hk(tr("PIP toggle on/off: on")), osUser2));
+        Add(new cOsdItem(hk(tr("PIP toggle on/off: on")), osUser2));
     }
     Add(new cOsdItem(hk(tr("PIP zapmode (not working)")), osUser3));
     Add(new cOsdItem(hk(tr("PIP channel +")), osUser4));
     Add(new cOsdItem(hk(tr("PIP channel -")), osUser5));
     if (PipReceiver) {
-	Add(new cOsdItem(hk(tr("PIP on/swap channels: swap")), osUser6));
+        Add(new cOsdItem(hk(tr("PIP on/swap channels: swap")), osUser6));
     } else {
-	Add(new cOsdItem(hk(tr("PIP on/swap channels: on")), osUser6));
+        Add(new cOsdItem(hk(tr("PIP on/swap channels: on")), osUser6));
     }
     if (PipAltPosition) {
-	Add(new cOsdItem(hk(tr("PIP swap position: normal")), osUser7));
+        Add(new cOsdItem(hk(tr("PIP swap position: normal")), osUser7));
     } else {
-	Add(new cOsdItem(hk(tr("PIP swap position: alternative")), osUser7));
+        Add(new cOsdItem(hk(tr("PIP swap position: alternative")), osUser7));
     }
     Add(new cOsdItem(hk(tr("PIP close")), osUser8));
 #endif
     Add(new cOsdItem(NULL, osUnknown, false));
     Add(new cOsdItem(NULL, osUnknown, false));
     GetStats(&missed, &duped, &dropped, &counter, &frametime);
-    Add(new	cOsdItem(cString::sprintf(tr(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed, duped, dropped, counter), osUnknown, false));
-    Add(new	cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
-    SetCurrent(Get(current));		// restore selected menu entry
-    Display();				// display build menu
+    Add(new cOsdItem(cString::sprintf(tr(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed, duped, dropped,
+                counter), osUnknown, false));
+    Add(new cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
+    SetCurrent(Get(current));           // restore selected menu entry
+    Display();                          // display build menu
 }
 
 /**
 **	Soft device menu constructor.
 */
-cSoftHdMenu::cSoftHdMenu(const char *title, int c0, int c1, int c2, int c3,
-    int c4)
+cSoftHdMenu::cSoftHdMenu(const char *title, int c0, int c1, int c2, int c3, int c4)
 :cOsdMenu(title, c0, c1, c2, c3, c4)
 {
     HotkeyState = HksInitial;
@@ -2169,133 +2194,127 @@ cSoftHdMenu::~cSoftHdMenu()
 static void HandleHotkey(int code)
 {
     switch (code) {
-	case 10:			// disable pass-through
-	    AudioPassthroughState = 0;
-	    CodecSetAudioPassthrough(0);
-	    Skins.QueueMessage(mtInfo, tr("pass-through disabled"));
-	    break;
-	case 11:			// enable pass-through
-	    // note: you can't enable, without configured pass-through
-	    AudioPassthroughState = 1;
-	    CodecSetAudioPassthrough(ConfigAudioPassthrough);
-	    Skins.QueueMessage(mtInfo, tr("pass-through enabled"));
-	    break;
-	case 12:			// toggle pass-through
-	    AudioPassthroughState ^= 1;
-	    if (AudioPassthroughState) {
-		CodecSetAudioPassthrough(ConfigAudioPassthrough);
-		Skins.QueueMessage(mtInfo, tr("pass-through enabled"));
-	    } else {
-		CodecSetAudioPassthrough(0);
-		Skins.QueueMessage(mtInfo, tr("pass-through disabled"));
-	    }
-	    break;
-	case 13:			// decrease audio delay
-	    ConfigVideoAudioDelay -= 10;
-	    VideoSetAudioDelay(ConfigVideoAudioDelay);
-	    Skins.QueueMessage(mtInfo,
-		cString::sprintf(tr("audio delay changed to %d"),
-		    ConfigVideoAudioDelay));
-	    break;
-	case 14:			// increase audio delay
-	    ConfigVideoAudioDelay += 10;
-	    VideoSetAudioDelay(ConfigVideoAudioDelay);
-	    Skins.QueueMessage(mtInfo,
-		cString::sprintf(tr("audio delay changed to %d"),
-		    ConfigVideoAudioDelay));
-	    break;
-	case 15:
-	    ConfigAudioDownmix ^= 1;
-	    fprintf(stderr, "toggle downmix\n");
-	    CodecSetAudioDownmix(ConfigAudioDownmix);
-	    if (ConfigAudioDownmix) {
-		Skins.QueueMessage(mtInfo, tr("surround downmix enabled"));
-	    } else {
-		Skins.QueueMessage(mtInfo, tr("surround downmix disabled"));
-	    }
-	    ResetChannelId();
-	    break;
+        case 10:                       // disable pass-through
+            AudioPassthroughState = 0;
+            CodecSetAudioPassthrough(0);
+            Skins.QueueMessage(mtInfo, tr("pass-through disabled"));
+            break;
+        case 11:                       // enable pass-through
+            // note: you can't enable, without configured pass-through
+            AudioPassthroughState = 1;
+            CodecSetAudioPassthrough(ConfigAudioPassthrough);
+            Skins.QueueMessage(mtInfo, tr("pass-through enabled"));
+            break;
+        case 12:                       // toggle pass-through
+            AudioPassthroughState ^= 1;
+            if (AudioPassthroughState) {
+                CodecSetAudioPassthrough(ConfigAudioPassthrough);
+                Skins.QueueMessage(mtInfo, tr("pass-through enabled"));
+            } else {
+                CodecSetAudioPassthrough(0);
+                Skins.QueueMessage(mtInfo, tr("pass-through disabled"));
+            }
+            break;
+        case 13:                       // decrease audio delay
+            ConfigVideoAudioDelay -= 10;
+            VideoSetAudioDelay(ConfigVideoAudioDelay);
+            Skins.QueueMessage(mtInfo, cString::sprintf(tr("audio delay changed to %d"), ConfigVideoAudioDelay));
+            break;
+        case 14:                       // increase audio delay
+            ConfigVideoAudioDelay += 10;
+            VideoSetAudioDelay(ConfigVideoAudioDelay);
+            Skins.QueueMessage(mtInfo, cString::sprintf(tr("audio delay changed to %d"), ConfigVideoAudioDelay));
+            break;
+        case 15:
+            ConfigAudioDownmix ^= 1;
+            fprintf(stderr, "toggle downmix\n");
+            CodecSetAudioDownmix(ConfigAudioDownmix);
+            if (ConfigAudioDownmix) {
+                Skins.QueueMessage(mtInfo, tr("surround downmix enabled"));
+            } else {
+                Skins.QueueMessage(mtInfo, tr("surround downmix disabled"));
+            }
+            ResetChannelId();
+            break;
 
-	case 20:			// disable full screen
-	    VideoSetFullscreen(0);
-	    break;
-	case 21:			// enable full screen
-	    VideoSetFullscreen(1);
-	    break;
-	case 22:			// toggle full screen
-	    VideoSetFullscreen(-1);
-	    break;
-	case 23:			// disable auto-crop
-	    ConfigAutoCropEnabled = 0;
-	    VideoSetAutoCrop(0, ConfigAutoCropDelay, ConfigAutoCropTolerance);
-	    Skins.QueueMessage(mtInfo, tr("auto-crop disabled and freezed"));
-	    break;
-	case 24:			// enable auto-crop
-	    ConfigAutoCropEnabled = 1;
-	    if (!ConfigAutoCropInterval) {
-		ConfigAutoCropInterval = 50;
-	    }
-	    VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay,
-		ConfigAutoCropTolerance);
-	    Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
-	    break;
-	case 25:			// toggle auto-crop
-	    ConfigAutoCropEnabled ^= 1;
-	    // no interval configured, use some default
-	    if (!ConfigAutoCropInterval) {
-		ConfigAutoCropInterval = 50;
-	    }
-	    VideoSetAutoCrop(ConfigAutoCropEnabled * ConfigAutoCropInterval,
-		ConfigAutoCropDelay, ConfigAutoCropTolerance);
-	    if (ConfigAutoCropEnabled) {
-		Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
-	    } else {
-		Skins.QueueMessage(mtInfo,
-		    tr("auto-crop disabled and freezed"));
-	    }
-	    break;
-	case 30:			// change 4:3 -> window mode
-	case 31:
-	case 32:
-	    VideoSet4to3DisplayFormat(code - 30);
-	    break;
-	case 39:			// rotate 4:3 -> window mode
-	    VideoSet4to3DisplayFormat(-1);
-	    break;
-	case 40:			// change 16:9 -> window mode
-	case 41:
-	case 42:
-	    VideoSetOtherDisplayFormat(code - 40);
-	    break;
-	case 49:			// rotate 16:9 -> window mode
-	    VideoSetOtherDisplayFormat(-1);
-	    break;
+        case 20:                       // disable full screen
+            VideoSetFullscreen(0);
+            break;
+        case 21:                       // enable full screen
+            VideoSetFullscreen(1);
+            break;
+        case 22:                       // toggle full screen
+            VideoSetFullscreen(-1);
+            break;
+        case 23:                       // disable auto-crop
+            ConfigAutoCropEnabled = 0;
+            VideoSetAutoCrop(0, ConfigAutoCropDelay, ConfigAutoCropTolerance);
+            Skins.QueueMessage(mtInfo, tr("auto-crop disabled and freezed"));
+            break;
+        case 24:                       // enable auto-crop
+            ConfigAutoCropEnabled = 1;
+            if (!ConfigAutoCropInterval) {
+                ConfigAutoCropInterval = 50;
+            }
+            VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance);
+            Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
+            break;
+        case 25:                       // toggle auto-crop
+            ConfigAutoCropEnabled ^= 1;
+            // no interval configured, use some default
+            if (!ConfigAutoCropInterval) {
+                ConfigAutoCropInterval = 50;
+            }
+            VideoSetAutoCrop(ConfigAutoCropEnabled * ConfigAutoCropInterval, ConfigAutoCropDelay,
+                ConfigAutoCropTolerance);
+            if (ConfigAutoCropEnabled) {
+                Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
+            } else {
+                Skins.QueueMessage(mtInfo, tr("auto-crop disabled and freezed"));
+            }
+            break;
+        case 30:                       // change 4:3 -> window mode
+        case 31:
+        case 32:
+            VideoSet4to3DisplayFormat(code - 30);
+            break;
+        case 39:                       // rotate 4:3 -> window mode
+            VideoSet4to3DisplayFormat(-1);
+            break;
+        case 40:                       // change 16:9 -> window mode
+        case 41:
+        case 42:
+            VideoSetOtherDisplayFormat(code - 40);
+            break;
+        case 49:                       // rotate 16:9 -> window mode
+            VideoSetOtherDisplayFormat(-1);
+            break;
 
 #ifdef USE_PIP
-	case 102:			// PIP toggle
-	    TogglePip();
-	    break;
-	case 104:
-	    PipNextAvailableChannel(1);
-	    break;
-	case 105:
-	    PipNextAvailableChannel(-1);
-	    break;
-	case 106:
-	    SwapPipChannels();
-	    break;
-	case 107:
-	    SwapPipPosition();
-	    break;
-	case 108:
-	    DelPip();
-	    PipChannelNr = 0;
-	    break;
+        case 102:                      // PIP toggle
+            TogglePip();
+            break;
+        case 104:
+            PipNextAvailableChannel(1);
+            break;
+        case 105:
+            PipNextAvailableChannel(-1);
+            break;
+        case 106:
+            SwapPipChannels();
+            break;
+        case 107:
+            SwapPipPosition();
+            break;
+        case 108:
+            DelPip();
+            PipChannelNr = 0;
+            break;
 #endif
 
-	default:
-	    esyslog(tr("[softhddev]: hot key %d is not supported\n"), code);
-	    break;
+        default:
+            esyslog(tr("[softhddev]: hot key %d is not supported\n"), code);
+            break;
     }
 }
 
@@ -2311,111 +2330,107 @@ eOSState cSoftHdMenu::ProcessKey(eKeys key)
     //dsyslog("[softhddev]%s: %x\n", __FUNCTION__, key);
 
     switch (HotkeyState) {
-	case HksInitial:		// initial state, waiting for hot key
-	    if (key == kBlue) {
-		HotkeyState = HksBlue;	// blue button
-		return osContinue;
-	    }
-	    if (key == kRed) {
-		HotkeyState = HksRed;	// red button
-		return osContinue;
-	    }
-	    break;
-	case HksBlue:			// blue and first number
-	    if (k0 <= key && key <= k9) {
-		HotkeyCode = key - k0;
-		HotkeyState = HksBlue1;
-		return osContinue;
-	    }
-	    HotkeyState = HksInitial;
-	    break;
-	case HksBlue1:			// blue and second number/enter
-	    if (k0 <= key && key <= k9) {
-		HotkeyCode *= 10;
-		HotkeyCode += key - k0;
-		HotkeyState = HksInitial;
-		dsyslog("[softhddev]%s: hot-key %d\n", __FUNCTION__,
-		    HotkeyCode);
-		HandleHotkey(HotkeyCode);
-		return osEnd;
-	    }
-	    if (key == kOk) {
-		HotkeyState = HksInitial;
-		dsyslog("[softhddev]%s: hot-key %d\n", __FUNCTION__,
-		    HotkeyCode);
-		HandleHotkey(HotkeyCode);
-		return osEnd;
-	    }
-	    HotkeyState = HksInitial;
-	case HksRed:			// red and first number
-	    if (k0 <= key && key <= k9) {
-		HotkeyCode = 100 + key - k0;
-		HotkeyState = HksInitial;
-		HandleHotkey(HotkeyCode);
-		return osEnd;
-	    }
-	    HotkeyState = HksInitial;
-	    break;
+        case HksInitial:               // initial state, waiting for hot key
+            if (key == kBlue) {
+                HotkeyState = HksBlue;  // blue button
+                return osContinue;
+            }
+            if (key == kRed) {
+                HotkeyState = HksRed;   // red button
+                return osContinue;
+            }
+            break;
+        case HksBlue:                  // blue and first number
+            if (k0 <= key && key <= k9) {
+                HotkeyCode = key - k0;
+                HotkeyState = HksBlue1;
+                return osContinue;
+            }
+            HotkeyState = HksInitial;
+            break;
+        case HksBlue1:                 // blue and second number/enter
+            if (k0 <= key && key <= k9) {
+                HotkeyCode *= 10;
+                HotkeyCode += key - k0;
+                HotkeyState = HksInitial;
+                dsyslog("[softhddev]%s: hot-key %d\n", __FUNCTION__, HotkeyCode);
+                HandleHotkey(HotkeyCode);
+                return osEnd;
+            }
+            if (key == kOk) {
+                HotkeyState = HksInitial;
+                dsyslog("[softhddev]%s: hot-key %d\n", __FUNCTION__, HotkeyCode);
+                HandleHotkey(HotkeyCode);
+                return osEnd;
+            }
+            HotkeyState = HksInitial;
+        case HksRed:                   // red and first number
+            if (k0 <= key && key <= k9) {
+                HotkeyCode = 100 + key - k0;
+                HotkeyState = HksInitial;
+                HandleHotkey(HotkeyCode);
+                return osEnd;
+            }
+            HotkeyState = HksInitial;
+            break;
     }
 
     // call standard function
     state = cOsdMenu::ProcessKey(key);
 
     switch (state) {
-	case osUser1:
-	    // not already suspended
-	    if (SuspendMode == NOT_SUSPENDED && !cSoftHdControl::Player) {
-		cControl::Launch(new cSoftHdControl);
-		cControl::Attach();
-		if (ConfigDetachFromMainMenu) {
-		    Suspend(1, 1, 0);
-		    SuspendMode = SUSPEND_DETACHED;
-		} else {
-		    Suspend(ConfigSuspendClose, ConfigSuspendClose,
-			ConfigSuspendX11);
-		    SuspendMode = SUSPEND_NORMAL;
-		}
+        case osUser1:
+            // not already suspended
+            if (SuspendMode == NOT_SUSPENDED && !cSoftHdControl::Player) {
+                cControl::Launch(new cSoftHdControl);
+                cControl::Attach();
+                if (ConfigDetachFromMainMenu) {
+                    Suspend(1, 1, 0);
+                    SuspendMode = SUSPEND_DETACHED;
+                } else {
+                    Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
+                    SuspendMode = SUSPEND_NORMAL;
+                }
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread osUser1");
-		cSoftOsdProvider::StopOpenGlThread();
+                dsyslog("[softhddev]stopping Ogl Thread osUser1");
+                cSoftOsdProvider::StopOpenGlThread();
 #endif
-		if (ShutdownHandler.GetUserInactiveTime()) {
-		    dsyslog("[softhddev]%s: set user inactive\n",
-			__FUNCTION__);
-		    ShutdownHandler.SetUserInactive();
-		}
-	    }
-	    return osEnd;
+                if (ShutdownHandler.GetUserInactiveTime()) {
+                    dsyslog("[softhddev]%s: set user inactive\n", __FUNCTION__);
+                    ShutdownHandler.SetUserInactive();
+                }
+            }
+            return osEnd;
 #ifdef USE_PIP
-	case osUser2:
-	    TogglePip();
-	    return osEnd;
-	case osUser4:
-	    PipNextAvailableChannel(1);
-	    return osEnd;
-	case osUser5:
-	    PipNextAvailableChannel(-1);
-	    return osEnd;
-	case osUser6:
-	    SwapPipChannels();
-	    return osEnd;
-	case osUser7:
-	    SwapPipPosition();
-	    return osEnd;
-	case osUser8:
-	    DelPip();
-	    PipChannelNr = 0;
-	    return osEnd;
+        case osUser2:
+            TogglePip();
+            return osEnd;
+        case osUser4:
+            PipNextAvailableChannel(1);
+            return osEnd;
+        case osUser5:
+            PipNextAvailableChannel(-1);
+            return osEnd;
+        case osUser6:
+            SwapPipChannels();
+            return osEnd;
+        case osUser7:
+            SwapPipPosition();
+            return osEnd;
+        case osUser8:
+            DelPip();
+            PipChannelNr = 0;
+            return osEnd;
 #endif
-	default:
-	    Create();
-	    break;
+        default:
+            Create();
+            break;
     }
     return state;
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	cDevice
+//  cDevice
 //////////////////////////////////////////////////////////////////////////////
 
 class cSoftHdDevice:public cDevice
@@ -2424,10 +2439,16 @@ class cSoftHdDevice:public cDevice
     cSoftHdDevice(void);
     virtual ~ cSoftHdDevice(void);
 #ifdef CUVID
-    virtual cString DeviceName(void) const { return "softhdcuvid"; }
+    virtual cString DeviceName(void) const
+    {
+        return "softhdcuvid";
+    }
 #endif
 #ifdef VAAPI
-    virtual cString DeviceName(void) const { return "softhdvaapi"; }
+    virtual cString DeviceName(void) const
+    {
+        return "softhdvaapi";
+    }
 #endif
     virtual bool HasDecoder(void) const;
     virtual bool CanReplay(void) const;
@@ -2517,18 +2538,18 @@ void cSoftHdDevice::MakePrimaryDevice(bool on)
 
     cDevice::MakePrimaryDevice(on);
     if (on) {
-		new cSoftOsdProvider();
+        new cSoftOsdProvider();
 
-		if (SuspendMode == SUSPEND_DETACHED) {
-			Resume();
-			SuspendMode = NOT_SUSPENDED;
-		}
+        if (SuspendMode == SUSPEND_DETACHED) {
+            Resume();
+            SuspendMode = NOT_SUSPENDED;
+        }
     } else if (SuspendMode == NOT_SUSPENDED) {
-		Suspend(1, 1, 0);
-		SuspendMode = SUSPEND_DETACHED;
+        Suspend(1, 1, 0);
+        SuspendMode = SUSPEND_DETACHED;
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread MakePrimaryDevice");
-		cSoftOsdProvider::StopOpenGlThread();
+        dsyslog("[softhddev]stopping Ogl Thread MakePrimaryDevice");
+        cSoftOsdProvider::StopOpenGlThread();
 #endif
     }
 }
@@ -2546,7 +2567,7 @@ cSpuDecoder *cSoftHdDevice::GetSpuDecoder(void)
     dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     if (!spuDecoder && IsPrimaryDevice()) {
-	spuDecoder = new cDvbSpuDecoder();
+        spuDecoder = new cDvbSpuDecoder();
     }
     return spuDecoder;
 }
@@ -2579,36 +2600,36 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode)
     dsyslog("[softhddev]%s: %d\n", __FUNCTION__, play_mode);
 
     switch (play_mode) {
-	case pmAudioVideo:
-	    break;
-	case pmAudioOnly:
-	case pmAudioOnlyBlack:
-	    break;
-	case pmVideoOnly:
-	    break;
-	case pmNone:
-	    break;
-	case pmExtern_THIS_SHOULD_BE_AVOIDED:
-	    dsyslog("[softhddev] play mode external\n");
-	    // FIXME: what if already suspended?
-	    Suspend(1, 1, 0);
-	    SuspendMode = SUSPEND_EXTERNAL;
+        case pmAudioVideo:
+            break;
+        case pmAudioOnly:
+        case pmAudioOnlyBlack:
+            break;
+        case pmVideoOnly:
+            break;
+        case pmNone:
+            break;
+        case pmExtern_THIS_SHOULD_BE_AVOIDED:
+            dsyslog("[softhddev] play mode external\n");
+            // FIXME: what if already suspended?
+            Suspend(1, 1, 0);
+            SuspendMode = SUSPEND_EXTERNAL;
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread pmExtern_THIS_SHOULD_BE_AVOIDED");
-		cSoftOsdProvider::StopOpenGlThread();
+            dsyslog("[softhddev]stopping Ogl Thread pmExtern_THIS_SHOULD_BE_AVOIDED");
+            cSoftOsdProvider::StopOpenGlThread();
 #endif
-    return true;
-	default:
-	    dsyslog("[softhddev] playmode not implemented... %d\n", play_mode);
-	    break;
+            return true;
+        default:
+            dsyslog("[softhddev] playmode not implemented... %d\n", play_mode);
+            break;
     }
 
     if (SuspendMode != NOT_SUSPENDED) {
-		if (SuspendMode != SUSPEND_EXTERNAL) {
-			return false;
-		}
-		Resume();
-		SuspendMode = NOT_SUSPENDED;
+        if (SuspendMode != SUSPEND_EXTERNAL) {
+            return false;
+        }
+        Resume();
+        SuspendMode = NOT_SUSPENDED;
     }
 
     return::SetPlayMode(play_mode);
@@ -2702,12 +2723,11 @@ void cSoftHdDevice::Mute(void)
 */
 void cSoftHdDevice::StillPicture(const uchar * data, int length)
 {
-    dsyslog("[softhddev]%s: %s %p %d\n", __FUNCTION__,
-	data[0] == 0x47 ? "ts" : "pes", data, length);
+    dsyslog("[softhddev]%s: %s %p %d\n", __FUNCTION__, data[0] == 0x47 ? "ts" : "pes", data, length);
 
-    if (data[0] == 0x47) {		// ts sync
-		cDevice::StillPicture(data, length);
-	return;
+    if (data[0] == 0x47) {              // ts sync
+        cDevice::StillPicture(data, length);
+        return;
     }
 
     ::StillPicture(data, length);
@@ -2722,8 +2742,7 @@ void cSoftHdDevice::StillPicture(const uchar * data, int length)
 **	@retval true	if ready
 **	@retval false	if busy
 */
-bool cSoftHdDevice::Poll(
-    __attribute__ ((unused)) cPoller & poller, int timeout_ms)
+bool cSoftHdDevice::Poll( __attribute__((unused)) cPoller & poller, int timeout_ms)
 {
     //dsyslog("[softhddev]%s: %d\n", __FUNCTION__, timeout_ms);
 
@@ -2748,8 +2767,7 @@ bool cSoftHdDevice::Flush(int timeout_ms)
 **	Sets the video display format to the given one (only useful if this
 **	device has an MPEG decoder).
 */
-void cSoftHdDevice:: SetVideoDisplayFormat(eVideoDisplayFormat
-    video_display_format)
+void cSoftHdDevice::SetVideoDisplayFormat(eVideoDisplayFormat video_display_format)
 {
     dsyslog("[softhddev]%s: %d\n", __FUNCTION__, video_display_format);
 
@@ -2759,10 +2777,10 @@ void cSoftHdDevice:: SetVideoDisplayFormat(eVideoDisplayFormat
 
     // called on every channel switch, no need to kill osd...
     if (last != video_display_format) {
-	last = video_display_format;
+        last = video_display_format;
 
-	::VideoSetDisplayFormat(video_display_format);
-	cSoftOsd::Dirty = 1;
+        ::VideoSetDisplayFormat(video_display_format);
+        cSoftOsd::Dirty = 1;
     }
 #endif
 }
@@ -2821,18 +2839,18 @@ int cSoftHdDevice::PlayAudio(const uchar * data, int length, uchar id)
     return::PlayAudio(data, length, id);
 }
 
-void cSoftHdDevice::SetAudioTrackDevice(
-    __attribute__ ((unused)) eTrackType type)
+void cSoftHdDevice::SetAudioTrackDevice( __attribute__((unused)) eTrackType type)
 {
     //dsyslog("[softhddev]%s:\n", __FUNCTION__);
 }
 
-void cSoftHdDevice::SetDigitalAudioDevice( __attribute__ ((unused)) bool on)
+void cSoftHdDevice::SetDigitalAudioDevice( __attribute__((unused))
+    bool on)
 {
     //dsyslog("[softhddev]%s: %s\n", __FUNCTION__, on ? "true" : "false");
 }
 
-void cSoftHdDevice::SetAudioChannelDevice( __attribute__ ((unused))
+void cSoftHdDevice::SetAudioChannelDevice( __attribute__((unused))
     int audio_channel)
 {
     //dsyslog("[softhddev]%s: %d\n", __FUNCTION__, audio_channel);
@@ -2914,16 +2932,15 @@ int cSoftHdDevice::PlayTsAudio(const uchar * data, int length)
 **	@param width	number of horizontal pixels in the frame
 **	@param height	number of vertical pixels in the frame
 */
-uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width,
-    int height)
+uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width, int height)
 {
-    dsyslog("[softhddev]%s: %d, %d, %d, %dx%d\n", __FUNCTION__, size, jpeg,	quality, width, height);
+    dsyslog("[softhddev]%s: %d, %d, %d, %dx%d\n", __FUNCTION__, size, jpeg, quality, width, height);
 
     if (SuspendMode != NOT_SUSPENDED) {
-		return NULL;
+        return NULL;
     }
-    if (quality < 0) {			// caller should care, but fix it
-		quality = 95;
+    if (quality < 0) {                  // caller should care, but fix it
+        quality = 95;
     }
 
     return::GrabImage(&size, jpeg, quality, width, height);
@@ -2938,8 +2955,8 @@ uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width,
 **
 **	@returns the real rectangle or cRect:Null if invalid.
 */
-cRect cSoftHdDevice::CanScaleVideo(const cRect & rect,
-    __attribute__ ((unused)) int alignment)
+cRect cSoftHdDevice::CanScaleVideo(const cRect & rect, __attribute__((unused))
+    int alignment)
 {
     return rect;
 }
@@ -2952,8 +2969,7 @@ cRect cSoftHdDevice::CanScaleVideo(const cRect & rect,
 void cSoftHdDevice::ScaleVideo(const cRect & rect)
 {
 #ifdef OSD_DEBUG
-    dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, rect.Width(),
-	rect.Height(), rect.X(), rect.Y());
+    dsyslog("[softhddev]%s: %dx%d%+d%+d\n", __FUNCTION__, rect.Width(), rect.Height(), rect.X(), rect.Y());
 #endif
     ::ScaleVideo(rect.X(), rect.Y(), rect.Width(), rect.Height());
 }
@@ -2963,14 +2979,13 @@ void cSoftHdDevice::ScaleVideo(const cRect & rect)
 /**
 **	Call rgb to jpeg for C Plugin.
 */
-extern "C" uint8_t * CreateJpeg(uint8_t * image, int *size, int quality,
-    int width, int height)
+extern "C" uint8_t * CreateJpeg(uint8_t * image, int *size, int quality, int width, int height)
 {
-    return (uint8_t *) RgbToJpeg((uchar *) image, width, height, *size,	quality);
+    return (uint8_t *) RgbToJpeg((uchar *) image, width, height, *size, quality);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//	cPlugin
+//  cPlugin
 //////////////////////////////////////////////////////////////////////////////
 
 class cPluginSoftHdDevice:public cPlugin
@@ -3082,29 +3097,27 @@ bool cPluginSoftHdDevice::Start(void)
     //dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     if (!MyDevice->IsPrimaryDevice()) {
-	isyslog("[softhddev] softhddevice %d is not the primary device!",
-	    MyDevice->DeviceNumber());
-	if (ConfigMakePrimary) {
-	    // Must be done in the main thread
-	    dsyslog("[softhddev] makeing softhddevice %d the primary device!",
-		MyDevice->DeviceNumber());
-	    DoMakePrimary = MyDevice->DeviceNumber() + 1;
-	}
+        isyslog("[softhddev] softhddevice %d is not the primary device!", MyDevice->DeviceNumber());
+        if (ConfigMakePrimary) {
+            // Must be done in the main thread
+            dsyslog("[softhddev] makeing softhddevice %d the primary device!", MyDevice->DeviceNumber());
+            DoMakePrimary = MyDevice->DeviceNumber() + 1;
+        }
     }
 
     switch (::Start()) {
-	case 1:
-	    //cControl::Launch(new cSoftHdControl);
-	    //cControl::Attach();
-	    // FIXME: VDR overwrites the control
-	    SuspendMode = SUSPEND_NORMAL;
-	    break;
-	case -1:
-	    SuspendMode = SUSPEND_DETACHED;
-	    break;
-	case 0:
-	default:
-	    break;
+        case 1:
+            //cControl::Launch(new cSoftHdControl);
+            //cControl::Attach();
+            // FIXME: VDR overwrites the control
+            SuspendMode = SUSPEND_NORMAL;
+            break;
+        case -1:
+            SuspendMode = SUSPEND_DETACHED;
+            break;
+        case 0:
+        default:
+            break;
     }
 
     return true;
@@ -3131,14 +3144,14 @@ void cPluginSoftHdDevice::Housekeeping(void)
     // check if user is inactive, automatic enter suspend mode
     // FIXME: cControl prevents shutdown, disable this until fixed
     if (0 && SuspendMode == NOT_SUSPENDED && ShutdownHandler.IsUserInactive()) {
-		// don't overwrite already suspended suspend mode
-		cControl::Launch(new cSoftHdControl);
-		cControl::Attach();
-		Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
-		SuspendMode = SUSPEND_NORMAL;
+        // don't overwrite already suspended suspend mode
+        cControl::Launch(new cSoftHdControl);
+        cControl::Attach();
+        Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
+        SuspendMode = SUSPEND_NORMAL;
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread Housekeeping");
-		cSoftOsdProvider::StopOpenGlThread();
+        dsyslog("[softhddev]stopping Ogl Thread Housekeeping");
+        cSoftOsdProvider::StopOpenGlThread();
 #endif
     }
 
@@ -3174,10 +3187,9 @@ void cPluginSoftHdDevice::MainThreadHook(void)
     //dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     if (DoMakePrimary) {
-	dsyslog("[softhddev]%s: switching primary device to %d\n",
-	    __FUNCTION__, DoMakePrimary);
-	cDevice::SetPrimaryDevice(DoMakePrimary);
-	DoMakePrimary = 0;
+        dsyslog("[softhddev]%s: switching primary device to %d\n", __FUNCTION__, DoMakePrimary);
+        cDevice::SetPrimaryDevice(DoMakePrimary);
+        DoMakePrimary = 0;
     }
 
     ::MainThreadHook();
@@ -3208,335 +3220,335 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
     //dsyslog("[softhddev]%s: '%s' = '%s'\n", __FUNCTION__, name, value);
 
     if (!strcasecmp(name, "MakePrimary")) {
-	ConfigMakePrimary = atoi(value);
-	return true;
+        ConfigMakePrimary = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "HideMainMenuEntry")) {
-	ConfigHideMainMenuEntry = atoi(value);
-	return true;
+        ConfigHideMainMenuEntry = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "DetachFromMainMenu")) {
-	ConfigDetachFromMainMenu = atoi(value);
-	return true;
+        ConfigDetachFromMainMenu = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "Osd.Width")) {
-	ConfigOsdWidth = atoi(value);
-	VideoSetOsdSize(ConfigOsdWidth, ConfigOsdHeight);
-	return true;
+        ConfigOsdWidth = atoi(value);
+        VideoSetOsdSize(ConfigOsdWidth, ConfigOsdHeight);
+        return true;
     }
     if (!strcasecmp(name, "Osd.Height")) {
-	ConfigOsdHeight = atoi(value);
-	VideoSetOsdSize(ConfigOsdWidth, ConfigOsdHeight);
-	return true;
+        ConfigOsdHeight = atoi(value);
+        VideoSetOsdSize(ConfigOsdWidth, ConfigOsdHeight);
+        return true;
     }
     if (!strcasecmp(name, "Suspend.Close")) {
-	ConfigSuspendClose = atoi(value);
-	return true;
+        ConfigSuspendClose = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "Suspend.X11")) {
-	ConfigSuspendX11 = atoi(value);
-	return true;
+        ConfigSuspendX11 = atoi(value);
+        return true;
     }
 
     if (!strcasecmp(name, "Video4to3DisplayFormat")) {
-	Config4to3DisplayFormat = atoi(value);
-	VideoSet4to3DisplayFormat(Config4to3DisplayFormat);
-	return true;
+        Config4to3DisplayFormat = atoi(value);
+        VideoSet4to3DisplayFormat(Config4to3DisplayFormat);
+        return true;
     }
     if (!strcasecmp(name, "VideoOtherDisplayFormat")) {
-	ConfigOtherDisplayFormat = atoi(value);
-	VideoSetOtherDisplayFormat(ConfigOtherDisplayFormat);
-	return true;
+        ConfigOtherDisplayFormat = atoi(value);
+        VideoSetOtherDisplayFormat(ConfigOtherDisplayFormat);
+        return true;
     }
     if (!strcasecmp(name, "Background")) {
-	VideoSetBackground(ConfigVideoBackground = strtoul(value, NULL, 0));
-	return true;
+        VideoSetBackground(ConfigVideoBackground = strtoul(value, NULL, 0));
+        return true;
     }
     if (!strcasecmp(name, "StudioLevels")) {
-	VideoSetStudioLevels(ConfigVideoStudioLevels = atoi(value));
-	return true;
+        VideoSetStudioLevels(ConfigVideoStudioLevels = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "60HzMode")) {
-	VideoSet60HzMode(ConfigVideo60HzMode = atoi(value));
-	return true;
+        VideoSet60HzMode(ConfigVideo60HzMode = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "SoftStartSync")) {
-	VideoSetSoftStartSync(ConfigVideoSoftStartSync = atoi(value));
-	return true;
+        VideoSetSoftStartSync(ConfigVideoSoftStartSync = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "BlackPicture")) {
-	VideoSetBlackPicture(ConfigVideoBlackPicture = atoi(value));
-	return true;
+        VideoSetBlackPicture(ConfigVideoBlackPicture = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "ClearOnSwitch")) {
-	ConfigVideoClearOnSwitch = atoi(value);
-	return true;
+        ConfigVideoClearOnSwitch = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "Brightness")) {
-		int i;
-		i = atoi(value);
-		ConfigVideoBrightness = i>100?100:i;
-		VideoSetBrightness(ConfigVideoBrightness);
-	return true;
+        int i;
+
+        i = atoi(value);
+        ConfigVideoBrightness = i > 100 ? 100 : i;
+        VideoSetBrightness(ConfigVideoBrightness);
+        return true;
     }
     if (!strcasecmp(name, "Contrast")) {
-		int i;
-		i = atoi(value);
-		ConfigVideoContrast = i>100?100:i;
-		VideoSetContrast(ConfigVideoContrast);
-	return true;
+        int i;
+
+        i = atoi(value);
+        ConfigVideoContrast = i > 100 ? 100 : i;
+        VideoSetContrast(ConfigVideoContrast);
+        return true;
     }
     if (!strcasecmp(name, "Saturation")) {
-		int i;
-		i = atoi(value);
-		ConfigVideoSaturation = i>100?100:i;
-		VideoSetSaturation(ConfigVideoSaturation);
-	return true;
+        int i;
+
+        i = atoi(value);
+        ConfigVideoSaturation = i > 100 ? 100 : i;
+        VideoSetSaturation(ConfigVideoSaturation);
+        return true;
     }
-	if (!strcasecmp(name, "Gamma")) {
-		int i;
-		i = atoi(value);
-		ConfigGamma = i>100?100:i;
-	VideoSetGamma(ConfigGamma);
-	return true;
+    if (!strcasecmp(name, "Gamma")) {
+        int i;
+
+        i = atoi(value);
+        ConfigGamma = i > 100 ? 100 : i;
+        VideoSetGamma(ConfigGamma);
+        return true;
     }
-	if (!strcasecmp(name, "TargetColorSpace")) {
-	VideoSetTargetColor(ConfigTargetColorSpace = atoi(value));
-	return true;
+    if (!strcasecmp(name, "TargetColorSpace")) {
+        VideoSetTargetColor(ConfigTargetColorSpace = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "Hue")) {
-	VideoSetHue(ConfigVideoHue = atoi(value));
-	return true;
+        VideoSetHue(ConfigVideoHue = atoi(value));
+        return true;
     }
-	if (!strcasecmp(name, "CBlindness")) {
-		VideoSetColorBlindness(ConfigColorBlindness = atoi(value));
-	return true;
+    if (!strcasecmp(name, "CBlindness")) {
+        VideoSetColorBlindness(ConfigColorBlindness = atoi(value));
+        return true;
     }
-	if (!strcasecmp(name, "CBlindnessFaktor")) {
-		VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor = atoi(value));
-	return true;
+    if (!strcasecmp(name, "CBlindnessFaktor")) {
+        VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor = atoi(value));
+        return true;
     }
 #if 0
-	if (!strcasecmp(name, "ScalerTest")) {
-		VideoSetScalerTest(ConfigScalerTest = atoi(value));
-		return true;
+    if (!strcasecmp(name, "ScalerTest")) {
+        VideoSetScalerTest(ConfigScalerTest = atoi(value));
+        return true;
     }
 #endif
     for (i = 0; i < RESOLUTIONS; ++i) {
-		char buf[128];
+        char buf[128];
 
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoScaling[i] = atoi(value);
-			VideoSetScaling(ConfigVideoScaling);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoDeinterlace[i] = atoi(value);
-			VideoSetDeinterlace(ConfigVideoDeinterlace);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i],
-			"SkipChromaDeinterlace");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoSkipChromaDeinterlace[i] = atoi(value);
-			VideoSetSkipChromaDeinterlace(ConfigVideoSkipChromaDeinterlace);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoInverseTelecine[i] = atoi(value);
-			VideoSetInverseTelecine(ConfigVideoInverseTelecine);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoDenoise[i] = atoi(value);
-			VideoSetDenoise(ConfigVideoDenoise);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoSharpen[i] = atoi(value);
-			VideoSetSharpen(ConfigVideoSharpen);
-			return true;
-		}
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Scaling");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoScaling[i] = atoi(value);
+            VideoSetScaling(ConfigVideoScaling);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Deinterlace");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoDeinterlace[i] = atoi(value);
+            VideoSetDeinterlace(ConfigVideoDeinterlace);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "SkipChromaDeinterlace");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoSkipChromaDeinterlace[i] = atoi(value);
+            VideoSetSkipChromaDeinterlace(ConfigVideoSkipChromaDeinterlace);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "InverseTelecine");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoInverseTelecine[i] = atoi(value);
+            VideoSetInverseTelecine(ConfigVideoInverseTelecine);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Denoise");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoDenoise[i] = atoi(value);
+            VideoSetDenoise(ConfigVideoDenoise);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "Sharpen");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoSharpen[i] = atoi(value);
+            VideoSetSharpen(ConfigVideoSharpen);
+            return true;
+        }
 
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoCutTopBottom[i] = atoi(value);
-			VideoSetCutTopBottom(ConfigVideoCutTopBottom);
-			return true;
-		}
-		snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
-		if (!strcasecmp(name, buf)) {
-			ConfigVideoCutLeftRight[i] = atoi(value);
-			VideoSetCutLeftRight(ConfigVideoCutLeftRight);
-			return true;
-		}
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutTopBottom");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoCutTopBottom[i] = atoi(value);
+            VideoSetCutTopBottom(ConfigVideoCutTopBottom);
+            return true;
+        }
+        snprintf(buf, sizeof(buf), "%s.%s", Resolution[i], "CutLeftRight");
+        if (!strcasecmp(name, buf)) {
+            ConfigVideoCutLeftRight[i] = atoi(value);
+            VideoSetCutLeftRight(ConfigVideoCutLeftRight);
+            return true;
+        }
     }
 
     if (!strcasecmp(name, "AutoCrop.Interval")) {
-	VideoSetAutoCrop(ConfigAutoCropInterval =
-	    atoi(value), ConfigAutoCropDelay, ConfigAutoCropTolerance);
-	ConfigAutoCropEnabled = ConfigAutoCropInterval != 0;
-	return true;
+        VideoSetAutoCrop(ConfigAutoCropInterval = atoi(value), ConfigAutoCropDelay, ConfigAutoCropTolerance);
+        ConfigAutoCropEnabled = ConfigAutoCropInterval != 0;
+        return true;
     }
     if (!strcasecmp(name, "AutoCrop.Delay")) {
-	VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay =
-	    atoi(value), ConfigAutoCropTolerance);
-	return true;
+        VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay = atoi(value), ConfigAutoCropTolerance);
+        return true;
     }
     if (!strcasecmp(name, "AutoCrop.Tolerance")) {
-	VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay,
-	    ConfigAutoCropTolerance = atoi(value));
-	return true;
+        VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance = atoi(value));
+        return true;
     }
 
     if (!strcasecmp(name, "AudioDelay")) {
-	VideoSetAudioDelay(ConfigVideoAudioDelay = atoi(value));
-	return true;
+        VideoSetAudioDelay(ConfigVideoAudioDelay = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "AudioDrift")) {
-	CodecSetAudioDrift(ConfigAudioDrift = atoi(value));
-	return true;
+        CodecSetAudioDrift(ConfigAudioDrift = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "AudioPassthrough")) {
-	int i;
+        int i;
 
-	i = atoi(value);
-	AudioPassthroughState = i > 0;
-	ConfigAudioPassthrough = abs(i);
-	if (AudioPassthroughState) {
-	    CodecSetAudioPassthrough(ConfigAudioPassthrough);
-	} else {
-	    CodecSetAudioPassthrough(0);
-	}
-	return true;
+        i = atoi(value);
+        AudioPassthroughState = i > 0;
+        ConfigAudioPassthrough = abs(i);
+        if (AudioPassthroughState) {
+            CodecSetAudioPassthrough(ConfigAudioPassthrough);
+        } else {
+            CodecSetAudioPassthrough(0);
+        }
+        return true;
     }
     if (!strcasecmp(name, "AudioDownmix")) {
-	CodecSetAudioDownmix(ConfigAudioDownmix = atoi(value));
-	return true;
+        CodecSetAudioDownmix(ConfigAudioDownmix = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "AudioSoftvol")) {
-	AudioSetSoftvol(ConfigAudioSoftvol = atoi(value));
-	return true;
+        AudioSetSoftvol(ConfigAudioSoftvol = atoi(value));
+        return true;
     }
     if (!strcasecmp(name, "AudioNormalize")) {
-	ConfigAudioNormalize = atoi(value);
-	AudioSetNormalize(ConfigAudioNormalize, ConfigAudioMaxNormalize);
-	return true;
+        ConfigAudioNormalize = atoi(value);
+        AudioSetNormalize(ConfigAudioNormalize, ConfigAudioMaxNormalize);
+        return true;
     }
     if (!strcasecmp(name, "AudioMaxNormalize")) {
-	ConfigAudioMaxNormalize = atoi(value);
-	AudioSetNormalize(ConfigAudioNormalize, ConfigAudioMaxNormalize);
-	return true;
+        ConfigAudioMaxNormalize = atoi(value);
+        AudioSetNormalize(ConfigAudioNormalize, ConfigAudioMaxNormalize);
+        return true;
     }
     if (!strcasecmp(name, "AudioCompression")) {
-	ConfigAudioCompression = atoi(value);
-	AudioSetCompression(ConfigAudioCompression, ConfigAudioMaxCompression);
-	return true;
+        ConfigAudioCompression = atoi(value);
+        AudioSetCompression(ConfigAudioCompression, ConfigAudioMaxCompression);
+        return true;
     }
     if (!strcasecmp(name, "AudioMaxCompression")) {
-	ConfigAudioMaxCompression = atoi(value);
-	AudioSetCompression(ConfigAudioCompression, ConfigAudioMaxCompression);
-	return true;
+        ConfigAudioMaxCompression = atoi(value);
+        AudioSetCompression(ConfigAudioCompression, ConfigAudioMaxCompression);
+        return true;
     }
     if (!strcasecmp(name, "AudioStereoDescent")) {
-	ConfigAudioStereoDescent = atoi(value);
-	AudioSetStereoDescent(ConfigAudioStereoDescent);
-	return true;
+        ConfigAudioStereoDescent = atoi(value);
+        AudioSetStereoDescent(ConfigAudioStereoDescent);
+        return true;
     }
     if (!strcasecmp(name, "AudioBufferTime")) {
-	ConfigAudioBufferTime = atoi(value);
-	AudioSetBufferTime(ConfigAudioBufferTime);
-	return true;
+        ConfigAudioBufferTime = atoi(value);
+        AudioSetBufferTime(ConfigAudioBufferTime);
+        return true;
     }
     if (!strcasecmp(name, "AudioAutoAES")) {
-	ConfigAudioAutoAES = atoi(value);
-	AudioSetAutoAES(ConfigAudioAutoAES);
-	return true;
+        ConfigAudioAutoAES = atoi(value);
+        AudioSetAutoAES(ConfigAudioAutoAES);
+        return true;
     }
 #ifdef USE_PIP
     if (!strcasecmp(name, "pip.X")) {
-	ConfigPipX = atoi(value);
-	return true;
+        ConfigPipX = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Y")) {
-	ConfigPipY = atoi(value);
-	return true;
+        ConfigPipY = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Width")) {
-	ConfigPipWidth = atoi(value);
-	return true;
+        ConfigPipWidth = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Height")) {
-	ConfigPipHeight = atoi(value);
-	return true;
+        ConfigPipHeight = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.VideoX")) {
-	ConfigPipVideoX = atoi(value);
-	return true;
+        ConfigPipVideoX = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.VideoY")) {
-	ConfigPipVideoY = atoi(value);
-	return true;
+        ConfigPipVideoY = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.VideoWidth")) {
-	ConfigPipVideoWidth = atoi(value);
-	return true;
+        ConfigPipVideoWidth = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.VideoHeight")) {
-	ConfigPipVideoHeight = atoi(value);
-	return true;
+        ConfigPipVideoHeight = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.X")) {
-	ConfigPipAltX = atoi(value);
-	return true;
+        ConfigPipAltX = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.Y")) {
-	ConfigPipAltY = atoi(value);
-	return true;
+        ConfigPipAltY = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.Width")) {
-	ConfigPipAltWidth = atoi(value);
-	return true;
+        ConfigPipAltWidth = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.Height")) {
-	ConfigPipAltHeight = atoi(value);
-	return true;
+        ConfigPipAltHeight = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.VideoX")) {
-	ConfigPipAltVideoX = atoi(value);
-	return true;
+        ConfigPipAltVideoX = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.VideoY")) {
-	ConfigPipAltVideoY = atoi(value);
-	return true;
+        ConfigPipAltVideoY = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.VideoWidth")) {
-	ConfigPipAltVideoWidth = atoi(value);
-	return true;
+        ConfigPipAltVideoWidth = atoi(value);
+        return true;
     }
     if (!strcasecmp(name, "pip.Alt.VideoHeight")) {
-	ConfigPipAltVideoHeight = atoi(value);
-	return true;
+        ConfigPipAltVideoHeight = atoi(value);
+        return true;
     }
 #endif
 
 #ifdef USE_SCREENSAVER
-		if (!strcasecmp(name, "EnableDPMSatBlackScreen")) {
-		ConfigEnableDPMSatBlackScreen = atoi(value);
-		SetDPMSatBlackScreen(ConfigEnableDPMSatBlackScreen);
-		return true;
+    if (!strcasecmp(name, "EnableDPMSatBlackScreen")) {
+        ConfigEnableDPMSatBlackScreen = atoi(value);
+        SetDPMSatBlackScreen(ConfigEnableDPMSatBlackScreen);
+        return true;
     }
 #endif
 
 #ifdef USE_OPENGLOSD
     if (!strcasecmp(name, "MaxSizeGPUImageCache")) {
-		ConfigMaxSizeGPUImageCache = atoi(value);
-		return true;
+        ConfigMaxSizeGPUImageCache = atoi(value);
+        return true;
     }
 #endif
 
@@ -3554,70 +3566,69 @@ bool cPluginSoftHdDevice::Service(const char *id, void *data)
 {
     //dsyslog("[softhddev]%s: id %s\n", __FUNCTION__, id);
     if (strcmp(id, OSD_3DMODE_SERVICE) == 0) {
-		SoftHDDevice_Osd3DModeService_v1_0_t *r;
+        SoftHDDevice_Osd3DModeService_v1_0_t *r;
 
-		r = (SoftHDDevice_Osd3DModeService_v1_0_t *) data;
-		VideoSetOsd3DMode(r->Mode);
-		return true;
+        r = (SoftHDDevice_Osd3DModeService_v1_0_t *) data;
+        VideoSetOsd3DMode(r->Mode);
+        return true;
     }
 
     if (strcmp(id, ATMO_GRAB_SERVICE) == 0) {
-		int width;
-		int height;
+        int width;
+        int height;
 
-		if (data == NULL) {
-			return true;
-		}
+        if (data == NULL) {
+            return true;
+        }
 
-		if (SuspendMode != NOT_SUSPENDED) {
-			return false;
-		}
+        if (SuspendMode != NOT_SUSPENDED) {
+            return false;
+        }
 
-		SoftHDDevice_AtmoGrabService_v1_0_t *r =
-			(SoftHDDevice_AtmoGrabService_v1_0_t *) data;
-		if (r->structSize != sizeof(SoftHDDevice_AtmoGrabService_v1_0_t)
-			|| r->analyseSize < 64 || r->analyseSize > 256
-			|| r->clippedOverscan < 0 || r->clippedOverscan > 200) {
-			return false;
-		}
+        SoftHDDevice_AtmoGrabService_v1_0_t *r = (SoftHDDevice_AtmoGrabService_v1_0_t *) data;
 
-		width = r->analyseSize * -1;	// Internal marker for Atmo grab service
-		height = r->clippedOverscan;
+        if (r->structSize != sizeof(SoftHDDevice_AtmoGrabService_v1_0_t)
+            || r->analyseSize < 64 || r->analyseSize > 256 || r->clippedOverscan < 0 || r->clippedOverscan > 200) {
+            return false;
+        }
 
-		r->img = VideoGrabService(&r->imgSize, &width, &height);
-		if (r->img == NULL) {
-			return false;
-		}
-		r->imgType = GRAB_IMG_RGBA_FORMAT_B8G8R8A8;
-		r->width = width;
-		r->height = height;
-		return true;
+        width = r->analyseSize * -1;    // Internal marker for Atmo grab service
+        height = r->clippedOverscan;
+
+        r->img = VideoGrabService(&r->imgSize, &width, &height);
+        if (r->img == NULL) {
+            return false;
+        }
+        r->imgType = GRAB_IMG_RGBA_FORMAT_B8G8R8A8;
+        r->width = width;
+        r->height = height;
+        return true;
     }
 
     if (strcmp(id, ATMO1_GRAB_SERVICE) == 0) {
-		SoftHDDevice_AtmoGrabService_v1_1_t *r;
+        SoftHDDevice_AtmoGrabService_v1_1_t *r;
 
-		if (!data) {
-			return true;
-		}
+        if (!data) {
+            return true;
+        }
 
-		if (SuspendMode != NOT_SUSPENDED) {
-			return false;
-		}
+        if (SuspendMode != NOT_SUSPENDED) {
+            return false;
+        }
 
-		r = (SoftHDDevice_AtmoGrabService_v1_1_t *) data;
-		r->img = VideoGrabService(&r->size, &r->width, &r->height);
-		if (!r->img) {
-			return false;
-		}
-		return true;
+        r = (SoftHDDevice_AtmoGrabService_v1_1_t *) data;
+        r->img = VideoGrabService(&r->size, &r->width, &r->height);
+        if (!r->img) {
+            return false;
+        }
+        return true;
     }
 
     return false;
 }
 
 //----------------------------------------------------------------------------
-//	cPlugin SVDRP
+//  cPlugin SVDRP
 //----------------------------------------------------------------------------
 
 /**
@@ -3625,59 +3636,42 @@ bool cPluginSoftHdDevice::Service(const char *id, void *data)
 **	FIXME: translation?
 */
 static const char *SVDRPHelpText[] = {
-    "SUSP\n" "\040   Suspend plugin.\n\n"
-	"    The plugin is suspended to save energie. Depending on the setup\n"
-	"    'softhddevice.Suspend.Close = 0' only the video and audio output\n"
-	"    is stopped or with 'softhddevice.Suspend.Close = 1' the video\n"
-	"    and audio devices are closed.\n"
-	"    If 'softhddevice.Suspend.X11 = 1' is set and the X11 server was\n"
-	"    started by the plugin, the X11 server would also be closed.\n"
-	"    (Stopping X11 while suspended isn't supported yet)\n",
-    "RESU\n" "\040   Resume plugin.\n\n"
-	"    Resume the suspended plugin. The plugin could be suspended by\n"
-	"    the command line option '-s' or by a previous SUSP command.\n"
-	"    If the x11 server was stopped by the plugin, it will be\n"
-	"    restarted.",
-    "DETA\n" "\040   Detach plugin.\n\n"
-	"    The plugin will be detached from the audio, video and DVB\n"
-	"    devices.  Other programs or plugins can use them now.\n",
+    "SUSP\n" "\040   Suspend plugin.\n\n" "    The plugin is suspended to save energie. Depending on the setup\n"
+        "    'softhddevice.Suspend.Close = 0' only the video and audio output\n"
+        "    is stopped or with 'softhddevice.Suspend.Close = 1' the video\n" "	   and audio devices are closed.\n"
+        "    If 'softhddevice.Suspend.X11 = 1' is set and the X11 server was\n"
+        "    started by the plugin, the X11 server would also be closed.\n"
+        "    (Stopping X11 while suspended isn't supported yet)\n",
+    "RESU\n" "\040   Resume plugin.\n\n" "    Resume the suspended plugin. The plugin could be suspended by\n"
+        "    the command line option '-s' or by a previous SUSP command.\n"
+        "    If the x11 server was stopped by the plugin, it will be\n" "    restarted.",
+    "DETA\n" "\040   Detach plugin.\n\n" "    The plugin will be detached from the audio, video and DVB\n"
+        "    devices.  Other programs or plugins can use them now.\n",
     "ATTA <-d display> <-a audio> <-p pass>\n" "    Attach plugin.\n\n"
-	"    Attach the plugin to audio, video and DVB devices. Use:\n"
-	"    -d display\tdisplay of x11 server (fe. :0.0)\n"
-	"    -a audio\taudio device (fe. alsa: hw:0,0 oss: /dev/dsp)\n"
-	"    -p pass\t\taudio device for pass-through (hw:0,1 or /dev/dsp1)\n",
+        "    Attach the plugin to audio, video and DVB devices. Use:\n"
+        "    -d display\tdisplay of x11 server (fe. :0.0)\n"
+        "    -a audio\taudio device (fe. alsa: hw:0,0 oss: /dev/dsp)\n"
+        "    -p pass\t\taudio device for pass-through (hw:0,1 or /dev/dsp1)\n",
     "PRIM <n>\n" "    Make <n> the primary device.\n\n"
-	"    <n> is the number of device. Without number softhddevice becomes\n"
-	"    the primary device. If becoming primary, the plugin is attached\n"
-	"    to the devices. If loosing primary, the plugin is detached from\n"
-	"    the devices.",
-    "HOTK key\n" "    Execute hotkey.\n\n"
-	"    key is the hotkey number, following are supported:\n"
-	"    10: disable audio pass-through\n"
-	"    11: enable audio pass-through\n"
-	"    12: toggle audio pass-through\n"
-	"    13: decrease audio delay by 10ms\n"
-	"    14: increase audio delay by 10ms\n" "    15: toggle ac3 mixdown\n"
-	"    20: disable fullscreen\n\040   21: enable fullscreen\n"
-	"    22: toggle fullscreen\n"
-	"    23: disable auto-crop\n\040   24: enable auto-crop\n"
-	"    25: toggle auto-crop\n"
-	"    30: stretch 4:3 to display\n\040	31: pillar box 4:3 in display\n"
-	"    32: center cut-out 4:3 to display\n"
-	"    39: rotate 4:3 to display zoom mode\n"
-	"    40: stretch other aspect ratios to display\n"
-	"    41: letter box other aspect ratios in display\n"
-	"    42: center cut-out other aspect ratios to display\n"
-	"    49: rotate other aspect ratios to display zoom mode\n",
-    "STAT\n" "\040   Display SuspendMode of the plugin.\n\n"
-	"    reply code is 910 + SuspendMode\n"
-	"    SUSPEND_EXTERNAL == -1  (909)\n"
-	"    NOT_SUSPENDED    ==  0  (910)\n"
-	"    SUSPEND_NORMAL   ==  1  (911)\n"
-	"    SUSPEND_DETACHED ==  2  (912)\n",
-    "RAIS\n" "\040   Raise softhddevice window\n\n"
-	"    If Xserver is not started by softhddevice, the window which\n"
-	"    contains the softhddevice frontend will be raised to the front.\n",
+        "    <n> is the number of device. Without number softhddevice becomes\n"
+        "    the primary device. If becoming primary, the plugin is attached\n"
+        "    to the devices. If loosing primary, the plugin is detached from\n" "    the devices.",
+    "HOTK key\n" "    Execute hotkey.\n\n" "	key is the hotkey number, following are supported:\n"
+        "    10: disable audio pass-through\n" "    11: enable audio pass-through\n"
+        "    12: toggle audio pass-through\n" "	   13: decrease audio delay by 10ms\n"
+        "    14: increase audio delay by 10ms\n" "    15: toggle ac3 mixdown\n"
+        "    20: disable fullscreen\n\040   21: enable fullscreen\n" "	  22: toggle fullscreen\n"
+        "    23: disable auto-crop\n\040   24: enable auto-crop\n" "	25: toggle auto-crop\n"
+        "    30: stretch 4:3 to display\n\040	31: pillar box 4:3 in display\n"
+        "    32: center cut-out 4:3 to display\n" "    39: rotate 4:3 to display zoom mode\n"
+        "    40: stretch other aspect ratios to display\n" "	41: letter box other aspect ratios in display\n"
+        "    42: center cut-out other aspect ratios to display\n"
+        "    49: rotate other aspect ratios to display zoom mode\n",
+    "STAT\n" "\040   Display SuspendMode of the plugin.\n\n" "	  reply code is 910 + SuspendMode\n"
+        "    SUSPEND_EXTERNAL == -1  (909)\n" "	   NOT_SUSPENDED    ==	0  (910)\n"
+        "    SUSPEND_NORMAL   ==  1  (911)\n" "	   SUSPEND_DETACHED ==	2  (912)\n",
+    "RAIS\n" "\040   Raise softhddevice window\n\n" "	 If Xserver is not started by softhddevice, the window which\n"
+        "    contains the softhddevice frontend will be raised to the front.\n",
     NULL
 };
 
@@ -3699,183 +3693,183 @@ const char **cPluginSoftHdDevice::SVDRPHelpPages(void)
 **	@param option		all command arguments
 **	@param reply_code	reply code
 */
-cString cPluginSoftHdDevice::SVDRPCommand(const char *command,
-    const char *option, __attribute__ ((unused)) int &reply_code)
+cString cPluginSoftHdDevice::SVDRPCommand(const char *command, const char *option, __attribute__((unused))
+    int &reply_code)
 {
     if (!strcasecmp(command, "STAT")) {
-	reply_code = 910 + SuspendMode;
-	switch (SuspendMode) {
-	    case SUSPEND_EXTERNAL:
-		return "SuspendMode is SUSPEND_EXTERNAL";
-	    case NOT_SUSPENDED:
-		return "SuspendMode is NOT_SUSPENDED";
-	    case SUSPEND_NORMAL:
-		return "SuspendMode is SUSPEND_NORMAL";
-	    case SUSPEND_DETACHED:
-		return "SuspendMode is SUSPEND_DETACHED";
-	}
+        reply_code = 910 + SuspendMode;
+        switch (SuspendMode) {
+            case SUSPEND_EXTERNAL:
+                return "SuspendMode is SUSPEND_EXTERNAL";
+            case NOT_SUSPENDED:
+                return "SuspendMode is NOT_SUSPENDED";
+            case SUSPEND_NORMAL:
+                return "SuspendMode is SUSPEND_NORMAL";
+            case SUSPEND_DETACHED:
+                return "SuspendMode is SUSPEND_DETACHED";
+        }
     }
     if (!strcasecmp(command, "SUSP")) {
-		if (cSoftHdControl::Player) {	// already suspended
-			return "SoftHdDevice already suspended";
-		}
-		if (SuspendMode != NOT_SUSPENDED) {
-			return "SoftHdDevice already detached";
-		}
+        if (cSoftHdControl::Player) {   // already suspended
+            return "SoftHdDevice already suspended";
+        }
+        if (SuspendMode != NOT_SUSPENDED) {
+            return "SoftHdDevice already detached";
+        }
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread svdrp STAT");
-		cSoftOsdProvider::StopOpenGlThread();
+        dsyslog("[softhddev]stopping Ogl Thread svdrp STAT");
+        cSoftOsdProvider::StopOpenGlThread();
 #endif
-		cControl::Launch(new cSoftHdControl);
-		cControl::Attach();
-		Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
-		SuspendMode = SUSPEND_NORMAL;
-		return "SoftHdDevice is suspended";
+        cControl::Launch(new cSoftHdControl);
+        cControl::Attach();
+        Suspend(ConfigSuspendClose, ConfigSuspendClose, ConfigSuspendX11);
+        SuspendMode = SUSPEND_NORMAL;
+        return "SoftHdDevice is suspended";
     }
     if (!strcasecmp(command, "RESU")) {
-		if (SuspendMode == NOT_SUSPENDED) {
-			return "SoftHdDevice already resumed";
-		}
-		if (SuspendMode != SUSPEND_NORMAL) {
-			return "can't resume SoftHdDevice";
-		}
-		if (ShutdownHandler.GetUserInactiveTime()) {
-			ShutdownHandler.SetUserInactiveTimeout();
-		}
-		if (cSoftHdControl::Player) {	// suspended
-			cControl::Shutdown();	// not need, if not suspended
-		}
-		Resume();
-		SuspendMode = NOT_SUSPENDED;
-		return "SoftHdDevice is resumed";
+        if (SuspendMode == NOT_SUSPENDED) {
+            return "SoftHdDevice already resumed";
+        }
+        if (SuspendMode != SUSPEND_NORMAL) {
+            return "can't resume SoftHdDevice";
+        }
+        if (ShutdownHandler.GetUserInactiveTime()) {
+            ShutdownHandler.SetUserInactiveTimeout();
+        }
+        if (cSoftHdControl::Player) {   // suspended
+            cControl::Shutdown();       // not need, if not suspended
+        }
+        Resume();
+        SuspendMode = NOT_SUSPENDED;
+        return "SoftHdDevice is resumed";
     }
     if (!strcasecmp(command, "DETA")) {
-		if (SuspendMode == SUSPEND_DETACHED) {
-			return "SoftHdDevice already detached";
-		}
-		if (cSoftHdControl::Player) {	// already suspended
-			return "can't suspend SoftHdDevice already suspended";
-		}
+        if (SuspendMode == SUSPEND_DETACHED) {
+            return "SoftHdDevice already detached";
+        }
+        if (cSoftHdControl::Player) {   // already suspended
+            return "can't suspend SoftHdDevice already suspended";
+        }
 #ifdef USE_OPENGLOSD
-		dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
-		cSoftOsdProvider::StopOpenGlThread();
+        dsyslog("[softhddev]stopping Ogl Thread svdrp DETA");
+        cSoftOsdProvider::StopOpenGlThread();
 #endif
-		cControl::Launch(new cSoftHdControl);
-		cControl::Attach();
-		Suspend(1, 1, 0);
-		SuspendMode = SUSPEND_DETACHED;
-		return "SoftHdDevice is detached";
+        cControl::Launch(new cSoftHdControl);
+        cControl::Attach();
+        Suspend(1, 1, 0);
+        SuspendMode = SUSPEND_DETACHED;
+        return "SoftHdDevice is detached";
     }
     if (!strcasecmp(command, "ATTA")) {
-		char *tmp;
-		char *t;
-		char *s;
-		char *o;
+        char *tmp;
+        char *t;
+        char *s;
+        char *o;
 
-		if (SuspendMode != SUSPEND_DETACHED) {
-			return "can't attach SoftHdDevice not detached";
-		}
-		if (!(tmp = strdup(option))) {
-			return "out of memory";
-		}
-		t = tmp;
-		while ((s = strsep(&t, " \t\n\r"))) {
-			if (!strcmp(s, "-d")) {
-			if (!(o = strsep(&t, " \t\n\r"))) {
-				free(tmp);
-				return "missing option argument";
-			}
-			free(ConfigX11Display);
-			ConfigX11Display = strdup(o);
-			X11DisplayName = ConfigX11Display;
-			} else if (!strncmp(s, "-d", 2)) {
-			free(ConfigX11Display);
-			ConfigX11Display = strdup(s + 2);
-			X11DisplayName = ConfigX11Display;
+        if (SuspendMode != SUSPEND_DETACHED) {
+            return "can't attach SoftHdDevice not detached";
+        }
+        if (!(tmp = strdup(option))) {
+            return "out of memory";
+        }
+        t = tmp;
+        while ((s = strsep(&t, " \t\n\r"))) {
+            if (!strcmp(s, "-d")) {
+                if (!(o = strsep(&t, " \t\n\r"))) {
+                    free(tmp);
+                    return "missing option argument";
+                }
+                free(ConfigX11Display);
+                ConfigX11Display = strdup(o);
+                X11DisplayName = ConfigX11Display;
+            } else if (!strncmp(s, "-d", 2)) {
+                free(ConfigX11Display);
+                ConfigX11Display = strdup(s + 2);
+                X11DisplayName = ConfigX11Display;
 
-			} else if (!strcmp(s, "-a")) {
-			if (!(o = strsep(&t, " \t\n\r"))) {
-				free(tmp);
-				return "missing option argument";
-			}
-			free(ConfigAudioDevice);
-			ConfigAudioDevice = strdup(o);
-			AudioSetDevice(ConfigAudioDevice);
-			} else if (!strncmp(s, "-a", 2)) {
-			free(ConfigAudioDevice);
-			ConfigAudioDevice = strdup(s + 2);
-			AudioSetDevice(ConfigAudioDevice);
+            } else if (!strcmp(s, "-a")) {
+                if (!(o = strsep(&t, " \t\n\r"))) {
+                    free(tmp);
+                    return "missing option argument";
+                }
+                free(ConfigAudioDevice);
+                ConfigAudioDevice = strdup(o);
+                AudioSetDevice(ConfigAudioDevice);
+            } else if (!strncmp(s, "-a", 2)) {
+                free(ConfigAudioDevice);
+                ConfigAudioDevice = strdup(s + 2);
+                AudioSetDevice(ConfigAudioDevice);
 
-			} else if (!strcmp(s, "-p")) {
-			if (!(o = strsep(&t, " \t\n\r"))) {
-				free(tmp);
-				return "missing option argument";
-			}
-			free(ConfigPassthroughDevice);
-			ConfigPassthroughDevice = strdup(o);
-			AudioSetPassthroughDevice(ConfigPassthroughDevice);
-			} else if (!strncmp(s, "-p", 2)) {
-			free(ConfigPassthroughDevice);
-			ConfigPassthroughDevice = strdup(s + 2);
-			AudioSetPassthroughDevice(ConfigPassthroughDevice);
+            } else if (!strcmp(s, "-p")) {
+                if (!(o = strsep(&t, " \t\n\r"))) {
+                    free(tmp);
+                    return "missing option argument";
+                }
+                free(ConfigPassthroughDevice);
+                ConfigPassthroughDevice = strdup(o);
+                AudioSetPassthroughDevice(ConfigPassthroughDevice);
+            } else if (!strncmp(s, "-p", 2)) {
+                free(ConfigPassthroughDevice);
+                ConfigPassthroughDevice = strdup(s + 2);
+                AudioSetPassthroughDevice(ConfigPassthroughDevice);
 
-			} else if (*s) {
-			free(tmp);
-			return "unsupported option";
-			}
-		}
-		free(tmp);
-		if (ShutdownHandler.GetUserInactiveTime()) {
-			ShutdownHandler.SetUserInactiveTimeout();
-		}
-		if (cSoftHdControl::Player) {	// suspended
-			cControl::Shutdown();	// not need, if not suspended
-		}
-		Resume();
-		SuspendMode = NOT_SUSPENDED;
-		return "SoftHdDevice is attached";
+            } else if (*s) {
+                free(tmp);
+                return "unsupported option";
+            }
+        }
+        free(tmp);
+        if (ShutdownHandler.GetUserInactiveTime()) {
+            ShutdownHandler.SetUserInactiveTimeout();
+        }
+        if (cSoftHdControl::Player) {   // suspended
+            cControl::Shutdown();       // not need, if not suspended
+        }
+        Resume();
+        SuspendMode = NOT_SUSPENDED;
+        return "SoftHdDevice is attached";
     }
     if (!strcasecmp(command, "HOTK")) {
-		int hotk;
+        int hotk;
 
-		hotk = strtol(option, NULL, 0);
-		HandleHotkey(hotk);
-		return "hot-key executed";
+        hotk = strtol(option, NULL, 0);
+        HandleHotkey(hotk);
+        return "hot-key executed";
     }
     if (!strcasecmp(command, "PRIM")) {
-		int primary;
+        int primary;
 
-		primary = strtol(option, NULL, 0);
-		if (!primary && MyDevice) {
-			primary = MyDevice->DeviceNumber() + 1;
-		}
-		dsyslog("[softhddev] switching primary device to %d\n", primary);
-		DoMakePrimary = primary;
-		return "switching primary device requested";
+        primary = strtol(option, NULL, 0);
+        if (!primary && MyDevice) {
+            primary = MyDevice->DeviceNumber() + 1;
+        }
+        dsyslog("[softhddev] switching primary device to %d\n", primary);
+        DoMakePrimary = primary;
+        return "switching primary device requested";
     }
     if (!strcasecmp(command, "3DOF")) {
-		VideoSetOsd3DMode(0);
-		return "3d off";
+        VideoSetOsd3DMode(0);
+        return "3d off";
     }
     if (!strcasecmp(command, "3DSB")) {
-		VideoSetOsd3DMode(1);
-		return "3d sbs";
+        VideoSetOsd3DMode(1);
+        return "3d sbs";
     }
     if (!strcasecmp(command, "3DTB")) {
-		VideoSetOsd3DMode(2);
-		return "3d tb";
+        VideoSetOsd3DMode(2);
+        return "3d tb";
     }
 
     if (!strcasecmp(command, "RAIS")) {
-		if (!ConfigStartX11Server) {
-			VideoRaiseWindow();
-		} else {
-			return "Raise not possible";
-		}
-		return "Window raised";
+        if (!ConfigStartX11Server) {
+            VideoRaiseWindow();
+        } else {
+            return "Raise not possible";
+        }
+        return "Window raised";
     }
 
     return NULL;
 }
 
-VDRPLUGINCREATOR(cPluginSoftHdDevice);	// Don't touch this!
+VDRPLUGINCREATOR(cPluginSoftHdDevice);  // Don't touch this!
