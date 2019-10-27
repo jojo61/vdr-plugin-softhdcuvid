@@ -1906,7 +1906,7 @@ int VideoDecodeInput(VideoStream * stream)
                 Debug(3, "in VideoDecode make close\n");
                 stream->LastCodecID = AV_CODEC_ID_NONE;
                 CodecVideoClose(stream->Decoder);
-                // FIXME: CodecVideoClose calls/uses hw decoder    
+                // FIXME: CodecVideoClose calls/uses hw decoder
                 goto skip;
             }
             // FIXME: look if more close are in the queue
@@ -2278,7 +2278,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
         VideoEnqueue(stream, pts, dts, check - 2, l + 2);
         return size;
     }
-    // HEVC Codec 
+    // HEVC Codec
     if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01 && check[1] == 0x46) {
         // old PES HDTV recording z == 2 -> stronger check!
         if (stream->CodecID == AV_CODEC_ID_HEVC) {

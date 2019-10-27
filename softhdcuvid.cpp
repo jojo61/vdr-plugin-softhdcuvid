@@ -115,8 +115,6 @@ static int ConfigVideoHue;              ///< config video hue
 static int ConfigGamma;                 ///< config Gamma
 static int ConfigTargetColorSpace;      ///< config Target Colrospace
 static int ConfigScalerTest;            /// Test for Scalers
-static int ConfigColorBlindness;
-static int ConfigColorBlindnessFaktor;
 
     /// config deinterlace
 static int ConfigVideoDeinterlace[RESOLUTIONS];
@@ -949,8 +947,6 @@ class cMenuSetupSoft:public cMenuSetupPage
     int Gamma;
     int TargetColorSpace;
     int ScalerTest;
-    int ColorBlindnessFaktor;
-    int ColorBlindness;
 
     int ResolutionShown[RESOLUTIONS];
     int Scaling[RESOLUTIONS];
@@ -1085,9 +1081,6 @@ void cMenuSetupSoft::Create(void)
     static const char *const target_colorspace[] = {
         "Monitor", "sRGB", "BT709", "HDR-HLG", "HDR10",
     };
-    static const char *const target_colorblindness[] = {
-        "None", "Protanomaly", "Deuteranomaly", "Tritanomaly", "Monochromacy",
-    };
 #endif
     int current;
     int i;
@@ -1174,9 +1167,6 @@ void cMenuSetupSoft::Create(void)
         Add(new cMenuEditIntItem(tr("Gamma (0..100)"), &Gamma, 0, 100, tr("min"), tr("max")));
         Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314, 314, tr("min"), tr("max")));
         Add(new cMenuEditStraItem(tr("Monitor Colorspace"), &TargetColorSpace, 5, target_colorspace));
-        Add(new cMenuEditStraItem(tr("Color Blindness"), &ColorBlindness, 5, target_colorblindness));
-        Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100, 100, tr("min"),
-                tr("max")));
 #endif
 
         for (i = 0; i < RESOLUTIONS; ++i) {
@@ -1377,8 +1367,6 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     Hue = ConfigVideoHue;
     Gamma = ConfigGamma;
     TargetColorSpace = ConfigTargetColorSpace;
-    ColorBlindness = ConfigColorBlindness;
-    ColorBlindnessFaktor = ConfigColorBlindnessFaktor;
 //  ScalerTest = ConfigScalerTest;
 
     for (i = 0; i < RESOLUTIONS; ++i) {
@@ -1519,10 +1507,6 @@ void cMenuSetupSoft::Store(void)
     VideoSetTargetColor(ConfigTargetColorSpace);
     SetupStore("Hue", ConfigVideoHue = Hue);
     VideoSetHue(ConfigVideoHue);
-    SetupStore("CBlindness", ConfigColorBlindness = ColorBlindness);
-    VideoSetColorBlindness(ConfigColorBlindness);
-    SetupStore("CBlindnessFaktor", ConfigColorBlindnessFaktor = ColorBlindnessFaktor);
-    VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor);
 //    SetupStore("ScalerTest", ConfigScalerTest = ScalerTest);
     VideoSetScalerTest(ConfigScalerTest);
 
@@ -3322,14 +3306,6 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
     }
     if (!strcasecmp(name, "Hue")) {
         VideoSetHue(ConfigVideoHue = atoi(value));
-        return true;
-    }
-    if (!strcasecmp(name, "CBlindness")) {
-        VideoSetColorBlindness(ConfigColorBlindness = atoi(value));
-        return true;
-    }
-    if (!strcasecmp(name, "CBlindnessFaktor")) {
-        VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor = atoi(value));
         return true;
     }
 #if 0

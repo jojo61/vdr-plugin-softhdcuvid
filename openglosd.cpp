@@ -23,7 +23,7 @@ extern "C" void OSD_release_context();
 ****************************************************************************************/
 
 #ifdef CUVID
-const char *rectVertexShader = 
+const char *rectVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -38,7 +38,7 @@ void main() \
 } \
 ";
 
-const char *rectFragmentShader = 
+const char *rectFragmentShader =
 "#version 330 core \n\
 \
 in vec4 rectCol; \
@@ -50,7 +50,7 @@ void main() \
 } \
 ";
 
-const char *textureVertexShader = 
+const char *textureVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -70,7 +70,7 @@ void main() \
 } \
 ";
 
-const char *textureFragmentShader = 
+const char *textureFragmentShader =
 "#version 330 core \n\
 in vec2 TexCoords; \
 in vec4 alphaValue; \
@@ -84,7 +84,7 @@ void main() \
 } \
 ";
 
-const char *textVertexShader = 
+const char *textVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -104,7 +104,7 @@ void main() \
 } \
 ";
 
-const char *textFragmentShader = 
+const char *textFragmentShader =
 "#version 330 core \n\
 in vec2 TexCoords; \
 in vec4 textColor; \
@@ -122,7 +122,7 @@ void main() \
 
 #else
 
-const char *rectVertexShader = 
+const char *rectVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -137,7 +137,7 @@ void main() \
 } \
 ";
 
-const char *rectFragmentShader = 
+const char *rectFragmentShader =
 "\n \
 \
 precision mediump float; \
@@ -150,7 +150,7 @@ void main() \
 } \
 ";
 
-const char *textureVertexShader = 
+const char *textureVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -170,7 +170,7 @@ void main() \
 } \
 ";
 
-const char *textureFragmentShader = 
+const char *textureFragmentShader =
 "\n \
 precision mediump float; \
 in vec2 TexCoords; \
@@ -185,7 +185,7 @@ void main() \
 } \
 ";
 
-const char *textVertexShader = 
+const char *textVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -205,7 +205,7 @@ void main() \
 } \
 ";
 
-const char *textFragmentShader = 
+const char *textFragmentShader =
 "\n \
 precision mediump float; \
 in vec2 TexCoords; \
@@ -222,7 +222,7 @@ void main() \
 } \
 ";
 #endif
-static cShader *Shaders[stCount]; 
+static cShader *Shaders[stCount];
 
 void cShader::Use(void) {
     glUseProgram(id);
@@ -401,9 +401,9 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 #ifdef VAAPI
 	OSD_release_context();
-	OSD_get_context();	
+	OSD_get_context();
 #endif
-	
+
 }
 
 
@@ -445,7 +445,7 @@ cOglFont *cOglFont::Get(const char *name, int charHeight) {
     fonts->Add(font);
     return font;
 }
- 
+
 void cOglFont::Init(void) {
     fonts = new cList<cOglFont>;
     if (FT_Init_FreeType(&ftLib))
@@ -489,7 +489,7 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
     error = FT_Stroker_New( ftLib, &stroker );
     if (error) {
         esyslog("[softhddev]FT_Stroker_New FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
     float outlineWidth = 0.25f;
     FT_Stroker_Set(stroker,
@@ -498,11 +498,11 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
                     FT_STROKER_LINEJOIN_ROUND,
                     0);
 
-    
+
     error = FT_Get_Glyph(face->glyph, &ftGlyph);
     if (error) {
         esyslog("[softhddev]FT_Get_Glyph FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
 
     error = FT_Glyph_StrokeBorder( &ftGlyph, stroker, 0, 1 );
@@ -515,9 +515,9 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
     error = FT_Glyph_To_Bitmap( &ftGlyph, FT_RENDER_MODE_NORMAL, 0, 1);
     if (error) {
         esyslog("[softhddev]FT_Glyph_To_Bitmap FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
-    
+
     cOglGlyph *Glyph = new cOglGlyph(charCode, (FT_BitmapGlyph)ftGlyph);
     glyphCache.Add(Glyph);
     FT_Done_Glyph(ftGlyph);
@@ -582,9 +582,9 @@ bool cOglFb::Init(void) {
 
     glGenFramebuffers(1, &fb);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
-    
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-	
+
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         esyslog("[softhddev]ERROR: %d Framebuffer is not complete!\n",__LINE__);
 #ifdef VAAPI
@@ -617,7 +617,7 @@ void cOglFb::BindWrite(void) {
 
 void cOglFb::Unbind(void) {
     glFinish();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);  
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -659,7 +659,7 @@ bool cOglOutputFb::Init(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	
+
     glGenFramebuffers(1, &fb);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
@@ -683,7 +683,7 @@ void cOglOutputFb::Unbind(void) {
 /****************************************************************************************
 * cOglVb
 ****************************************************************************************/
-static cOglVb *VertexBuffers[vbCount]; 
+static cOglVb *VertexBuffers[vbCount];
 
 cOglVb::cOglVb(int type) {
     this->type = (eVertexBufferType)type;
@@ -747,9 +747,9 @@ bool cOglVb::Init(void) {
     glVertexAttribPointer(0, sizeVertex1, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)0);
     if (sizeVertex2 > 0) {
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, sizeVertex2, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)(sizeVertex1 * sizeof(GLfloat)));        
+        glVertexAttribPointer(1, sizeVertex2, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)(sizeVertex1 * sizeof(GLfloat)));
     }
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
@@ -804,7 +804,7 @@ void cOglVb::DrawArrays(int count) {
     if (count == 0)
         count = numVertices;
     glDrawArrays(drawMode, 0, count);
-    glFlush();    
+    glFlush();
 }
 
 
@@ -907,7 +907,7 @@ cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputF
 }
 
 #ifdef PLACEBO
-//extern "C" { 
+//extern "C" {
 extern 	unsigned char *posd;
 //}
 #endif
@@ -924,7 +924,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 #ifdef PLACEBO
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	if (posd) 
+	if (posd)
 		glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_BGRA,GL_UNSIGNED_BYTE,posd);
 #else
 	fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
@@ -978,7 +978,7 @@ bool cOglCmdDrawRectangle::Execute(void) {
     VertexBuffers[vbRect]->ActivateShader();
     VertexBuffers[vbRect]->SetShaderColor(color);
     VertexBuffers[vbRect]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
-    
+
     fb->Bind();
     VertexBuffers[vbRect]->DisableBlending();
     VertexBuffers[vbRect]->Bind();
@@ -1112,7 +1112,7 @@ GLfloat *cOglCmdDrawEllipse::CreateVerticesQuadrant(int &numVertices) {
             vertices[0] = x + width;
             vertices[1] = y + height;
             startAngle = 270;
-            break;            
+            break;
         default:
             break;
     }
@@ -1130,7 +1130,7 @@ GLfloat *cOglCmdDrawEllipse::CreateVerticesHalf(int &numVertices) {
     GLfloat radiusY = 0.0f;
     GLint transX = 0;
     GLint transY = 0;
-    GLint startAngle = 0;    
+    GLint startAngle = 0;
     GLfloat *vertices = new GLfloat[size];
     switch (quadrants) {
         case 5:
@@ -1261,7 +1261,7 @@ bool cOglCmdDrawSlope::Execute(void) {
 }
 
 //------------------ cOglCmdDrawText --------------------
-cOglCmdDrawText::cOglCmdDrawText( cOglFb *fb, GLint x, GLint y, unsigned int *symbols, GLint limitX, 
+cOglCmdDrawText::cOglCmdDrawText( cOglFb *fb, GLint x, GLint y, unsigned int *symbols, GLint limitX,
                                   const char *name, int fontSize, tColor colorText) : cOglCmd(fb), fontName(name)  {
     this->x = x;
     this->y = y;
@@ -1319,9 +1319,9 @@ bool cOglCmdDrawText::Execute(void) {
 
             x1, y2,   0.0, 1.0,     // left bottom
             x2, y1,   1.0, 0.0,     // right top
-            x2, y2,   1.0, 1.0      // right bottom     
+            x2, y2,   1.0, 1.0      // right bottom
         };
-    
+
         g->BindTexture();
         VertexBuffers[vbText]->SetVertexData(vertices);
         VertexBuffers[vbText]->DrawArrays();
@@ -1380,9 +1380,9 @@ bool cOglCmdDrawImage::Execute(void) {
     glBindTexture(GL_TEXTURE_2D, 0);
 #ifdef VAAPI
 	OSD_release_context();
-	OSD_get_context();	
+	OSD_get_context();
 #endif
-	
+
     GLfloat x1 = x;          //left
     GLfloat y1 = y;          //top
     GLfloat x2 = x + width;  //right
@@ -1395,7 +1395,7 @@ bool cOglCmdDrawImage::Execute(void) {
 
         x1, y2,   0.0, 1.0,     // left bottom
         x2, y1,   1.0, 0.0,     // right top
-        x2, y2,   1.0, 1.0      // right bottom     
+        x2, y2,   1.0, 1.0      // right bottom
     };
 
     VertexBuffers[vbTexture]->ActivateShader();
@@ -1463,7 +1463,7 @@ bool cOglCmdDrawTexture::Execute(void) {
 //------------------ cOglCmdStoreImage --------------------
 cOglCmdStoreImage::cOglCmdStoreImage(sOglImage *imageRef, tColor *argb) : cOglCmd(NULL) {
     this->imageRef = imageRef;
-    data = argb;    
+    data = argb;
 }
 
 cOglCmdStoreImage::~cOglCmdStoreImage(void) {
@@ -1473,7 +1473,7 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 bool cOglCmdStoreImage::Execute(void) {
 #ifdef VAAPI
 	OSD_release_context();
-	OSD_get_shared_context();	
+	OSD_get_shared_context();
 #endif
     glGenTextures(1, &imageRef->texture);
     glBindTexture(GL_TEXTURE_2D, imageRef->texture);
@@ -1495,7 +1495,7 @@ bool cOglCmdStoreImage::Execute(void) {
     glBindTexture(GL_TEXTURE_2D, 0);
 #ifdef VAAPI
 	OSD_release_context();
-	OSD_get_context();	
+	OSD_get_context();
 #endif
     return true;
 }
@@ -1525,7 +1525,7 @@ cOglThread::cOglThread(cCondWait *startWait, int maxCacheSize) : cThread("oglThr
     maxTextureSize = 0;
     for (int i = 0; i < OGL_MAX_OSDIMAGES; i++) {
         imageCache[i].used = false;
-        imageCache[i].texture = GL_NONE;        
+        imageCache[i].texture = GL_NONE;
         imageCache[i].width = 0;
         imageCache[i].height = 0;
     }
@@ -1551,7 +1551,7 @@ void cOglThread::Stop(void) {
 void cOglThread::DoCmd(cOglCmd* cmd) {
     while (stalled)
         cCondWait::SleepMs(10);
-    
+
     bool doSignal = false;
     Lock();
     if (commands.size() == 0)
@@ -1585,7 +1585,7 @@ int cOglThread::StoreImage(const cImage &image) {
         esyslog("[softhddev]Maximum size for GPU cache reached. Used: %.2fMB Max: %.2fMB", cachedMB, maxMB);
         return 0;
     }
-    
+
     int slot = GetFreeSlot();
     if (!slot)
         return 0;
@@ -1636,7 +1636,7 @@ void cOglThread::ClearSlot(int slot) {
     int i = -slot - 1;
     if (i >= 0 && i < OGL_MAX_OSDIMAGES) {
         Lock();
-        imageCache[i].used = false;    
+        imageCache[i].used = false;
         imageCache[i].texture = GL_NONE;
         imageCache[i].width = 0;
         imageCache[i].height = 0;
@@ -1672,7 +1672,7 @@ void cOglThread::Action(void) {
         return;
     }
     dsyslog("[softhddev]OpenGL Context initialized");
-    
+
     if (!InitShaders()) {
         esyslog("[softhddev]Could not initiate Shaders");
         Cleanup();
@@ -1680,7 +1680,7 @@ void cOglThread::Action(void) {
         return;
     }
     dsyslog("[softhddev]Shaders initialized");
-    
+
     if (!InitVdpauInterop()) {
         esyslog("[softhddev]: vdpau interop NOT initialized");
         Cleanup();
@@ -1703,7 +1703,7 @@ void cOglThread::Action(void) {
     //now Thread is ready to do his job
     startWait->Signal();
     stalled = false;
-    
+
     while(Running()) {
 
         if (commands.empty()) {
@@ -1722,7 +1722,7 @@ void cOglThread::Action(void) {
         if (stalled && commands.size() < OGL_CMDQUEUE_SIZE / 2)
             stalled = false;
     }
-   
+
     dsyslog("[softhddev]Cleaning up OpenGL stuff");
     Cleanup();
     dsyslog("[softhddev]OpenGL Worker Thread Ended");
@@ -1734,7 +1734,7 @@ extern "C" int GlxInitopengl();
 
 
 bool cOglThread::InitOpenGL(void) {
-	
+
 
 #ifdef PLACEBO
     const char *displayName = X11DisplayName;
@@ -1763,7 +1763,7 @@ bool cOglThread::InitOpenGL(void) {
     free(buffer[0]);
     free(buffer[1]);
     free(buffer[2]);
-	
+
     GLenum err = glewInit();
     if( err != GLEW_OK) {
         esyslog("[softhddev]glewInit failed, aborting\n");
@@ -1801,7 +1801,7 @@ bool cOglThread::InitVdpauInterop(void) {
     void *procAdress = GetVDPAUProcAdress();
     while (glGetError() != GL_NO_ERROR);
     glVDPAUInitNV(vdpDevice, procAdress);
-    if (glGetError() != GL_NO_ERROR)        
+    if (glGetError() != GL_NO_ERROR)
         return false;
 #endif
     return true;
@@ -1850,7 +1850,7 @@ cOglPixmap::cOglPixmap(std::shared_ptr<cOglThread> oglThread, int Layer, const c
     int width = DrawPort.IsEmpty() ? ViewPort.Width() : DrawPort.Width();
     int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
     fb = new cOglFb(width, height, ViewPort.Width(), ViewPort.Height());
-    dirty = true; 
+    dirty = true;
 }
 
 cOglPixmap::~cOglPixmap(void) {
@@ -1923,7 +1923,7 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
             oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y()));
     }
     /*
-    Fallback to VDR implementation, needs to separate cSoftOsdProvider from softhddevice.cpp 
+    Fallback to VDR implementation, needs to separate cSoftOsdProvider from softhddevice.cpp
     else {
         if (cSoftOsdProvider::GetImageData(ImageHandle))
             DrawImage(Point, *cSoftOsdProvider::GetImageData(ImageHandle));
@@ -1936,7 +1936,7 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
 void cOglPixmap::DrawPixel(const cPoint &Point, tColor Color) {
     cRect r(Point.X(), Point.Y(), 1, 1);
     oglThread->DoCmd(new cOglCmdDrawRectangle(fb, r.X(), r.Y(), r.Width(), r.Height(), Color));
-    
+
     SetDirty();
     MarkDrawPortDirty(r);
 }
@@ -1985,7 +1985,7 @@ void cOglPixmap::DrawText(const cPoint &Point, const char *s, tColor ColorFg, tC
     int cw = Width ? Width : w;
     int ch = Height ? Height : h;
     cRect r(x, y, cw, ch);
-    
+
     if (ColorBg != clrTransparent)
         oglThread->DoCmd(new cOglCmdDrawRectangle(fb, r.X(), r.Y(), r.Width(), r.Height(), ColorBg));
 
@@ -2078,12 +2078,12 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     isSubtitleOsd = false;
     int osdWidth = 0;
     int osdHeight = 0;
-	
+
     pthread_mutex_lock(&OSDMutex);
     VideoGetOsdSize(&osdWidth, &osdHeight);
 //	osdWidth = 1920;
 //	osdHeight = 1080;
-	
+
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 #ifdef PLACEBO
 	if (posd)
@@ -2091,7 +2091,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 	posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
 #endif
     //create  output framebuffer
-#ifdef VAAPI	
+#ifdef VAAPI
 	OSD_release_context();
 	OSD_get_shared_context();
 #endif
@@ -2127,7 +2127,7 @@ eOsdError cOglOsd::SetAreas(const tArea *Areas, int NumAreas) {
 
     //now we know the actuaL osd size, create double buffer frame buffer
     if (bFb) {
-        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));		
+        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
         DestroyPixmap(oglPixmaps[0]);
     }
     bFb = new cOglFb(r.Width(), r.Height(), r.Width(), r.Height());
@@ -2146,7 +2146,7 @@ cPixmap *cOglOsd::CreatePixmap(int Layer, const cRect &ViewPort, const cRect &Dr
     int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
 
     if (width > oglThread->MaxTextureSize() || height > oglThread->MaxTextureSize()) {
-        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!", 
+        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!",
                     width, height, std::min(width, oglThread->MaxTextureSize()), std::min(height, oglThread->MaxTextureSize()));
         width = std::min(width, oglThread->MaxTextureSize());
         height = std::min(height, oglThread->MaxTextureSize());
@@ -2210,9 +2210,9 @@ void cOglOsd::Flush(void) {
         for (int i = 0; i < oglPixmaps.Size(); i++) {
             if (oglPixmaps[i]) {
                 if (oglPixmaps[i]->Layer() == layer) {
-                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(), 
-                                                                    bFb, 
-                                                                    oglPixmaps[i]->ViewPort().X(), 
+                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(),
+                                                                    bFb,
+                                                                    oglPixmaps[i]->ViewPort().X(),
                                                                     (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0,
                                                                     oglPixmaps[i]->Alpha(),
                                                                     oglPixmaps[i]->DrawPort().X(),

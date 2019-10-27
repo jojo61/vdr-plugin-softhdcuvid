@@ -1,4 +1,3 @@
-
 ///
 /// @file codec.c   @brief Codec functions
 ///
@@ -322,7 +321,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 #endif
 
 #ifdef CUVID
-    if (strcmp(decoder->VideoCodec->long_name, "Nvidia CUVID MPEG2VIDEO decoder") == 0) {   // deinterlace for mpeg2 is somehow broken 
+    if (strcmp(decoder->VideoCodec->long_name, "Nvidia CUVID MPEG2VIDEO decoder") == 0) {   // deinterlace for mpeg2 is somehow broken
         if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint, 0) < 0) {  // adaptive
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option deint to video codec!\n"));
@@ -533,7 +532,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     pkt = avpkt;                        // use copy
     got_frame = 0;
 
-//  printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);    
+//  printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);
     ret1 = avcodec_send_packet(video_ctx, pkt);
 
 //  first_time = GetusTicks();

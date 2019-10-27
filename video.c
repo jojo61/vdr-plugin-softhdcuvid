@@ -428,8 +428,6 @@ static float VideoHue = 0.0f;
 static float VideoGamma = 1.0f;
 static int VulkanTargetColorSpace = 0;
 static int VideoScalerTest = 0;
-static int VideoColorBlindness = 0;
-static float VideoColorBlindnessFaktor = 1.0f;
 
 static xcb_atom_t WmDeleteWindowAtom;   ///< WM delete message atom
 static xcb_atom_t NetWmState;           ///< wm-state message atom
@@ -3527,29 +3525,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         pl_tex_clear(p->gpu, target->fbo, (float[4]) { 0 }
     );
 
-    if (VideoColorBlindness) {
-        switch (VideoColorBlindness) {
-            case 1:
-                memcpy(&cone, &pl_vision_protanomaly, sizeof(cone));
-                break;
-            case 2:
-                memcpy(&cone, &pl_vision_deuteranomaly, sizeof(cone));
-                break;
-            case 3:
-                memcpy(&cone, &pl_vision_tritanomaly, sizeof(cone));
-                break;
-            case 4:
-                memcpy(&cone, &pl_vision_monochromacy, sizeof(cone));
-                break;
-            default:
-                memcpy(&cone, &pl_vision_normal, sizeof(cone));
-                break;
-        }
-        cone.strength = VideoColorBlindnessFaktor;
-        render_params.cone_params = &cone;
-    } else {
-        render_params.cone_params = NULL;
-    }
+    render_params.cone_params = NULL;
 
 //  render_params.upscaler = &pl_filter_ewa_lanczos;
 
@@ -6339,22 +6315,6 @@ void VideoSetScalerTest(int onoff)
 {
     VideoScalerTest = onoff;
     VideoSurfaceModesChanged = 1;
-}
-
-    ///
-/// Set Color Blindness.
-///
-void VideoSetColorBlindness(int value)
-{
-    VideoColorBlindness = value;;
-}
-
-///
-/// Set Color Blindness Faktor.
-///
-void VideoSetColorBlindnessFaktor(int value)
-{
-    VideoColorBlindnessFaktor = (float)value / 100.0f + 1.0f;
 }
 
 ///

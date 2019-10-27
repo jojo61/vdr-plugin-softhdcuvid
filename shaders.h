@@ -1,4 +1,3 @@
-
 // shader
 #ifdef CUVID
 char vertex_osd[] = { "\

@@ -268,7 +268,7 @@ class cOglOutputFb:public cOglFb
 
 /****************************************************************************************
 * cOglVb
-* Vertex Buffer - OpenGl Vertices for the different drawing commands  
+* Vertex Buffer - OpenGl Vertices for the different drawing commands
 ****************************************************************************************/
 enum eVertexBufferType
 {
