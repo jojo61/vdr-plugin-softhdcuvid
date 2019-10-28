@@ -616,6 +616,7 @@ void cOglFb::BindWrite(void) {
 }
 
 void cOglFb::Unbind(void) {
+    glFinish();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);  
     glBindTexture(GL_TEXTURE_2D, 0);
 }

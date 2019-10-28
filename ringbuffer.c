@@ -1,29 +1,29 @@
 ///
-///	@file ringbuffer.c	@brief Ringbuffer module
+/// @file ringbuffer.c  @brief Ringbuffer module
 ///
-///	Copyright (c) 2009, 2011, 2014	by Johns.  All Rights Reserved.
+/// Copyright (c) 2009, 2011, 2014  by Johns.  All Rights Reserved.
 ///
-///	Contributor(s):
+/// Contributor(s):
 ///
-///	License: AGPLv3
+/// License: AGPLv3
 ///
-///	This program is free software: you can redistribute it and/or modify
-///	it under the terms of the GNU Affero General Public License as
-///	published by the Free Software Foundation, either version 3 of the
-///	License.
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU Affero General Public License as
+/// published by the Free Software Foundation, either version 3 of the
+/// License.
 ///
-///	This program is distributed in the hope that it will be useful,
-///	but WITHOUT ANY WARRANTY; without even the implied warranty of
-///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-///	GNU Affero General Public License for more details.
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU Affero General Public License for more details.
 ///
-///	$Id: c9497b197ce7e7a6ba397944edc7ccb161152efd $
+/// $Id: c9497b197ce7e7a6ba397944edc7ccb161152efd $
 //////////////////////////////////////////////////////////////////////////////
 
 ///
-///	@defgroup Ringbuffer The ring buffer module.
+/// @defgroup Ringbuffer The ring buffer module.
 ///
-///	Lock free ring buffer with only one writer and one reader.
+/// Lock free ring buffer with only one writer and one reader.
 ///
 
 #include <stdio.h>
@@ -36,15 +36,15 @@
     /// ring buffer structure
 struct _ring_buffer_
 {
-    char *Buffer;			///< ring buffer data
-    const char *BufferEnd;		///< end of buffer
-    size_t Size;			///< bytes in buffer (for faster calc)
+    char *Buffer;                       ///< ring buffer data
+    const char *BufferEnd;              ///< end of buffer
+    size_t Size;                        ///< bytes in buffer (for faster calc)
 
-    const char *ReadPointer;		///< only used by reader
-    char *WritePointer;			///< only used by writer
+    const char *ReadPointer;            ///< only used by reader
+    char *WritePointer;                 ///< only used by writer
 
     /// The only thing modified by both
-    atomic_t Filled;			///< how many of the buffer is used
+    atomic_t Filled;                    ///< how many of the buffer is used
 };
 
 /**
@@ -71,12 +71,12 @@ RingBuffer *RingBufferNew(size_t size)
 {
     RingBuffer *rb;
 
-    if (!(rb = malloc(sizeof(*rb)))) {	// allocate structure
-	return rb;
+    if (!(rb = malloc(sizeof(*rb)))) {  // allocate structure
+        return rb;
     }
-    if (!(rb->Buffer = malloc(size))) {	// allocate buffer
-	free(rb);
-	return NULL;
+    if (!(rb->Buffer = malloc(size))) { // allocate buffer
+        free(rb);
+        return NULL;
     }
 
     rb->Size = size;
@@ -108,25 +108,25 @@ size_t RingBufferWriteAdvance(RingBuffer * rb, size_t cnt)
     size_t n;
 
     n = rb->Size - atomic_read(&rb->Filled);
-    if (cnt > n) {			// not enough space
-	cnt = n;
+    if (cnt > n) {                      // not enough space
+        cnt = n;
     }
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->WritePointer;
-    if (n > cnt) {			// don't cross the end
-	rb->WritePointer += cnt;
-    } else {				// reached or cross the end
-	rb->WritePointer = rb->Buffer;
-	if (n < cnt) {
-	    n = cnt - n;
-	    rb->WritePointer += n;
-	}
+    if (n > cnt) {                      // don't cross the end
+        rb->WritePointer += cnt;
+    } else {                            // reached or cross the end
+        rb->WritePointer = rb->Buffer;
+        if (n < cnt) {
+            n = cnt - n;
+            rb->WritePointer += n;
+        }
     }
 
     //
-    //	Only atomic modification!
+    //  Only atomic modification!
     //
     atomic_add(cnt, &rb->Filled);
     return cnt;
@@ -147,29 +147,29 @@ size_t RingBufferWrite(RingBuffer * rb, const void *buf, size_t cnt)
     size_t n;
 
     n = rb->Size - atomic_read(&rb->Filled);
-    if (cnt > n) {			// not enough space
-	cnt = n;
+    if (cnt > n) {                      // not enough space
+        cnt = n;
     }
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->WritePointer;
-    if (n > cnt) {			// don't cross the end
-	memcpy(rb->WritePointer, buf, cnt);
-	rb->WritePointer += cnt;
-    } else {				// reached or cross the end
-	memcpy(rb->WritePointer, buf, n);
-	rb->WritePointer = rb->Buffer;
-	if (n < cnt) {
-	    buf += n;
-	    n = cnt - n;
-	    memcpy(rb->WritePointer, buf, n);
-	    rb->WritePointer += n;
-	}
+    if (n > cnt) {                      // don't cross the end
+        memcpy(rb->WritePointer, buf, cnt);
+        rb->WritePointer += cnt;
+    } else {                            // reached or cross the end
+        memcpy(rb->WritePointer, buf, n);
+        rb->WritePointer = rb->Buffer;
+        if (n < cnt) {
+            buf += n;
+            n = cnt - n;
+            memcpy(rb->WritePointer, buf, n);
+            rb->WritePointer += n;
+        }
     }
 
     //
-    //	Only atomic modification!
+    //  Only atomic modification!
     //
     atomic_add(cnt, &rb->Filled);
     return cnt;
@@ -189,17 +189,17 @@ size_t RingBufferGetWritePointer(RingBuffer * rb, void **wp)
     size_t n;
     size_t cnt;
 
-    //	Total free bytes available in ring buffer
+    //  Total free bytes available in ring buffer
     cnt = rb->Size - atomic_read(&rb->Filled);
 
     *wp = rb->WritePointer;
 
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->WritePointer;
-    if (n <= cnt) {			// reached or cross the end
-	return n;
+    if (n <= cnt) {                     // reached or cross the end
+        return n;
     }
     return cnt;
 }
@@ -217,25 +217,25 @@ size_t RingBufferReadAdvance(RingBuffer * rb, size_t cnt)
     size_t n;
 
     n = atomic_read(&rb->Filled);
-    if (cnt > n) {			// not enough filled
-	cnt = n;
+    if (cnt > n) {                      // not enough filled
+        cnt = n;
     }
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->ReadPointer;
-    if (n > cnt) {			// don't cross the end
-	rb->ReadPointer += cnt;
-    } else {				// reached or cross the end
-	rb->ReadPointer = rb->Buffer;
-	if (n < cnt) {
-	    n = cnt - n;
-	    rb->ReadPointer += n;
-	}
+    if (n > cnt) {                      // don't cross the end
+        rb->ReadPointer += cnt;
+    } else {                            // reached or cross the end
+        rb->ReadPointer = rb->Buffer;
+        if (n < cnt) {
+            n = cnt - n;
+            rb->ReadPointer += n;
+        }
     }
 
     //
-    //	Only atomic modification!
+    //  Only atomic modification!
     //
     atomic_sub(cnt, &rb->Filled);
     return cnt;
@@ -255,29 +255,29 @@ size_t RingBufferRead(RingBuffer * rb, void *buf, size_t cnt)
     size_t n;
 
     n = atomic_read(&rb->Filled);
-    if (cnt > n) {			// not enough filled
-	cnt = n;
+    if (cnt > n) {                      // not enough filled
+        cnt = n;
     }
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->ReadPointer;
-    if (n > cnt) {			// don't cross the end
-	memcpy(buf, rb->ReadPointer, cnt);
-	rb->ReadPointer += cnt;
-    } else {				// reached or cross the end
-	memcpy(buf, rb->ReadPointer, n);
-	rb->ReadPointer = rb->Buffer;
-	if (n < cnt) {
-	    buf += n;
-	    n = cnt - n;
-	    memcpy(buf, rb->ReadPointer, n);
-	    rb->ReadPointer += n;
-	}
+    if (n > cnt) {                      // don't cross the end
+        memcpy(buf, rb->ReadPointer, cnt);
+        rb->ReadPointer += cnt;
+    } else {                            // reached or cross the end
+        memcpy(buf, rb->ReadPointer, n);
+        rb->ReadPointer = rb->Buffer;
+        if (n < cnt) {
+            buf += n;
+            n = cnt - n;
+            memcpy(buf, rb->ReadPointer, n);
+            rb->ReadPointer += n;
+        }
     }
 
     //
-    //	Only atomic modification!
+    //  Only atomic modification!
     //
     atomic_sub(cnt, &rb->Filled);
     return cnt;
@@ -297,17 +297,17 @@ size_t RingBufferGetReadPointer(RingBuffer * rb, const void **rp)
     size_t n;
     size_t cnt;
 
-    //	Total used bytes in ring buffer
+    //  Total used bytes in ring buffer
     cnt = atomic_read(&rb->Filled);
 
     *rp = rb->ReadPointer;
 
     //
-    //	Hitting end of buffer?
+    //  Hitting end of buffer?
     //
     n = rb->BufferEnd - rb->ReadPointer;
-    if (n <= cnt) {			// reached or cross the end
-	return n;
+    if (n <= cnt) {                     // reached or cross the end
+        return n;
     }
     return cnt;
 }

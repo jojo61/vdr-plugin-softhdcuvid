@@ -1,3 +1,4 @@
+
 /*
  * This file is part of libplacebo.
  *
@@ -8,7 +9,7 @@
  *
  * libplacebo is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
@@ -38,6 +39,5 @@
 #define PL_HAVE_GLSLANG 1
 #define PL_HAVE_SHADERC 0
 #define PL_HAVE_VULKAN 1
-
 
 #endif // LIBPLACEBO_CONTEXT_H_
