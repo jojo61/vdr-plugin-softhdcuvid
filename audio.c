@@ -87,7 +87,7 @@
 #endif
 #include <pthread.h>
 #ifndef HAVE_PTHREAD_NAME
-    /// only available with newer glibc
+/// only available with newer glibc
 #define pthread_setname_np(thread, name)
 #endif
 #endif
@@ -132,7 +132,7 @@ char AudioAlsaCloseOpenDelay;           ///< enable alsa close/open delay fix
 
 static const char *AudioModuleName;     ///< which audio module to use
 
-    /// Selected audio module.
+/// Selected audio module.
 static const AudioModule *AudioUsedModule = &NoopModule;
 static const char *AudioPCMDevice;      ///< PCM device name
 static const char *AudioPassthroughDevice;  ///< Passthrough device name
@@ -174,30 +174,30 @@ static int AudioVolume;                 ///< current volume (0 .. 1000)
 
 extern int VideoAudioDelay;             ///< import audio/video delay
 
-    /// default ring buffer size ~2s 8ch 16bit (3 * 5 * 7 * 8)
+/// default ring buffer size ~2s 8ch 16bit (3 * 5 * 7 * 8)
 static const unsigned AudioRingBufferSize = 3 * 5 * 7 * 8 * 2 * 1000;
 
 static int AudioChannelsInHw[9];        ///< table which channels are supported
 enum _audio_rates
 {                                       ///< sample rates enumeration
     // HW: 32000 44100 48000 88200 96000 176400 192000
-    //Audio32000,       ///< 32.0Khz
+    // Audio32000,       ///< 32.0Khz
     Audio44100,                         ///< 44.1Khz
     Audio48000,                         ///< 48.0Khz
-    //Audio88200,       ///< 88.2Khz
-    //Audio96000,       ///< 96.0Khz
-    //Audio176400,      ///< 176.4Khz
+    // Audio88200,       ///< 88.2Khz
+    // Audio96000,       ///< 96.0Khz
+    // Audio176400,      ///< 176.4Khz
     Audio192000,                        ///< 192.0Khz
     AudioRatesMax                       ///< max index
 };
 
-    /// table which rates are supported
+/// table which rates are supported
 static int AudioRatesInHw[AudioRatesMax];
 
-    /// input to hardware channel matrix
+/// input to hardware channel matrix
 static int AudioChannelMatrix[AudioRatesMax][9];
 
-    /// rates tables (must be sorted by frequency)
+/// rates tables (must be sorted by frequency)
 static const unsigned AudioRatesTable[AudioRatesMax] = {
     44100, 48000, 192000
 };
@@ -209,7 +209,7 @@ static const unsigned AudioRatesTable[AudioRatesMax] = {
 static const int AudioNormSamples = 4096;   ///< number of samples
 
 #define AudioNormMaxIndex 128           ///< number of average values
-    /// average of n last sample blocks
+/// average of n last sample blocks
 static uint32_t AudioNormAverage[AudioNormMaxIndex];
 static int AudioNormIndex;              ///< index into average table
 static int AudioNormReady;              ///< index counter
@@ -1149,7 +1149,7 @@ static int64_t AlsaGetDelay(void)
     }
     // delay in frames in alsa + kernel buffers
     if ((err = snd_pcm_delay(AlsaPCMHandle, &delay)) < 0) {
-        //Debug(3, "audio/alsa: no hw delay\n");
+        // Debug(3, "audio/alsa: no hw delay\n");
         delay = 0L;
 #ifdef DEBUG
     } else if (snd_pcm_state(AlsaPCMHandle) != SND_PCM_STATE_RUNNING) {
@@ -2285,7 +2285,7 @@ void AudioEnqueue(const void *samples, int count)
         // forced start or enough video + audio buffered
         // for some exotic channels * 4 too small
         if (AudioStartThreshold * 10 < n || (AudioVideoIsReady
-//  if ((AudioVideoIsReady                      
+                //  if ((AudioVideoIsReady
                 && AudioStartThreshold < n)) {
             // restart play-back
             // no lock needed, can wakeup next time

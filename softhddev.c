@@ -90,7 +90,7 @@ static enum AVCodecID AudioCodecID;     ///< current codec id
 static int AudioChannelID;              ///< current audio channel id
 static VideoStream *AudioSyncStream;    ///< video stream for audio/video sync
 
-    /// Minimum free space in audio buffer 8 packets for 8 channels
+/// Minimum free space in audio buffer 8 packets for 8 channels
 #define AUDIO_MIN_BUFFER_FREE (3072 * 8 * 8)
 #define AUDIO_BUFFER_SIZE (512 * 1024)  ///< audio PES buffer default size
 static AVPacket AudioAvPkt[1];          ///< audio a/v packet
@@ -884,9 +884,9 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size, int is_st
 //  Transport stream demux
 //////////////////////////////////////////////////////////////////////////////
 
-    /// Transport stream packet size
+/// Transport stream packet size
 #define TS_PACKET_SIZE	188
-    /// Transport stream packet sync byte
+/// Transport stream packet sync byte
 #define TS_PACKET_SYNC	0x47
 
 ///
@@ -962,11 +962,11 @@ static int TsDemuxer(TsDemux * tsdx, const uint8_t * data, int size)
 #if 0
         int tmp;
 
-        //  check continuity
+        // check continuity
         tmp = p[3] & 0x0F;              // continuity counter
         if (((tsdx->CC + 1) & 0x0F) != tmp) {
             Debug(3, "tsdemux: OUT OF SYNC: %d %d\n", tmp, tsdx->CC);
-            //TS discontinuity (received 8, expected 0) for PID
+            // TS discontinuity (received 8, expected 0) for PID
         }
         tsdx->CC = tmp;
 #endif
@@ -1049,7 +1049,7 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
         AudioAvPkt->pts =
             (int64_t) (data[9] & 0x0E) << 29 | data[10] << 22 | (data[11] & 0xFE) << 14 | data[12] << 7 | (data[13] &
             0xFE) >> 1;
-        //Debug(3, "audio: pts %#012" PRIx64 "\n", AudioAvPkt->pts);
+        // Debug(3, "audio: pts %#012" PRIx64 "\n", AudioAvPkt->pts);
     }
     if (0) {                            // dts is unused
         if (data[7] & 0x40) {
@@ -1256,7 +1256,7 @@ int PlayTsAudio(const uint8_t * data, int size)
         Debug(3, "AudioDelay %dms\n", AudioDelay);
         usleep(AudioDelay * 1000);
         AudioDelay = 0;
-//  TsDemuxer(tsdx, data, size);   // insert dummy audio
+        // TsDemuxer(tsdx, data, size);   // insert dummy audio
 
     }
     return TsDemuxer(tsdx, data, size);
@@ -1333,7 +1333,7 @@ static VideoStream PipVideoStream[1];   ///< pip video stream
 uint32_t VideoSwitch;                   ///< debug video switch ticks
 static int VideoMaxPacketSize;          ///< biggest used packet buffer
 #endif
-//#define STILL_DEBUG 2
+// #define STILL_DEBUG 2
 #ifdef STILL_DEBUG
 static char InStillPicture;             ///< flag still picture
 #endif
@@ -1394,7 +1394,7 @@ static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const v
 {
     AVPacket *avpkt;
 
-    //  Debug(3, "video: enqueue %d\n", size);
+    // Debug(3, "video: enqueue %d\n", size);
 
     avpkt = &stream->PacketRb[stream->PacketWrite];
     if (!avpkt->stream_index) {         // add pts only for first added
@@ -1404,8 +1404,8 @@ static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const v
 
     if (avpkt->stream_index + size >= avpkt->size) {
 
-//  Warning(_("video: packet buffer too small for %d\n"),
-//      avpkt->stream_index + size);
+        // Warning(_("video: packet buffer too small for %d\n"),
+        // avpkt->stream_index + size);
 
         // new + grow reserves FF_INPUT_BUFFER_PADDING_SIZE
         av_grow_packet(avpkt, ((size + VIDEO_BUFFER_SIZE / 2)
@@ -1479,7 +1479,7 @@ static void VideoNextPacket(VideoStream * stream, int codec_id)
     memset(avpkt->data + avpkt->stream_index, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
     stream->CodecIDRb[stream->PacketWrite] = codec_id;
-    //DumpH264(avpkt->data, avpkt->stream_index);
+    // DumpH264(avpkt->data, avpkt->stream_index);
 
     // advance packet write
     stream->PacketWrite = (stream->PacketWrite + 1) % VIDEO_PACKET_MAX;
@@ -1618,7 +1618,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, con
             continue;
         }
         if (!p[0] && !p[1] && p[2] == 0x01 && p[3] == 0xb3) {
-//      printf("aspectratio %02x\n",p[7]>>4);
+            // printf("aspectratio %02x\n",p[7]>>4);
         }
         --n;
         ++p;
@@ -1868,7 +1868,7 @@ int VideoDecodeInput(VideoStream * stream)
     }
 
     filled = atomic_read(&stream->PacketsFilled);
-//  printf("Packets in Decode %d\n",filled);
+    // printf("Packets in Decode %d\n",filled);
     if (!filled) {
         return -1;
     }
@@ -1906,7 +1906,7 @@ int VideoDecodeInput(VideoStream * stream)
                 Debug(3, "in VideoDecode make close\n");
                 stream->LastCodecID = AV_CODEC_ID_NONE;
                 CodecVideoClose(stream->Decoder);
-                // FIXME: CodecVideoClose calls/uses hw decoder    
+                // FIXME: CodecVideoClose calls/uses hw decoder
                 goto skip;
             }
             // FIXME: look if more close are in the queue
@@ -1941,8 +1941,8 @@ int VideoDecodeInput(VideoStream * stream)
     avpkt->stream_index = 0;
 
 #ifdef USE_PIP
-    //fprintf(stderr, "[");
-    //DumpMpeg(avpkt->data, avpkt->size);
+    // fprintf(stderr, "[");
+    // DumpMpeg(avpkt->data, avpkt->size);
 #ifdef STILL_DEBUG
     if (InStillPicture) {
         DumpMpeg(avpkt->data, avpkt->size);
@@ -1954,7 +1954,7 @@ int VideoDecodeInput(VideoStream * stream)
         CodecVideoDecode(stream->Decoder, avpkt);
     }
     pthread_mutex_unlock(&stream->DecoderLockMutex);
-    //fprintf(stderr, "]\n");
+    // fprintf(stderr, "]\n");
 #else
     // old version
     if (stream->LastCodecID == AV_CODEC_ID_MPEG2VIDEO) {
@@ -2193,7 +2193,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
     }
     // hard limit buffer full: needed for replay
     if (atomic_read(&stream->PacketsFilled) >= VIDEO_PACKET_MAX - 10) {
-//  Debug(3, "video: video buffer full\n");
+        // Debug(3, "video: video buffer full\n");
         return 0;
     }
 #ifdef USE_SOFTLIMIT
@@ -2225,7 +2225,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
     z = 0;
     while (!*check) {                   // count leading zeros
         if (l < 3) {
-//      Warning(_("[softhddev] empty video packet %d bytes\n"), size);
+            // Warning(_("[softhddev] empty video packet %d bytes\n"), size);
             z = 0;
             break;
         }
@@ -2278,7 +2278,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
         VideoEnqueue(stream, pts, dts, check - 2, l + 2);
         return size;
     }
-    // HEVC Codec 
+    // HEVC Codec
     if ((data[6] & 0xC0) == 0x80 && z >= 2 && check[0] == 0x01 && check[1] == 0x46) {
         // old PES HDTV recording z == 2 -> stronger check!
         if (stream->CodecID == AV_CODEC_ID_HEVC) {
@@ -2372,7 +2372,7 @@ int PlayVideo(const uint8_t * data, int size)
     return PlayVideo3(MyVideoStream, data, size);
 }
 
-    /// call VDR support function
+/// call VDR support function
 extern uint8_t *CreateJpeg(uint8_t *, int *, int, int, int);
 
 #if defined(USE_JPEG) && JPEG_LIB_VERSION >= 80
@@ -3033,7 +3033,7 @@ static void StartXServer(void)
     int maxfd;
     int fd;
 
-    //  X server
+    // X server
     if (X11Server) {
         args[0] = X11Server;
     } else {
@@ -3047,7 +3047,7 @@ static void StartXServer(void)
         // export display for childs
         setenv("DISPLAY", X11DisplayName, 1);
     }
-    //  split X server arguments string into words
+    // split X server arguments string into words
     if ((sval = X11ServerArguments)) {
         char *s;
 
@@ -3071,13 +3071,13 @@ static void StartXServer(void)
     // FIXME: append VTxx
     args[argn] = NULL;
 
-    //  arm the signal
+    // arm the signal
     memset(&usr1, 0, sizeof(struct sigaction));
     usr1.sa_handler = Usr1Handler;
     sigaction(SIGUSR1, &usr1, NULL);
 
     Debug(3, "x-setup: Starting X server '%s' '%s'\n", args[0], X11ServerArguments);
-    //  fork
+    // fork
     if ((pid = fork())) {               // parent
 
         X11ServerPid = pid;
@@ -3096,7 +3096,7 @@ static void StartXServer(void)
         close(fd);                      // vdr should open with O_CLOEXEC
     }
 
-    //  start the X server
+    // start the X server
     execvp(args[0], (char *const *)args);
 
     Error(_("x-setup: Failed to start X server '%s'\n"), args[0]);
@@ -3269,7 +3269,7 @@ void MainThreadHook(void)
 //  Suspend/Resume
 //////////////////////////////////////////////////////////////////////////////
 
-    /// call VDR support function
+/// call VDR support function
 extern void DelPip(void);
 
 /**

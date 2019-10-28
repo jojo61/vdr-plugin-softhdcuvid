@@ -5,7 +5,7 @@ Copyright (c) 2018 by jojo61.  All Rights Reserved.
 
 Contributor(s):
 
-jojo61 
+jojo61
 
 License: AGPLv3
 
@@ -31,13 +31,13 @@ A software and GPU emulated UHD output device plugin for VDR.
     o HDMI/SPDIF pass-through
     o Software volume, compression, normalize and channel resample
     o VDR ScaleVideo API
-    o CUDA deinterlacer 
+    o CUDA deinterlacer
     o Autocrop
     o Suspend / Dettach
     o PIP (Picture-in-Picture) (not working yet)
 
 
-To compile you must have the 'requires' installed. 
+To compile you must have the 'requires' installed.
 
 
 This is a fork of johns original softhddevice work and I reworked it to support HEVC with CUDA and opengl output.
@@ -52,7 +52,7 @@ You need libplacebo.
 It is still beta and I tested it with Intel VAAPI. If you have problmes with the shaders then copy the drirc file in your home directory as .drirc
 AMD VAAPI is broken by AMD and will not work currently. The vaapi_deinterlace is broken and the amdgpu driver is instable. I have not testet with amdgpupro
 
-You have to adapt the Makefile to your needs. I use FFMPEG 4.0 
+You have to adapt the Makefile to your needs. I use FFMPEG 4.0
 The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10
 
 Unfortunatly older FFMEGs has a bug with deinterlacing cuda frames. Best to get the latest FFMPEG Version.
@@ -65,7 +65,7 @@ old:
 new:
      ctx->frame_queue = av_fifo_alloc((ctx->nb_surfaces + 2 ) * sizeof(CuvidParsedFrame));
 
-This Version supports building with libplacebo. https://github.com/haasn/libplacebo 
+This Version supports building with libplacebo. https://github.com/haasn/libplacebo
 You have to enable it in the Makefile and install libplacebo yourself.
 At the moment this is Work in progress.
 It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
@@ -74,7 +74,7 @@ In the settings you can enable a correction for Colorblindness. First you have t
 
 Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
 
-If your FFMEG supports it then you can enable YADIF in the Makefile and select btween the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer. 
+If your FFMEG supports it then you can enable YADIF in the Makefile and select btween the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer.
 
 Good luck
 jojo61

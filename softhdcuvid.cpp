@@ -55,38 +55,31 @@ extern "C"
 #endif
 }
 
-#if APIVERSNUM >= 20301
-#define MURKS ->
-#else
-#define MURKS .
-#define LOCK_CHANNELS_READ	do { } while (0)
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 
-    /// vdr-plugin version number.
-    /// Makefile extracts the version number for generating the file name
-    /// for the distribution archive.
+/// vdr-plugin version number.
+/// Makefile extracts the version number for generating the file name
+/// for the distribution archive.
 static const char *const VERSION = "2.1.0"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
     ;
 
-    /// vdr-plugin description.
+/// vdr-plugin description.
 static const char *const DESCRIPTION = trNOOP("A software and GPU emulated UHD device");
 
-    /// vdr-plugin text of main menu entry
+/// vdr-plugin text of main menu entry
 static const char *MAINMENUENTRY = trNOOP("SoftUHD");
 
-    /// single instance of softhddevice plugin device.
+/// single instance of softhddevice plugin device.
 static class cSoftHdDevice *MyDevice;
 
 //////////////////////////////////////////////////////////////////////////////
 
 #define RESOLUTIONS 5                   ///< number of resolutions
 
-    /// resolutions names
+/// resolutions names
 static const char *const Resolution[RESOLUTIONS] = {
     "576i", "720p", "1080i_fake", "1080i", "UHD"
 };
@@ -118,28 +111,28 @@ static int ConfigScalerTest;            /// Test for Scalers
 static int ConfigColorBlindness;
 static int ConfigColorBlindnessFaktor;
 
-    /// config deinterlace
+/// config deinterlace
 static int ConfigVideoDeinterlace[RESOLUTIONS];
 
-    /// config skip chroma
+/// config skip chroma
 static int ConfigVideoSkipChromaDeinterlace[RESOLUTIONS];
 
-    /// config inverse telecine
+/// config inverse telecine
 static int ConfigVideoInverseTelecine[RESOLUTIONS];
 
-    /// config denoise
+/// config denoise
 static int ConfigVideoDenoise[RESOLUTIONS];
 
-    /// config sharpen
+/// config sharpen
 static int ConfigVideoSharpen[RESOLUTIONS];
 
-    /// config scaling
+/// config scaling
 static int ConfigVideoScaling[RESOLUTIONS];
 
-    /// config cut top and bottom pixels
+/// config cut top and bottom pixels
 static int ConfigVideoCutTopBottom[RESOLUTIONS];
 
-    /// config cut left and right pixels
+/// config cut left and right pixels
 static int ConfigVideoCutLeftRight[RESOLUTIONS];
 
 static int ConfigAutoCropEnabled;       ///< auto crop detection enabled
@@ -194,10 +187,10 @@ static int ConfigMaxSizeGPUImageCache = 128;    ///< maximum size of GPU mem to 
 
 static volatile int DoMakePrimary;      ///< switch primary device to this
 
-#define SUSPEND_EXTERNAL	-1          ///< play external suspend mode
-#define NOT_SUSPENDED		0           ///< not suspend mode
-#define SUSPEND_NORMAL		1           ///< normal suspend mode
-#define SUSPEND_DETACHED	2           ///< detached suspend mode
+#define SUSPEND_EXTERNAL    -1          ///< play external suspend mode
+#define NOT_SUSPENDED       0           ///< not suspend mode
+#define SUSPEND_NORMAL      1           ///< normal suspend mode
+#define SUSPEND_DETACHED    2           ///< detached suspend mode
 static signed char SuspendMode;         ///< suspend mode
 
 //////////////////////////////////////////////////////////////////////////////
@@ -207,27 +200,27 @@ static signed char SuspendMode;         ///< suspend mode
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Soft device plugin remote class.
+**  Soft device plugin remote class.
 */
 class cSoftRemote:public cRemote
 {
   public:
 
     /**
-    **	Soft device remote class constructor.
+    **  Soft device remote class constructor.
     **
-    **	@param name	remote name
+    **  @param name remote name
     */
     cSoftRemote(const char *name):cRemote(name)
     {
     }
 
     /**
-    **	Put keycode into vdr event queue.
+    **  Put keycode into vdr event queue.
     **
-    **	@param code	key code
-    **	@param repeat	flag key repeated
-    **	@param release	flag key released
+    **  @param code key code
+    **  @param repeat   flag key repeated
+    **  @param release  flag key released
     */
     bool Put(const char *code, bool repeat = false, bool release = false) {
         return cRemote::Put(code, repeat, release);
@@ -235,13 +228,13 @@ class cSoftRemote:public cRemote
 };
 
 /**
-**	Feed key press as remote input (called from C part).
+**  Feed key press as remote input (called from C part).
 **
-**	@param keymap	target keymap "XKeymap" name
-**	@param key	pressed/released key name
-**	@param repeat	repeated key flag
-**	@param release	released key flag
-**	@param letter	x11 character string (system setting locale)
+**  @param keymap   target keymap "XKeymap" name
+**  @param key  pressed/released key name
+**  @param repeat   repeated key flag
+**  @param release  released key flag
+**  @param letter   x11 character string (system setting locale)
 */
 extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat, int release, const char *letter)
 {
@@ -265,7 +258,7 @@ extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat, in
         csoft = new cSoftRemote(keymap);
     }
 
-    //dsyslog("[softhddev]%s %s, %s, %s\n", __FUNCTION__, keymap, key, letter);
+    // dsyslog("[softhddev]%s %s, %s, %s\n", __FUNCTION__, keymap, key, letter);
     if (key[1]) {                       // no single character
         if (!csoft->Put(key, repeat, release) && letter && !cRemote::IsLearning()) {
             cCharSetConv conv;
@@ -286,7 +279,7 @@ extern "C" void FeedKeyPress(const char *keymap, const char *key, int repeat, in
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Soft device plugin OSD class.
+**  Soft device plugin OSD class.
 */
 class cSoftOsd:public cOsd
 {
@@ -305,12 +298,12 @@ class cSoftOsd:public cOsd
 volatile char cSoftOsd::Dirty;          ///< flag force redraw everything
 
 /**
-**	Sets this OSD to be the active one.
+**  Sets this OSD to be the active one.
 **
-**	@param on	true on, false off
+**  @param on   true on, false off
 **
-**	@note only needed as workaround for text2skin plugin with
-**	undrawn areas.
+**  @note only needed as workaround for text2skin plugin with
+**  undrawn areas.
 */
 void cSoftOsd::SetActive(bool on)
 {
@@ -335,13 +328,13 @@ void cSoftOsd::SetActive(bool on)
 }
 
 /**
-**	Constructor OSD.
+**  Constructor OSD.
 **
-**	Initializes the OSD with the given coordinates.
+**  Initializes the OSD with the given coordinates.
 **
-**	@param left	x-coordinate of osd on display
-**	@param top	y-coordinate of osd on display
-**	@param level	level of the osd (smallest is shown)
+**  @param left x-coordinate of osd on display
+**  @param top  y-coordinate of osd on display
+**  @param level    level of the osd (smallest is shown)
 */
 cSoftOsd::cSoftOsd(int left, int top, uint level)
 :cOsd(left, top, level)
@@ -356,9 +349,9 @@ cSoftOsd::cSoftOsd(int left, int top, uint level)
 }
 
 /**
-**	OSD Destructor.
+**  OSD Destructor.
 **
-**	Shuts down the OSD.
+**  Shuts down the OSD.
 */
 cSoftOsd::~cSoftOsd(void)
 {
@@ -384,7 +377,7 @@ cSoftOsd::~cSoftOsd(void)
 }
 
 /**
-+*	Set the sub-areas to the given areas
+**  Set the sub-areas to the given areas
 */
 eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
 {
@@ -409,7 +402,7 @@ eOsdError cSoftOsd::SetAreas(const tArea * areas, int n)
 }
 
 /**
-**	Actually commits all data to the OSD hardware.
+**  Actually commits all data to the OSD hardware.
 */
 void cSoftOsd::Flush(void)
 {
@@ -616,11 +609,7 @@ void cSoftOsd::Flush(void)
 #endif
         OsdDrawARGB(xp, yp, w, h, stride, pm->Data(), x, y);
 
-#if APIVERSNUM >= 20110
         DestroyPixmap(pm);
-#else
-        delete pm;
-#endif
     }
     Dirty = 0;
 }
@@ -748,7 +737,7 @@ class cDummyOsd:public cOsd
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Soft device plugin OSD provider class.
+**  Soft device plugin OSD provider class.
 */
 class cSoftOsdProvider:public cOsdProvider
 {
@@ -796,11 +785,11 @@ void cSoftOsdProvider::DropImageData(int ImageHandle)
 #endif
 
 /**
-**	Create a new OSD.
+**  Create a new OSD.
 **
-**	@param left	x-coordinate of OSD
-**	@param top	y-coordinate of OSD
-**	@param level	layer level of OSD
+**  @param left x-coordinate of OSD
+**  @param top  y-coordinate of OSD
+**  @param level    layer level of OSD
 */
 cOsd *cSoftOsdProvider::CreateOsd(int left, int top, uint level)
 {
@@ -818,9 +807,9 @@ cOsd *cSoftOsdProvider::CreateOsd(int left, int top, uint level)
 }
 
 /**
-**	Check if this OSD provider is able to handle a true color OSD.
+**  Check if this OSD provider is able to handle a true color OSD.
 **
-**	@returns true we are able to handle a true color OSD.
+**  @returns true we are able to handle a true color OSD.
 */
 bool cSoftOsdProvider::ProvidesTrueColor(void)
 {
@@ -835,15 +824,15 @@ const cImage *cSoftOsdProvider::GetImageData(int ImageHandle)
 
 void cSoftOsdProvider::OsdSizeChanged(void)
 {
-    //cleanup OpenGl Context
+    // cleanup OpenGl Context
     cSoftOsdProvider::StopOpenGlThread();
     cOsdProvider::UpdateOsdSize();
 }
 
 bool cSoftOsdProvider::StartOpenGlThread(void)
 {
-    //only try to start worker thread if shd is attached
-    //otherwise glutInit() crashes
+    // only try to start worker thread if shd is attached
+    // otherwise glutInit() crashes
     if (SuspendMode != NOT_SUSPENDED) {
         dsyslog("[softhddev]detached - OpenGl Worker Thread not tried to start");
         return false;
@@ -871,7 +860,7 @@ void cSoftOsdProvider::StopOpenGlThread(void)
 {
     dsyslog("[softhddev]stopping OpenGL Worker Thread ");
     if (oglThread) {
-//  OsdClose();
+        // OsdClose();
         oglThread->Stop();
     }
     oglThread.reset();
@@ -880,7 +869,7 @@ void cSoftOsdProvider::StopOpenGlThread(void)
 #endif
 
 /**
-**	Create cOsdProvider class.
+**  Create cOsdProvider class.
 */
 cSoftOsdProvider::cSoftOsdProvider(void)
 :cOsdProvider()
@@ -896,7 +885,7 @@ cSoftOsdProvider::cSoftOsdProvider(void)
 }
 
 /**
-**	Destroy cOsdProvider class.
+**  Destroy cOsdProvider class.
 */
 cSoftOsdProvider::~cSoftOsdProvider()
 {
@@ -913,7 +902,7 @@ cSoftOsdProvider::~cSoftOsdProvider()
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Soft device plugin menu setup page class.
+**  Soft device plugin menu setup page class.
 */
 class cMenuSetupSoft:public cMenuSetupPage
 {
@@ -1022,9 +1011,9 @@ class cMenuSetupSoft:public cMenuSetupPage
 };
 
 /**
-**	Create a seperator item.
+**  Create a seperator item.
 **
-**	@param label	text inside separator
+**  @param label    text inside separator
 */
 static inline cOsdItem *SeparatorItem(const char *label)
 {
@@ -1037,11 +1026,11 @@ static inline cOsdItem *SeparatorItem(const char *label)
 }
 
 /**
-**	Create a collapsed item.
+**  Create a collapsed item.
 **
-**	@param label	text inside collapsed
-**	@param flag	flag handling collapsed or opened
-**	@param msg	open message
+**  @param label    text inside collapsed
+**  @param flag flag handling collapsed or opened
+**  @param msg  open message
 */
 inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag, const char *msg)
 {
@@ -1053,7 +1042,7 @@ inline cOsdItem *cMenuSetupSoft::CollapsedItem(const char *label, int &flag, con
 }
 
 /**
-**	Create setup menu.
+**  Create setup menu.
 */
 void cMenuSetupSoft::Create(void)
 {
@@ -1102,9 +1091,9 @@ void cMenuSetupSoft::Create(void)
         for (scalers = 0; pl_named_filters[scalers].filter != NULL; scalers++) {
             scaling[scalers] = (char *)pl_named_filters[scalers].name;
             scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
-//      printf("Scaler %s\n",pl_named_filters[scalers].name);
+            // printf("Scaler %s\n",pl_named_filters[scalers].name);
         }
-//  scalers -= 2;
+        // scalers -= 2;
     }
 #endif
 
@@ -1272,7 +1261,7 @@ void cMenuSetupSoft::Create(void)
 }
 
 /**
-**	Process key for setup menu.
+**  Process key for setup menu.
 */
 eOSState cMenuSetupSoft::ProcessKey(eKeys key)
 {
@@ -1321,9 +1310,9 @@ eOSState cMenuSetupSoft::ProcessKey(eKeys key)
 }
 
 /**
-**	Constructor setup menu.
+**  Constructor setup menu.
 **
-**	Import global config variables into setup.
+**  Import global config variables into setup.
 */
 cMenuSetupSoft::cMenuSetupSoft(void)
 {
@@ -1379,7 +1368,7 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     TargetColorSpace = ConfigTargetColorSpace;
     ColorBlindness = ConfigColorBlindness;
     ColorBlindnessFaktor = ConfigColorBlindnessFaktor;
-//  ScalerTest = ConfigScalerTest;
+    // ScalerTest = ConfigScalerTest;
 
     for (i = 0; i < RESOLUTIONS; ++i) {
         ResolutionShown[i] = 0;
@@ -1455,7 +1444,7 @@ cMenuSetupSoft::cMenuSetupSoft(void)
 }
 
 /**
-**	Store setup.
+**  Store setup.
 */
 void cMenuSetupSoft::Store(void)
 {
@@ -1523,7 +1512,7 @@ void cMenuSetupSoft::Store(void)
     VideoSetColorBlindness(ConfigColorBlindness);
     SetupStore("CBlindnessFaktor", ConfigColorBlindnessFaktor = ColorBlindnessFaktor);
     VideoSetColorBlindnessFaktor(ConfigColorBlindnessFaktor);
-//    SetupStore("ScalerTest", ConfigScalerTest = ScalerTest);
+    // SetupStore("ScalerTest", ConfigScalerTest = ScalerTest);
     VideoSetScalerTest(ConfigScalerTest);
 
     for (i = 0; i < RESOLUTIONS; ++i) {
@@ -1633,7 +1622,7 @@ void cMenuSetupSoft::Store(void)
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Dummy player for suspend mode.
+**  Dummy player for suspend mode.
 */
 class cSoftHdPlayer:public cPlayer
 {
@@ -1657,7 +1646,7 @@ cSoftHdPlayer::~cSoftHdPlayer()
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Dummy control class for suspend mode.
+**  Dummy control class for suspend mode.
 */
 class cSoftHdControl:public cControl
 {
@@ -1676,9 +1665,9 @@ class cSoftHdControl:public cControl
 cSoftHdPlayer *cSoftHdControl::Player;  ///< dummy player instance
 
 /**
-**	Handle a key event.
+**  Handle a key event.
 **
-**	@param key	key pressed
+**  @param key  key pressed
 */
 eOSState cSoftHdControl::ProcessKey(eKeys key)
 {
@@ -1695,7 +1684,7 @@ eOSState cSoftHdControl::ProcessKey(eKeys key)
 }
 
 /**
-**	Player control constructor.
+**  Player control constructor.
 */
 cSoftHdControl::cSoftHdControl(void)
 :cControl(Player = new cSoftHdPlayer)
@@ -1703,7 +1692,7 @@ cSoftHdControl::cSoftHdControl(void)
 }
 
 /**
-**	Player control destructor.
+**  Player control destructor.
 */
 cSoftHdControl::~cSoftHdControl()
 {
@@ -1735,26 +1724,22 @@ static int PipAltPosition;              ///< flag alternative position
 #include <vdr/receiver.h>
 
 /**
-**	Receiver class for PIP mode.
+**  Receiver class for PIP mode.
 */
 class cSoftReceiver:public cReceiver
 {
   protected:
     virtual void Activate(bool);
-#if APIVERSNUM >= 20301
     virtual void Receive(const uchar *, int);
-#else
-    virtual void Receive(uchar *, int);
-#endif
   public:
      cSoftReceiver(const cChannel *);   ///< receiver constructor
      virtual ~ cSoftReceiver();         ///< receiver destructor
 };
 
 /**
-**	Receiver constructor.
+**  Receiver constructor.
 **
-**	@param channel	channel to receive
+**  @param channel  channel to receive
 */
 cSoftReceiver::cSoftReceiver(const cChannel * channel):cReceiver(NULL, MINPRIORITY)
 {
@@ -1764,7 +1749,7 @@ cSoftReceiver::cSoftReceiver(const cChannel * channel):cReceiver(NULL, MINPRIORI
 }
 
 /**
-**	Receiver destructor.
+**  Receiver destructor.
 */
 cSoftReceiver::~cSoftReceiver()
 {
@@ -1772,9 +1757,9 @@ cSoftReceiver::~cSoftReceiver()
 }
 
 /**
-**	Called before the receiver gets attached or detached.
+**  Called before the receiver gets attached or detached.
 **
-**	@param on	flag attached, detached
+**  @param on   flag attached, detached
 */
 void cSoftReceiver::Activate(bool on)
 {
@@ -1858,21 +1843,17 @@ static void PipPesParse(const uint8_t * data, int size, int is_start)
 }
 
     /// Transport stream packet size
-#define TS_PACKET_SIZE	188
+#define TS_PACKET_SIZE  188
     /// Transport stream packet sync byte
-#define TS_PACKET_SYNC	0x47
+#define TS_PACKET_SYNC  0x47
 
 /**
-**	Receive TS packet from device.
+**  Receive TS packet from device.
 **
-**	@param data	ts packet
-**	@param size	size (#TS_PACKET_SIZE=188) of tes packet
+**  @param data ts packet
+**  @param size size (#TS_PACKET_SIZE=188) of tes packet
 */
-#if APIVERSNUM >= 20301
 void cSoftReceiver::Receive(const uchar * data, int size)
-#else
-void cSoftReceiver::Receive(uchar * data, int size)
-#endif
 {
     const uint8_t *p;
 
@@ -1931,7 +1912,7 @@ static int PipChannelNr;                ///< last PIP channel number
 static const cChannel *PipChannel;      ///< current PIP channel
 
 /**
-**	Stop PIP.
+**  Stop PIP.
 */
 extern "C" void DelPip(void)
 {
@@ -1942,9 +1923,9 @@ extern "C" void DelPip(void)
 }
 
 /**
-**	Prepare new PIP.
+**  Prepare new PIP.
 **
-**	@param channel_nr	channel number
+**  @param channel_nr   channel number
 */
 static void NewPip(int channel_nr)
 {
@@ -1964,7 +1945,7 @@ static void NewPip(int channel_nr)
         channel_nr = cDevice::CurrentChannel();
     }
     LOCK_CHANNELS_READ;
-    if (channel_nr && (channel = Channels MURKS GetByNumber(channel_nr))
+    if (channel_nr && (channel = Channels->GetByNumber(channel_nr))
         && (device = cDevice::GetDevice(channel, 0, false, false))) {
 
         DelPip();
@@ -1979,7 +1960,7 @@ static void NewPip(int channel_nr)
 }
 
 /**
-**	Toggle PIP on/off.
+**  Toggle PIP on/off.
 */
 static void TogglePip(void)
 {
@@ -1996,9 +1977,9 @@ static void TogglePip(void)
 }
 
 /**
-**	Switch PIP to next available channel.
+**  Switch PIP to next available channel.
 **
-**	@param direction	direction of channel switch
+**  @param direction    direction of channel switch
 */
 static void PipNextAvailableChannel(int direction)
 {
@@ -2015,10 +1996,10 @@ static void PipNextAvailableChannel(int direction)
         bool ndr;
         cDevice *device;
 
-        channel = direction > 0 ? Channels MURKS Next(channel)
-            : Channels MURKS Prev(channel);
+        channel = direction > 0 ? Channels->Next(channel)
+            : Channels->Prev(channel);
         if (!channel && Setup.ChannelsWrap) {
-            channel = direction > 0 ? Channels MURKS First() : Channels MURKS Last();
+            channel = direction > 0 ? Channels->First() : Channels->Last();
         }
         if (channel && !channel->GroupSep()
             && (device = cDevice::GetDevice(channel, 0, false, true))
@@ -2035,7 +2016,7 @@ static void PipNextAvailableChannel(int direction)
 }
 
 /**
-**	Swap PIP channels.
+**  Swap PIP channels.
 */
 static void SwapPipChannels(void)
 {
@@ -2049,12 +2030,12 @@ static void SwapPipChannels(void)
     if (channel) {
         LOCK_CHANNELS_READ;
 
-        Channels MURKS SwitchTo(channel->Number());
+        Channels->SwitchTo(channel->Number());
     }
 }
 
 /**
-**	Swap PIP position.
+**  Swap PIP position.
 */
 static void SwapPipPosition(void)
 {
@@ -2090,7 +2071,7 @@ static void SwapPipPosition(void)
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Hotkey parsing state machine.
+**  Hotkey parsing state machine.
 */
 typedef enum
 {
@@ -2101,7 +2082,7 @@ typedef enum
 } HkState;
 
 /**
-**	Soft device plugin menu class.
+**  Soft device plugin menu class.
 */
 class cSoftHdMenu:public cOsdMenu
 {
@@ -2116,7 +2097,7 @@ class cSoftHdMenu:public cOsdMenu
 };
 
 /**
-**	Create main menu.
+**  Create main menu.
 */
 void cSoftHdMenu::Create(void)
 {
@@ -2169,7 +2150,7 @@ void cSoftHdMenu::Create(void)
 }
 
 /**
-**	Soft device menu constructor.
+**  Soft device menu constructor.
 */
 cSoftHdMenu::cSoftHdMenu(const char *title, int c0, int c1, int c2, int c3, int c4)
 :cOsdMenu(title, c0, c1, c2, c3, c4)
@@ -2180,16 +2161,16 @@ cSoftHdMenu::cSoftHdMenu(const char *title, int c0, int c1, int c2, int c3, int 
 }
 
 /**
-**	Soft device menu destructor.
+**  Soft device menu destructor.
 */
 cSoftHdMenu::~cSoftHdMenu()
 {
 }
 
 /**
-**	Handle hot key commands.
+**  Handle hot key commands.
 **
-**	@param code	numeric hot key code
+**  @param code numeric hot key code
 */
 static void HandleHotkey(int code)
 {
@@ -2319,9 +2300,9 @@ static void HandleHotkey(int code)
 }
 
 /**
-**	Handle key event.
+**  Handle key event.
 **
-**	@param key	key event
+**  @param key  key event
 */
 eOSState cSoftHdMenu::ProcessKey(eKeys key)
 {
@@ -2454,11 +2435,7 @@ class cSoftHdDevice:public cDevice
     virtual bool HasDecoder(void) const;
     virtual bool CanReplay(void) const;
     virtual bool SetPlayMode(ePlayMode);
-#if APIVERSNUM >= 20103
     virtual void TrickSpeed(int, bool);
-#else
-    virtual void TrickSpeed(int);
-#endif
     virtual void Clear(void);
     virtual void Play(void);
     virtual void Freeze(void);
@@ -2467,10 +2444,8 @@ class cSoftHdDevice:public cDevice
     virtual bool Poll(cPoller &, int = 0);
     virtual bool Flush(int = 0);
     virtual int64_t GetSTC(void);
-#if APIVERSNUM >= 10733
     virtual cRect CanScaleVideo(const cRect &, int = taCenter);
     virtual void ScaleVideo(const cRect & = cRect::Null);
-#endif
     virtual void SetVideoDisplayFormat(eVideoDisplayFormat);
     virtual void SetVideoFormat(bool);
     virtual void GetVideoSize(int &, int &, double &);
@@ -2489,12 +2464,12 @@ class cSoftHdDevice:public cDevice
     virtual void SetAudioTrackDevice(eTrackType);
     virtual void SetVolumeDevice(int);
 
-// Image Grab facilities
+    // Image Grab facilities
 
     virtual uchar *GrabImage(int &, bool, int, int, int);
 
 #ifdef USE_VDR_SPU
-// SPU facilities
+    // SPU facilities
   private:
     cDvbSpuDecoder * spuDecoder;
   public:
@@ -2506,11 +2481,11 @@ class cSoftHdDevice:public cDevice
 };
 
 /**
-**	Constructor device.
+**  Constructor device.
 */
 cSoftHdDevice::cSoftHdDevice(void)
 {
-    //dsyslog("[softhddev]%s\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s\n", __FUNCTION__);
 
 #ifdef USE_VDR_SPU
     spuDecoder = NULL;
@@ -2518,20 +2493,20 @@ cSoftHdDevice::cSoftHdDevice(void)
 }
 
 /**
-**	Destructor device.
+**  Destructor device.
 */
 cSoftHdDevice::~cSoftHdDevice(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 #ifdef USE_VDR_SPU
     delete spuDecoder;
 #endif
 }
 
 /**
-**	Informs a device that it will be the primary device.
+**  Informs a device that it will be the primary device.
 **
-**	@param on	flag if becoming or loosing primary
+**  @param on   flag if becoming or loosing primary
 */
 void cSoftHdDevice::MakePrimaryDevice(bool on)
 {
@@ -2558,10 +2533,10 @@ void cSoftHdDevice::MakePrimaryDevice(bool on)
 #ifdef USE_VDR_SPU
 
 /**
-**	Get the device SPU decoder.
+**  Get the device SPU decoder.
 **
-**	@returns a pointer to the device's SPU decoder (or NULL, if this
-**	device doesn't have an SPU decoder)
+**  @returns a pointer to the device's SPU decoder (or NULL, if this
+**  device doesn't have an SPU decoder)
 */
 cSpuDecoder *cSoftHdDevice::GetSpuDecoder(void)
 {
@@ -2576,7 +2551,7 @@ cSpuDecoder *cSoftHdDevice::GetSpuDecoder(void)
 #endif
 
 /**
-**	Tells whether this device has a MPEG decoder.
+**  Tells whether this device has a MPEG decoder.
 */
 bool cSoftHdDevice::HasDecoder(void) const
 {
@@ -2584,7 +2559,7 @@ bool cSoftHdDevice::HasDecoder(void) const
 }
 
 /**
-**	Returns true if this device can currently start a replay session.
+**  Returns true if this device can currently start a replay session.
 */
 bool cSoftHdDevice::CanReplay(void) const
 {
@@ -2592,9 +2567,9 @@ bool cSoftHdDevice::CanReplay(void) const
 }
 
 /**
-**	Sets the device into the given play mode.
+**  Sets the device into the given play mode.
 **
-**	@param play_mode	new play mode (Audio/Video/External...)
+**  @param play_mode    new play mode (Audio/Video/External...)
 */
 bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode)
 {
@@ -2637,43 +2612,34 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode)
 }
 
 /**
-**	Gets the current System Time Counter, which can be used to
-**	synchronize audio, video and subtitles.
+**  Gets the current System Time Counter, which can be used to
+**  synchronize audio, video and subtitles.
 */
 int64_t cSoftHdDevice::GetSTC(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     return::GetSTC();
 }
 
 /**
-**	Set trick play speed.
+**  Set trick play speed.
 **
-**	Every single frame shall then be displayed the given number of
-**	times.
+**  Every single frame shall then be displayed the given number of
+**  times.
 **
-**	@param speed	trick speed
-**	@param forward	flag forward direction
+**  @param speed    trick speed
+**  @param forward  flag forward direction
 */
-#if APIVERSNUM >= 20103
 void cSoftHdDevice::TrickSpeed(int speed, bool forward)
 {
     dsyslog("[softhddev]%s: %d %d\n", __FUNCTION__, speed, forward);
 
     ::TrickSpeed(speed);
 }
-#else
-void cSoftHdDevice::TrickSpeed(int speed)
-{
-    dsyslog("[softhddev]%s: %d\n", __FUNCTION__, speed);
-
-    ::TrickSpeed(speed);
-}
-#endif
 
 /**
-**	Clears all video and audio data from the device.
+**  Clears all video and audio data from the device.
 */
 void cSoftHdDevice::Clear(void)
 {
@@ -2684,7 +2650,7 @@ void cSoftHdDevice::Clear(void)
 }
 
 /**
-**	Sets the device into play mode (after a previous trick mode)
+**  Sets the device into play mode (after a previous trick mode)
 */
 void cSoftHdDevice::Play(void)
 {
@@ -2695,7 +2661,7 @@ void cSoftHdDevice::Play(void)
 }
 
 /**
-**	Puts the device into "freeze frame" mode.
+**  Puts the device into "freeze frame" mode.
 */
 void cSoftHdDevice::Freeze(void)
 {
@@ -2706,7 +2672,7 @@ void cSoftHdDevice::Freeze(void)
 }
 
 /**
-**	Turns off audio while replaying.
+**  Turns off audio while replaying.
 */
 void cSoftHdDevice::Mute(void)
 {
@@ -2717,10 +2683,10 @@ void cSoftHdDevice::Mute(void)
 }
 
 /**
-**	Display the given I-frame as a still picture.
+**  Display the given I-frame as a still picture.
 **
-**	@param data	pes or ts data of a frame
-**	@param length	length of data area
+**  @param data pes or ts data of a frame
+**  @param length   length of data area
 */
 void cSoftHdDevice::StillPicture(const uchar * data, int length)
 {
@@ -2735,25 +2701,25 @@ void cSoftHdDevice::StillPicture(const uchar * data, int length)
 }
 
 /**
-**	Check if the device is ready for further action.
+**  Check if the device is ready for further action.
 **
-**	@param poller		file handles (unused)
-**	@param timeout_ms	timeout in ms to become ready
+**  @param poller       file handles (unused)
+**  @param timeout_ms   timeout in ms to become ready
 **
-**	@retval true	if ready
-**	@retval false	if busy
+**  @retval true    if ready
+**  @retval false   if busy
 */
 bool cSoftHdDevice::Poll( __attribute__((unused)) cPoller & poller, int timeout_ms)
 {
-    //dsyslog("[softhddev]%s: %d\n", __FUNCTION__, timeout_ms);
+    // dsyslog("[softhddev]%s: %d\n", __FUNCTION__, timeout_ms);
 
     return::Poll(timeout_ms);
 }
 
 /**
-**	Flush the device output buffers.
+**  Flush the device output buffers.
 **
-**	@param timeout_ms	timeout in ms to become ready
+**  @param timeout_ms   timeout in ms to become ready
 */
 bool cSoftHdDevice::Flush(int timeout_ms)
 {
@@ -2765,8 +2731,8 @@ bool cSoftHdDevice::Flush(int timeout_ms)
 // ----------------------------------------------------------------------------
 
 /**
-**	Sets the video display format to the given one (only useful if this
-**	device has an MPEG decoder).
+**  Sets the video display format to the given one (only useful if this
+**  device has an MPEG decoder).
 */
 void cSoftHdDevice::SetVideoDisplayFormat(eVideoDisplayFormat video_display_format)
 {
@@ -2787,12 +2753,12 @@ void cSoftHdDevice::SetVideoDisplayFormat(eVideoDisplayFormat video_display_form
 }
 
 /**
-**	Sets the output video format to either 16:9 or 4:3 (only useful
-**	if this device has an MPEG decoder).
+**  Sets the output video format to either 16:9 or 4:3 (only useful
+**  if this device has an MPEG decoder).
 **
-**	Should call SetVideoDisplayFormat.
+**  Should call SetVideoDisplayFormat.
 **
-**	@param video_format16_9	flag true 16:9.
+**  @param video_format16_9 flag true 16:9.
 */
 void cSoftHdDevice::SetVideoFormat(bool video_format16_9)
 {
@@ -2804,10 +2770,10 @@ void cSoftHdDevice::SetVideoFormat(bool video_format16_9)
 }
 
 /**
-**	Returns the width, height and video_aspect ratio of the currently
-**	displayed video material.
+**  Returns the width, height and video_aspect ratio of the currently
+**  displayed video material.
 **
-**	@note the video_aspect is used to scale the subtitle.
+**  @note the video_aspect is used to scale the subtitle.
 */
 void cSoftHdDevice::GetVideoSize(int &width, int &height, double &video_aspect)
 {
@@ -2815,9 +2781,9 @@ void cSoftHdDevice::GetVideoSize(int &width, int &height, double &video_aspect)
 }
 
 /**
-**	Returns the width, height and pixel_aspect ratio the OSD.
+**  Returns the width, height and pixel_aspect ratio the OSD.
 **
-**	FIXME: Called every second, for nothing (no OSD displayed)?
+**  FIXME: Called every second, for nothing (no OSD displayed)?
 */
 void cSoftHdDevice::GetOsdSize(int &width, int &height, double &pixel_aspect)
 {
@@ -2827,46 +2793,46 @@ void cSoftHdDevice::GetOsdSize(int &width, int &height, double &pixel_aspect)
 // ----------------------------------------------------------------------------
 
 /**
-**	Play a audio packet.
+**  Play a audio packet.
 **
-**	@param data	exactly one complete PES packet (which is incomplete)
-**	@param length	length of PES packet
-**	@param id	type of audio data this packet holds
+**  @param data exactly one complete PES packet (which is incomplete)
+**  @param length   length of PES packet
+**  @param id   type of audio data this packet holds
 */
 int cSoftHdDevice::PlayAudio(const uchar * data, int length, uchar id)
 {
-    //dsyslog("[softhddev]%s: %p %p %d %d\n", __FUNCTION__, this, data, length, id);
+    // dsyslog("[softhddev]%s: %p %p %d %d\n", __FUNCTION__, this, data, length, id);
 
     return::PlayAudio(data, length, id);
 }
 
 void cSoftHdDevice::SetAudioTrackDevice( __attribute__((unused)) eTrackType type)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 }
 
 void cSoftHdDevice::SetDigitalAudioDevice( __attribute__((unused))
     bool on)
 {
-    //dsyslog("[softhddev]%s: %s\n", __FUNCTION__, on ? "true" : "false");
+    // dsyslog("[softhddev]%s: %s\n", __FUNCTION__, on ? "true" : "false");
 }
 
 void cSoftHdDevice::SetAudioChannelDevice( __attribute__((unused))
     int audio_channel)
 {
-    //dsyslog("[softhddev]%s: %d\n", __FUNCTION__, audio_channel);
+    // dsyslog("[softhddev]%s: %d\n", __FUNCTION__, audio_channel);
 }
 
 int cSoftHdDevice::GetAudioChannelDevice(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
     return 0;
 }
 
 /**
-**	Sets the audio volume on this device (Volume = 0...255).
+**  Sets the audio volume on this device (Volume = 0...255).
 **
-**	@param volume	device volume
+**  @param volume   device volume
 */
 void cSoftHdDevice::SetVolumeDevice(int volume)
 {
@@ -2878,24 +2844,24 @@ void cSoftHdDevice::SetVolumeDevice(int volume)
 // ----------------------------------------------------------------------------
 
 /**
-**	Play a video packet.
+**  Play a video packet.
 **
-**	@param data	exactly one complete PES packet (which is incomplete)
-**	@param length	length of PES packet
+**  @param data exactly one complete PES packet (which is incomplete)
+**  @param length   length of PES packet
 */
 int cSoftHdDevice::PlayVideo(const uchar * data, int length)
 {
-    //dsyslog("[softhddev]%s: %p %d\n", __FUNCTION__, data, length);
+    // dsyslog("[softhddev]%s: %p %d\n", __FUNCTION__, data, length);
     return::PlayVideo(data, length);
 }
 
 #ifdef USE_TS_VIDEO
 
 /**
-**	Play a TS video packet.
+**  Play a TS video packet.
 **
-**	@param data	ts data buffer
-**	@param length	ts packet length (188)
+**  @param data ts data buffer
+**  @param length   ts packet length (188)
 */
 int cSoftHdDevice::PlayTsVideo(const uchar * data, int length)
 {
@@ -2906,10 +2872,10 @@ int cSoftHdDevice::PlayTsVideo(const uchar * data, int length)
 #if !defined(USE_AUDIO_THREAD) || !defined(NO_TS_AUDIO)
 
 /**
-**	Play a TS audio packet.
+**  Play a TS audio packet.
 **
-**	@param data	ts data buffer
-**	@param length	ts packet length (188)
+**  @param data ts data buffer
+**  @param length   ts packet length (188)
 */
 int cSoftHdDevice::PlayTsAudio(const uchar * data, int length)
 {
@@ -2925,13 +2891,13 @@ int cSoftHdDevice::PlayTsAudio(const uchar * data, int length)
 #endif
 
 /**
-**	Grabs the currently visible screen image.
+**  Grabs the currently visible screen image.
 **
-**	@param size	size of the returned data
-**	@param jpeg	flag true, create JPEG data
-**	@param quality	JPEG quality
-**	@param width	number of horizontal pixels in the frame
-**	@param height	number of vertical pixels in the frame
+**  @param size size of the returned data
+**  @param jpeg flag true, create JPEG data
+**  @param quality  JPEG quality
+**  @param width    number of horizontal pixels in the frame
+**  @param height   number of vertical pixels in the frame
 */
 uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width, int height)
 {
@@ -2947,14 +2913,12 @@ uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width, in
     return::GrabImage(&size, jpeg, quality, width, height);
 }
 
-#if APIVERSNUM >= 10733
-
 /**
-**	Ask the output, if it can scale video.
+**  Ask the output, if it can scale video.
 **
-**	@param rect	requested video window rectangle
+**  @param rect requested video window rectangle
 **
-**	@returns the real rectangle or cRect:Null if invalid.
+**  @returns the real rectangle or cRect:Null if invalid.
 */
 cRect cSoftHdDevice::CanScaleVideo(const cRect & rect, __attribute__((unused))
     int alignment)
@@ -2963,9 +2927,9 @@ cRect cSoftHdDevice::CanScaleVideo(const cRect & rect, __attribute__((unused))
 }
 
 /**
-**	Scale the currently shown video.
+**  Scale the currently shown video.
 **
-**	@param rect	video window rectangle
+**  @param rect video window rectangle
 */
 void cSoftHdDevice::ScaleVideo(const cRect & rect)
 {
@@ -2975,10 +2939,8 @@ void cSoftHdDevice::ScaleVideo(const cRect & rect)
     ::ScaleVideo(rect.X(), rect.Y(), rect.Width(), rect.Height());
 }
 
-#endif
-
 /**
-**	Call rgb to jpeg for C Plugin.
+**  Call rgb to jpeg for C Plugin.
 */
 extern "C" uint8_t * CreateJpeg(uint8_t * image, int *size, int quality, int width, int height)
 {
@@ -3013,22 +2975,22 @@ class cPluginSoftHdDevice:public cPlugin
 };
 
 /**
-**	Initialize any member variables here.
+**  Initialize any member variables here.
 **
-**	@note DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
-**	VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
+**  @note DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
+**  VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
 */
 cPluginSoftHdDevice::cPluginSoftHdDevice(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 }
 
 /**
-**	Clean up after yourself!
+**  Clean up after yourself!
 */
 cPluginSoftHdDevice::~cPluginSoftHdDevice(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     ::SoftHdDeviceExit();
 
@@ -3036,9 +2998,9 @@ cPluginSoftHdDevice::~cPluginSoftHdDevice(void)
 }
 
 /**
-**	Return plugin version number.
+**  Return plugin version number.
 **
-**	@returns version number as constant string.
+**  @returns version number as constant string.
 */
 const char *cPluginSoftHdDevice::Version(void)
 {
@@ -3046,9 +3008,9 @@ const char *cPluginSoftHdDevice::Version(void)
 }
 
 /**
-**	Return plugin short description.
+**  Return plugin short description.
 **
-**	@returns short description as constant string.
+**  @returns short description as constant string.
 */
 const char *cPluginSoftHdDevice::Description(void)
 {
@@ -3056,9 +3018,9 @@ const char *cPluginSoftHdDevice::Description(void)
 }
 
 /**
-**	Return a string that describes all known command line options.
+**  Return a string that describes all known command line options.
 **
-**	@returns command line help as constant string.
+**  @returns command line help as constant string.
 */
 const char *cPluginSoftHdDevice::CommandLineHelp(void)
 {
@@ -3066,24 +3028,24 @@ const char *cPluginSoftHdDevice::CommandLineHelp(void)
 }
 
 /**
-**	Process the command line arguments.
+**  Process the command line arguments.
 */
 bool cPluginSoftHdDevice::ProcessArgs(int argc, char *argv[])
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
     return::ProcessArgs(argc, argv);
 }
 
 /**
-**	Initializes the DVB devices.
+**  Initializes the DVB devices.
 **
-**	Must be called before accessing any DVB functions.
+**  Must be called before accessing any DVB functions.
 **
-**	@returns true if any devices are available.
+**  @returns true if any devices are available.
 */
 bool cPluginSoftHdDevice::Initialize(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     MyDevice = new cSoftHdDevice();
 
@@ -3091,11 +3053,11 @@ bool cPluginSoftHdDevice::Initialize(void)
 }
 
 /**
-**	 Start any background activities the plugin shall perform.
+**   Start any background activities the plugin shall perform.
 */
 bool cPluginSoftHdDevice::Start(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     if (!MyDevice->IsPrimaryDevice()) {
         isyslog("[softhddev] softhddevice %d is not the primary device!", MyDevice->DeviceNumber());
@@ -3125,22 +3087,22 @@ bool cPluginSoftHdDevice::Start(void)
 }
 
 /**
-**	Shutdown plugin.  Stop any background activities the plugin is
-**	performing.
+**  Shutdown plugin.  Stop any background activities the plugin is
+**  performing.
 */
 void cPluginSoftHdDevice::Stop(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     ::Stop();
 }
 
 /**
-**	Perform any cleanup or other regular tasks.
+**  Perform any cleanup or other regular tasks.
 */
 void cPluginSoftHdDevice::Housekeeping(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     // check if user is inactive, automatic enter suspend mode
     // FIXME: cControl prevents shutdown, disable this until fixed
@@ -3160,32 +3122,32 @@ void cPluginSoftHdDevice::Housekeeping(void)
 }
 
 /**
-**	Create main menu entry.
+**  Create main menu entry.
 */
 const char *cPluginSoftHdDevice::MainMenuEntry(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     return ConfigHideMainMenuEntry ? NULL : tr(MAINMENUENTRY);
 }
 
 /**
-**	Perform the action when selected from the main VDR menu.
+**  Perform the action when selected from the main VDR menu.
 */
 cOsdObject *cPluginSoftHdDevice::MainMenuAction(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     return new cSoftHdMenu("SoftHdDevice");
 }
 
 /**
-**	Called for every plugin once during every cycle of VDR's main program
-**	loop.
+**  Called for every plugin once during every cycle of VDR's main program
+**  loop.
 */
 void cPluginSoftHdDevice::MainThreadHook(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     if (DoMakePrimary) {
         dsyslog("[softhddev]%s: switching primary device to %d\n", __FUNCTION__, DoMakePrimary);
@@ -3197,28 +3159,28 @@ void cPluginSoftHdDevice::MainThreadHook(void)
 }
 
 /**
-**	Return our setup menu.
+**  Return our setup menu.
 */
 cMenuSetupPage *cPluginSoftHdDevice::SetupMenu(void)
 {
-    //dsyslog("[softhddev]%s:\n", __FUNCTION__);
+    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
 
     return new cMenuSetupSoft;
 }
 
 /**
-**	Parse setup parameters
+**  Parse setup parameters
 **
-**	@param name	paramter name (case sensetive)
-**	@param value	value as string
+**  @param name paramter name (case sensetive)
+**  @param value    value as string
 **
-**	@returns true if the parameter is supported.
+**  @returns true if the parameter is supported.
 */
 bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
 {
     int i;
 
-    //dsyslog("[softhddev]%s: '%s' = '%s'\n", __FUNCTION__, name, value);
+    // dsyslog("[softhddev]%s: '%s' = '%s'\n", __FUNCTION__, name, value);
 
     if (!strcasecmp(name, "MakePrimary")) {
         ConfigMakePrimary = atoi(value);
@@ -3557,15 +3519,15 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
 }
 
 /**
-**	Receive requests or messages.
+**  Receive requests or messages.
 **
-**	@param id	unique identification string that identifies the
-**			service protocol
-**	@param data	custom data structure
+**  @param id   unique identification string that identifies the
+**          service protocol
+**  @param data custom data structure
 */
 bool cPluginSoftHdDevice::Service(const char *id, void *data)
 {
-    //dsyslog("[softhddev]%s: id %s\n", __FUNCTION__, id);
+    // dsyslog("[softhddev]%s: id %s\n", __FUNCTION__, id);
     if (strcmp(id, OSD_3DMODE_SERVICE) == 0) {
         SoftHDDevice_Osd3DModeService_v1_0_t *r;
 
@@ -3633,13 +3595,13 @@ bool cPluginSoftHdDevice::Service(const char *id, void *data)
 //----------------------------------------------------------------------------
 
 /**
-**	SVDRP commands help text.
-**	FIXME: translation?
+**  SVDRP commands help text.
+**  FIXME: translation?
 */
 static const char *SVDRPHelpText[] = {
     "SUSP\n" "\040   Suspend plugin.\n\n" "    The plugin is suspended to save energie. Depending on the setup\n"
         "    'softhddevice.Suspend.Close = 0' only the video and audio output\n"
-        "    is stopped or with 'softhddevice.Suspend.Close = 1' the video\n" "	   and audio devices are closed.\n"
+        "    is stopped or with 'softhddevice.Suspend.Close = 1' the video\n" "    and audio devices are closed.\n"
         "    If 'softhddevice.Suspend.X11 = 1' is set and the X11 server was\n"
         "    started by the plugin, the X11 server would also be closed.\n"
         "    (Stopping X11 while suspended isn't supported yet)\n",
@@ -3657,30 +3619,30 @@ static const char *SVDRPHelpText[] = {
         "    <n> is the number of device. Without number softhddevice becomes\n"
         "    the primary device. If becoming primary, the plugin is attached\n"
         "    to the devices. If loosing primary, the plugin is detached from\n" "    the devices.",
-    "HOTK key\n" "    Execute hotkey.\n\n" "	key is the hotkey number, following are supported:\n"
+    "HOTK key\n" "    Execute hotkey.\n\n" "    key is the hotkey number, following are supported:\n"
         "    10: disable audio pass-through\n" "    11: enable audio pass-through\n"
-        "    12: toggle audio pass-through\n" "	   13: decrease audio delay by 10ms\n"
+        "    12: toggle audio pass-through\n" "    13: decrease audio delay by 10ms\n"
         "    14: increase audio delay by 10ms\n" "    15: toggle ac3 mixdown\n"
-        "    20: disable fullscreen\n\040   21: enable fullscreen\n" "	  22: toggle fullscreen\n"
-        "    23: disable auto-crop\n\040   24: enable auto-crop\n" "	25: toggle auto-crop\n"
-        "    30: stretch 4:3 to display\n\040	31: pillar box 4:3 in display\n"
+        "    20: disable fullscreen\n\040   21: enable fullscreen\n" "    22: toggle fullscreen\n"
+        "    23: disable auto-crop\n\040   24: enable auto-crop\n" "    25: toggle auto-crop\n"
+        "    30: stretch 4:3 to display\n\040   31: pillar box 4:3 in display\n"
         "    32: center cut-out 4:3 to display\n" "    39: rotate 4:3 to display zoom mode\n"
-        "    40: stretch other aspect ratios to display\n" "	41: letter box other aspect ratios in display\n"
+        "    40: stretch other aspect ratios to display\n" "    41: letter box other aspect ratios in display\n"
         "    42: center cut-out other aspect ratios to display\n"
         "    49: rotate other aspect ratios to display zoom mode\n",
-    "STAT\n" "\040   Display SuspendMode of the plugin.\n\n" "	  reply code is 910 + SuspendMode\n"
-        "    SUSPEND_EXTERNAL == -1  (909)\n" "	   NOT_SUSPENDED    ==	0  (910)\n"
-        "    SUSPEND_NORMAL   ==  1  (911)\n" "	   SUSPEND_DETACHED ==	2  (912)\n",
-    "RAIS\n" "\040   Raise softhddevice window\n\n" "	 If Xserver is not started by softhddevice, the window which\n"
+    "STAT\n" "\040   Display SuspendMode of the plugin.\n\n" "    reply code is 910 + SuspendMode\n"
+        "    SUSPEND_EXTERNAL == -1  (909)\n" "    NOT_SUSPENDED    ==  0  (910)\n"
+        "    SUSPEND_NORMAL   ==  1  (911)\n" "    SUSPEND_DETACHED ==  2  (912)\n",
+    "RAIS\n" "\040   Raise softhddevice window\n\n" "    If Xserver is not started by softhddevice, the window which\n"
         "    contains the softhddevice frontend will be raised to the front.\n",
     NULL
 };
 
 /**
-**	Return SVDRP commands help pages.
+**  Return SVDRP commands help pages.
 **
-**	return a pointer to a list of help strings for all of the plugin's
-**	SVDRP commands.
+**  return a pointer to a list of help strings for all of the plugin's
+**  SVDRP commands.
 */
 const char **cPluginSoftHdDevice::SVDRPHelpPages(void)
 {
@@ -3688,11 +3650,11 @@ const char **cPluginSoftHdDevice::SVDRPHelpPages(void)
 }
 
 /**
-**	Handle SVDRP commands.
+**  Handle SVDRP commands.
 **
-**	@param command		SVDRP command
-**	@param option		all command arguments
-**	@param reply_code	reply code
+**  @param command      SVDRP command
+**  @param option       all command arguments
+**  @param reply_code   reply code
 */
 cString cPluginSoftHdDevice::SVDRPCommand(const char *command, const char *option, __attribute__((unused))
     int &reply_code)
