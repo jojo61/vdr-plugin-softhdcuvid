@@ -1,4 +1,3 @@
-
 ///
 /// @file codec.c   @brief Codec functions
 ///
@@ -31,15 +30,15 @@
 /// many bugs and incompatiblity in it.  Don't use this shit.
 ///
 
-    /// compile with pass-through support (stable, AC-3, E-AC-3 only)
+/// compile with pass-through support (stable, AC-3, E-AC-3 only)
 #define USE_PASSTHROUGH
-    /// compile audio drift correction support (very experimental)
+/// compile audio drift correction support (very experimental)
 #define USE_AUDIO_DRIFT_CORRECTION
-    /// compile AC-3 audio drift correction support (very experimental)
+/// compile AC-3 audio drift correction support (very experimental)
 #define USE_AC3_DRIFT_CORRECTION
-    /// use ffmpeg libswresample API (autodected, Makefile)
+/// use ffmpeg libswresample API (autodected, Makefile)
 #define noUSE_SWRESAMPLE
-    /// use libav libavresample API (autodected, Makefile)
+/// use libav libavresample API (autodected, Makefile)
 #define noUSE_AVRESAMPLE
 
 #include <stdio.h>
@@ -89,15 +88,15 @@
 //  Global
 //----------------------------------------------------------------------------
 
-      ///
-      ///   ffmpeg lock mutex
-      ///
-      ///   new ffmpeg dislikes simultanous open/close
-      ///   this breaks our code, until this is fixed use lock.
-      ///
+///
+///   ffmpeg lock mutex
+///
+///   new ffmpeg dislikes simultanous open/close
+///   this breaks our code, until this is fixed use lock.
+///
 static pthread_mutex_t CodecLockMutex;
 
-    /// Flag prefer fast channel switch
+/// Flag prefer fast channel switch
 char CodecUsePossibleDefectFrames;
 AVBufferRef *hw_device_ctx;
 
@@ -155,7 +154,7 @@ static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx, const enu
 
 }
 
-//static void Codec_free_buffer(void *opaque, uint8_t *data);
+// static void Codec_free_buffer(void *opaque, uint8_t *data);
 
 /**
 **	Video buffer management, get buffer for frame.
@@ -174,8 +173,8 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
     if (!decoder->GetFormatDone) {      // get_format missing
         enum AVPixelFormat fmts[2];
 
-//  fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
-//  Warning(_("codec: buggy libav, use ffmpeg\n"));
+        // fprintf(stderr, "codec: buggy libav, use ffmpeg\n");
+        // Warning(_("codec: buggy libav, use ffmpeg\n"));
         fmts[0] = video_ctx->pix_fmt;
         fmts[1] = AV_PIX_FMT_NONE;
         Codec_get_format(video_ctx, fmts);
@@ -183,11 +182,11 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
 #if 0
     if (decoder->hwaccel_get_buffer && (AV_PIX_FMT_VDPAU == decoder->hwaccel_pix_fmt
             || AV_PIX_FMT_CUDA == decoder->hwaccel_pix_fmt || AV_PIX_FMT_VAAPI == decoder->hwaccel_pix_fmt)) {
-        //Debug(3,"hwaccel get_buffer\n");
+        // Debug(3,"hwaccel get_buffer\n");
         return decoder->hwaccel_get_buffer(video_ctx, frame, flags);
     }
 #endif
-    //Debug(3, "codec: fallback to default get_buffer\n");
+    // Debug(3, "codec: fallback to default get_buffer\n");
     return avcodec_default_get_buffer2(video_ctx, frame, flags);
 }
 
@@ -322,7 +321,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 #endif
 
 #ifdef CUVID
-    if (strcmp(decoder->VideoCodec->long_name, "Nvidia CUVID MPEG2VIDEO decoder") == 0) {   // deinterlace for mpeg2 is somehow broken 
+    if (strcmp(decoder->VideoCodec->long_name, "Nvidia CUVID MPEG2VIDEO decoder") == 0) {   // deinterlace for mpeg2 is somehow broken
         if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint, 0) < 0) {  // adaptive
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option deint to video codec!\n"));
@@ -368,12 +367,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     //decoder->VideoCtx->debug = FF_DEBUG_STARTCODE;
     //decoder->VideoCtx->err_recognition |= AV_EF_EXPLODE;
 
-//  av_log_set_level(AV_LOG_DEBUG);
+    // av_log_set_level(AV_LOG_DEBUG);
     av_log_set_level(0);
 
     decoder->VideoCtx->get_format = Codec_get_format;
     decoder->VideoCtx->get_buffer2 = Codec_get_buffer2;
-//  decoder->VideoCtx->active_thread_type = 0;
+    // decoder->VideoCtx->active_thread_type = 0;
     decoder->VideoCtx->draw_horiz_band = NULL;
     decoder->VideoCtx->hwaccel_context = VideoGetHwAccelContext(decoder->HwDecoder);
 
@@ -403,7 +402,7 @@ void CodecVideoClose(VideoDecoder * video_decoder)
     AVFrame *frame;
 
     // FIXME: play buffered data
-//  av_frame_free(&video_decoder->Frame);   // callee does checks
+    // av_frame_free(&video_decoder->Frame);   // callee does checks
 
     Debug(3, "CodecVideoClose\n");
     if (video_decoder->VideoCtx) {
@@ -533,10 +532,10 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     pkt = avpkt;                        // use copy
     got_frame = 0;
 
-//  printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);    
+    // printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);
     ret1 = avcodec_send_packet(video_ctx, pkt);
 
-//  first_time = GetusTicks();
+    // first_time = GetusTicks();
 
     if (ret1 >= 0) {
         consumed = 1;
@@ -545,7 +544,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     if (!CuvidTestSurfaces())
         usleep(1000);
 
-//printf("send packet to decode %s\n",consumed?"ok":"Full");
+    // printf("send packet to decode %s\n",consumed?"ok":"Full");
 
     if ((ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) && CuvidTestSurfaces()) {
         ret = 0;
@@ -557,7 +556,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
             } else {
                 got_frame = 0;
             }
-//      printf("got %s packet from decoder\n",got_frame?"1":"no");
+            // printf("got %s packet from decoder\n",got_frame?"1":"no");
             if (got_frame) {            // frame completed
 #ifdef YADIF
                 if (decoder->filter) {
@@ -572,24 +571,24 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
                     }
                     if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {    // broken ZDF sends Interlaced flag
                         ret = push_filters(video_ctx, decoder->HwDecoder, frame);
-//          av_frame_unref(frame);
+                        // av_frame_unref(frame);
                         continue;
                     }
                 }
 #endif
-                //DisplayPts(video_ctx, frame);
+                //  DisplayPts(video_ctx, frame);
                 VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
-//      av_frame_unref(frame);
+                // av_frame_unref(frame);
             } else {
                 av_frame_free(&frame);
-//      printf("codec: got no frame %d  send %d\n",ret,ret1);
+                // printf("codec: got no frame %d  send %d\n",ret,ret1);
             }
         }
         if (!CuvidTestSurfaces()) {
             usleep(1000);
         }
     } else {
-//  consumed = 1;
+        // consumed = 1;
     }
 
     if (!consumed) {
@@ -694,9 +693,9 @@ static char CodecAudioDrift;            ///< flag: enable audio-drift correction
 static const int CodecAudioDrift = 0;
 #endif
 #ifdef USE_PASSTHROUGH
-    ///
-    /// Pass-through flags: CodecPCM, CodecAC3, CodecEAC3, ...
-    ///
+///
+/// Pass-through flags: CodecPCM, CodecAC3, CodecEAC3, ...
+///
 static char CodecPassthrough;
 #else
 static const int CodecPassthrough = 0;
@@ -745,7 +744,7 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 
     Debug(3, "codec: using audio codec ID %#06x (%s)\n", codec_id, avcodec_get_name(codec_id));
     if (!(audio_codec = avcodec_find_decoder(codec_id))) {
-//    if (!(audio_codec = avcodec_find_decoder(codec_id))) {
+        // if (!(audio_codec = avcodec_find_decoder(codec_id))) {
         Fatal(_("codec: codec ID %#06x not found\n"), codec_id);
         // FIXME: errors aren't fatal
     }
@@ -765,9 +764,9 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 
         av_dict = NULL;
         // FIXME: import settings
-        //av_dict_set(&av_dict, "dmix_mode", "0", 0);
-        //av_dict_set(&av_dict, "ltrt_cmixlev", "1.414", 0);
-        //av_dict_set(&av_dict, "loro_cmixlev", "1.414", 0);
+        // av_dict_set(&av_dict, "dmix_mode", "0", 0);
+        // av_dict_set(&av_dict, "ltrt_cmixlev", "1.414", 0);
+        // av_dict_set(&av_dict, "loro_cmixlev", "1.414", 0);
         if (avcodec_open2(audio_decoder->AudioCtx, audio_codec, &av_dict) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't open audio codec\n"));
@@ -1364,12 +1363,12 @@ int myavcodec_decode_audio3(AVCodecContext * avctx, int16_t * samples, int *fram
 #if 0
     ret = avcodec_decode_audio4(avctx, frame, &got_frame, avpkt);
 #else
-//  SUGGESTION
-//  Now that avcodec_decode_audio4 is deprecated and replaced
-//  by 2 calls (receive frame and send packet), this could be optimized
-//  into separate routines or separate threads.
-//  Also now that it always consumes a whole buffer some code
-//  in the caller may be able to be optimized.
+    // SUGGESTION
+    // Now that avcodec_decode_audio4 is deprecated and replaced
+    // by 2 calls (receive frame and send packet), this could be optimized
+    // into separate routines or separate threads.
+    // Also now that it always consumes a whole buffer some code
+    // in the caller may be able to be optimized.
     ret = avcodec_receive_frame(avctx, frame);
     if (ret == 0)
         got_frame = 1;
@@ -1380,7 +1379,7 @@ int myavcodec_decode_audio3(AVCodecContext * avctx, int16_t * samples, int *fram
     if (ret == AVERROR(EAGAIN))
         ret = 0;
     else if (ret < 0) {
-//    Debug(3, "codec/audio: audio decode error: %1 (%2)\n",av_make_error_string(error, sizeof(error), ret),got_frame);
+        // Debug(3, "codec/audio: audio decode error: %1 (%2)\n",av_make_error_string(error, sizeof(error), ret),got_frame);
         return ret;
     } else
         ret = avpkt->size;
@@ -1401,7 +1400,7 @@ int myavcodec_decode_audio3(AVCodecContext * avctx, int16_t * samples, int *fram
                 samples = (char *)samples + data_size;
             }
         }
-        //Debug(3,"data_size %d nb_samples %d sample_fmt %d  channels %d planar %d\n",data_size,frame->nb_samples,avctx->sample_fmt,avctx->channels,planar);
+        // Debug(3,"data_size %d nb_samples %d sample_fmt %d  channels %d planar %d\n",data_size,frame->nb_samples,avctx->sample_fmt,avctx->channels,planar);
         *frame_size_ptr = data_size * avctx->channels * frame->nb_samples;
     } else {
         *frame_size_ptr = 0;

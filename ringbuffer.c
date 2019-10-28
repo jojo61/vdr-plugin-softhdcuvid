@@ -33,7 +33,7 @@
 #include "iatomic.h"
 #include "ringbuffer.h"
 
-    /// ring buffer structure
+/// ring buffer structure
 struct _ring_buffer_
 {
     char *Buffer;                       ///< ring buffer data

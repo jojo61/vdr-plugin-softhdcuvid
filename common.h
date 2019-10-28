@@ -86,7 +86,7 @@ void mpgl_load_functions2(GL * gl, void *(*get_fn)(void *ctx, const char *n), vo
 
 typedef void (GLAPIENTRY * MP_GLDEBUGPROC) (GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
 
-//function pointers loaded from the OpenGL library
+// function pointers loaded from the OpenGL library
 struct GL
 {
     int version;                        // MPGL_VER() mangled (e.g. 210 for 2.1)

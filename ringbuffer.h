@@ -23,40 +23,40 @@
 /// @addtogroup Ringbuffer
 /// @{
 
-    /// ring buffer typedef
+/// ring buffer typedef
 typedef struct _ring_buffer_ RingBuffer;
 
-    /// reset ring buffer pointers
+/// reset ring buffer pointers
 extern void RingBufferReset(RingBuffer *);
 
-    /// create new ring buffer
+/// create new ring buffer
 extern RingBuffer *RingBufferNew(size_t);
 
-    /// free ring buffer
+/// free ring buffer
 extern void RingBufferDel(RingBuffer *);
 
-    /// write into ring buffer
+/// write into ring buffer
 extern size_t RingBufferWrite(RingBuffer *, const void *, size_t);
 
-    /// get write pointer of ring buffer
+/// get write pointer of ring buffer
 extern size_t RingBufferGetWritePointer(RingBuffer *, void **);
 
-    /// advance write pointer of ring buffer
+/// advance write pointer of ring buffer
 extern size_t RingBufferWriteAdvance(RingBuffer *, size_t);
 
-    /// read from ring buffer
+/// read from ring buffer
 extern size_t RingBufferRead(RingBuffer *, void *, size_t);
 
-    /// get read pointer of ring buffer
+/// get read pointer of ring buffer
 extern size_t RingBufferGetReadPointer(RingBuffer *, const void **);
 
-    /// advance read pointer of ring buffer
+/// advance read pointer of ring buffer
 extern size_t RingBufferReadAdvance(RingBuffer *, size_t);
 
-    /// free bytes ring buffer
+/// free bytes ring buffer
 extern size_t RingBufferFreeBytes(RingBuffer *);
 
-    /// used bytes ring buffer
+/// used bytes ring buffer
 extern size_t RingBufferUsedBytes(RingBuffer *);
 
 /// @}

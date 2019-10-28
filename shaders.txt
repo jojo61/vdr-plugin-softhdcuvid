@@ -89,4 +89,3 @@ color.a = 1.0;
 // color mapping
 out_color = color;
 }
-

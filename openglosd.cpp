@@ -23,7 +23,7 @@ extern "C" void OSD_release_context();
 ****************************************************************************************/
 
 #ifdef CUVID
-const char *rectVertexShader = 
+const char *rectVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -38,7 +38,7 @@ void main() \
 } \
 ";
 
-const char *rectFragmentShader = 
+const char *rectFragmentShader =
 "#version 330 core \n\
 \
 in vec4 rectCol; \
@@ -50,7 +50,7 @@ void main() \
 } \
 ";
 
-const char *textureVertexShader = 
+const char *textureVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -70,7 +70,7 @@ void main() \
 } \
 ";
 
-const char *textureFragmentShader = 
+const char *textureFragmentShader =
 "#version 330 core \n\
 in vec2 TexCoords; \
 in vec4 alphaValue; \
@@ -84,7 +84,7 @@ void main() \
 } \
 ";
 
-const char *textVertexShader = 
+const char *textVertexShader =
 "#version 330 core \n\
 \
 layout (location = 0) in vec2 position; \
@@ -104,7 +104,7 @@ void main() \
 } \
 ";
 
-const char *textFragmentShader = 
+const char *textFragmentShader =
 "#version 330 core \n\
 in vec2 TexCoords; \
 in vec4 textColor; \
@@ -122,7 +122,7 @@ void main() \
 
 #else
 
-const char *rectVertexShader = 
+const char *rectVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -137,7 +137,7 @@ void main() \
 } \
 ";
 
-const char *rectFragmentShader = 
+const char *rectFragmentShader =
 "\n \
 \
 precision mediump float; \
@@ -150,7 +150,7 @@ void main() \
 } \
 ";
 
-const char *textureVertexShader = 
+const char *textureVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -170,7 +170,7 @@ void main() \
 } \
 ";
 
-const char *textureFragmentShader = 
+const char *textureFragmentShader =
 "\n \
 precision mediump float; \
 in vec2 TexCoords; \
@@ -185,7 +185,7 @@ void main() \
 } \
 ";
 
-const char *textVertexShader = 
+const char *textVertexShader =
 "\n \
 \
 layout (location = 0) in vec2 position; \
@@ -205,7 +205,7 @@ void main() \
 } \
 ";
 
-const char *textFragmentShader = 
+const char *textFragmentShader =
 "\n \
 precision mediump float; \
 in vec2 TexCoords; \
@@ -222,7 +222,7 @@ void main() \
 } \
 ";
 #endif
-static cShader *Shaders[stCount]; 
+static cShader *Shaders[stCount];
 
 void cShader::Use(void) {
     glUseProgram(id);
@@ -294,14 +294,14 @@ bool cShader::Compile(const char *vertexCode, const char *fragmentCode) {
     sVertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(sVertex, 1, &vertexCode, NULL);
     glCompileShader(sVertex);
-//	esyslog("[softhddev]:SHADER:VERTEX %s\n",vertexCode);
+    // esyslog("[softhddev]:SHADER:VERTEX %s\n",vertexCode);
     if (!CheckCompileErrors(sVertex))
         return false;
     // Fragment Shader
     sFragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(sFragment, 1, &fragmentCode, NULL);
     glCompileShader(sFragment);
-//	esyslog("[softhddev]:SHADER:FRAGMENT %s\n",fragmentCode);
+    // esyslog("[softhddev]:SHADER:FRAGMENT %s\n",fragmentCode);
     if (!CheckCompileErrors(sFragment))
         return false;
     // link Program
@@ -375,8 +375,8 @@ void cOglGlyph::BindTexture(void) {
 void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     // Disable byte-alignment restriction
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_shared_context();
+    OSD_release_context();
+    OSD_get_shared_context();
 #endif
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glGenTextures(1, &texture);
@@ -400,10 +400,10 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     glBindTexture(GL_TEXTURE_2D, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_context();	
+    OSD_release_context();
+    OSD_get_context();
 #endif
-	
+
 }
 
 
@@ -445,7 +445,7 @@ cOglFont *cOglFont::Get(const char *name, int charHeight) {
     fonts->Add(font);
     return font;
 }
- 
+
 void cOglFont::Init(void) {
     fonts = new cList<cOglFont>;
     if (FT_Init_FreeType(&ftLib))
@@ -489,7 +489,7 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
     error = FT_Stroker_New( ftLib, &stroker );
     if (error) {
         esyslog("[softhddev]FT_Stroker_New FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
     float outlineWidth = 0.25f;
     FT_Stroker_Set(stroker,
@@ -498,11 +498,11 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
                     FT_STROKER_LINEJOIN_ROUND,
                     0);
 
-    
+
     error = FT_Get_Glyph(face->glyph, &ftGlyph);
     if (error) {
         esyslog("[softhddev]FT_Get_Glyph FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
 
     error = FT_Glyph_StrokeBorder( &ftGlyph, stroker, 0, 1 );
@@ -515,9 +515,9 @@ cOglGlyph* cOglFont::Glyph(uint charCode) const {
     error = FT_Glyph_To_Bitmap( &ftGlyph, FT_RENDER_MODE_NORMAL, 0, 1);
     if (error) {
         esyslog("[softhddev]FT_Glyph_To_Bitmap FT_Error (0x%02x) : %s\n", FT_Errors[error].code, FT_Errors[error].message);
-        return NULL;        
+        return NULL;
     }
-    
+
     cOglGlyph *Glyph = new cOglGlyph(charCode, (FT_BitmapGlyph)ftGlyph);
     glyphCache.Add(Glyph);
     FT_Done_Glyph(ftGlyph);
@@ -559,18 +559,18 @@ cOglFb::cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHei
 }
 
 cOglFb::~cOglFb(void) {
-	if (texture)
-    	glDeleteTextures(1, &texture);
-	if (fb)
-    	glDeleteFramebuffers(1, &fb);
+    if (texture)
+        glDeleteTextures(1, &texture);
+    if (fb)
+        glDeleteFramebuffers(1, &fb);
 }
 
 
 bool cOglFb::Init(void) {
     initiated = true;
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_shared_context();
+    OSD_release_context();
+    OSD_get_shared_context();
 #endif
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -582,20 +582,20 @@ bool cOglFb::Init(void) {
 
     glGenFramebuffers(1, &fb);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
-    
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-	
+
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         esyslog("[softhddev]ERROR: %d Framebuffer is not complete!\n",__LINE__);
 #ifdef VAAPI
-		OSD_release_context();
-		OSD_get_context();
+        OSD_release_context();
+        OSD_get_context();
 #endif
         return false;
     }
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_context();
+    OSD_release_context();
+    OSD_get_context();
 #endif
     return true;
 }
@@ -616,7 +616,7 @@ void cOglFb::BindWrite(void) {
 }
 
 void cOglFb::Unbind(void) {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);  
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -636,29 +636,29 @@ void cOglFb::Blit(GLint destX1, GLint destY1, GLint destX2, GLint destY2) {
 * cOglOutputFb
 ****************************************************************************************/
 cOglOutputFb::cOglOutputFb(GLint width, GLint height) : cOglFb(width, height, width, height) {
-//    surface = 0;
-	initiated = false;
+    // surface = 0;
+    initiated = false;
     fb = 0;
     texture = 0;
 }
 
 cOglOutputFb::~cOglOutputFb(void) {
-//    glVDPAUUnregisterSurfaceNV(surface);
-	glDeleteTextures(1, &texture);
+    // glVDPAUUnregisterSurfaceNV(surface);
+    glDeleteTextures(1, &texture);
     glDeleteFramebuffers(1, &fb);
 }
 
 bool cOglOutputFb::Init(void) {
-	initiated = true;
+    initiated = true;
 
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	
+
     glGenFramebuffers(1, &fb);
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
@@ -670,7 +670,7 @@ bool cOglOutputFb::Init(void) {
 }
 
 void cOglOutputFb::BindWrite(void) {
-	if (!initiated)
+    if (!initiated)
         Init();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
 }
@@ -682,7 +682,7 @@ void cOglOutputFb::Unbind(void) {
 /****************************************************************************************
 * cOglVb
 ****************************************************************************************/
-static cOglVb *VertexBuffers[vbCount]; 
+static cOglVb *VertexBuffers[vbCount];
 
 cOglVb::cOglVb(int type) {
     this->type = (eVertexBufferType)type;
@@ -700,35 +700,35 @@ cOglVb::~cOglVb(void) {
 bool cOglVb::Init(void) {
 
     if (type == vbTexture) {
-        //Texture VBO definition
+        // Texture VBO definition
         sizeVertex1 = 2;
         sizeVertex2 = 2;
         numVertices = 6;
         drawMode = GL_TRIANGLES;
         shader = stTexture;
     } else if (type == vbRect) {
-        //Rectangle VBO definition
+        // Rectangle VBO definition
         sizeVertex1 = 2;
         sizeVertex2 = 0;
         numVertices = 4;
         drawMode = GL_TRIANGLE_FAN;
         shader = stRect;
     } else if (type == vbEllipse) {
-        //Ellipse VBO definition
+        // Ellipse VBO definition
         sizeVertex1 = 2;
         sizeVertex2 = 0;
         numVertices = 182;
         drawMode = GL_TRIANGLE_FAN;
         shader = stRect;
     } else if (type == vbSlope) {
-        //Slope VBO definition
+        // Slope VBO definition
         sizeVertex1 = 2;
         sizeVertex2 = 0;
         numVertices = 102;
         drawMode = GL_TRIANGLE_FAN;
         shader = stRect;
     } else if (type == vbText) {
-        //Text VBO definition
+        // Text VBO definition
         sizeVertex1 = 2;
         sizeVertex2 = 2;
         numVertices = 6;
@@ -746,9 +746,9 @@ bool cOglVb::Init(void) {
     glVertexAttribPointer(0, sizeVertex1, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)0);
     if (sizeVertex2 > 0) {
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, sizeVertex2, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)(sizeVertex1 * sizeof(GLfloat)));        
+        glVertexAttribPointer(1, sizeVertex2, GL_FLOAT, GL_FALSE, (sizeVertex1 + sizeVertex2) * sizeof(GLfloat), (GLvoid*)(sizeVertex1 * sizeof(GLfloat)));
     }
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
@@ -803,7 +803,7 @@ void cOglVb::DrawArrays(int count) {
     if (count == 0)
         count = numVertices;
     glDrawArrays(drawMode, 0, count);
-    glFlush();    
+    glFlush();
 }
 
 
@@ -839,8 +839,8 @@ cOglCmdDeleteFb::cOglCmdDeleteFb(cOglFb *fb) : cOglCmd(fb) {
 }
 
 bool cOglCmdDeleteFb::Execute(void) {
-	if (fb)
-		delete fb;
+    if (fb)
+        delete fb;
     return true;
 }
 
@@ -889,7 +889,7 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
     buffer->Bind();
     if (!fb->BindTexture())
         return false;
-	VertexBuffers[vbTexture]->Bind();
+    VertexBuffers[vbTexture]->Bind();
     VertexBuffers[vbTexture]->SetVertexData(quadVertices);
     VertexBuffers[vbTexture]->DrawArrays();
     VertexBuffers[vbTexture]->Unbind();
@@ -906,33 +906,33 @@ cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputF
 }
 
 #ifdef PLACEBO
-//extern "C" { 
-extern 	unsigned char *posd;
+//extern "C" {
+extern  unsigned char *posd;
 //}
 #endif
 
 
 
 bool cOglCmdCopyBufferToOutputFb::Execute(void) {
-	int i;
+    int i;
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
-	glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
 
 #ifdef PLACEBO
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
-	if (posd) 
-		glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_BGRA,GL_UNSIGNED_BYTE,posd);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    if (posd)
+        glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_BGRA,GL_UNSIGNED_BYTE,posd);
 #else
-	fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
-	glFlush();
+    fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
+    glFlush();
 #endif
-	ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
+    ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
 
-	oFb->Unbind();
-	pthread_mutex_unlock(&OSDMutex);
+    oFb->Unbind();
+    pthread_mutex_unlock(&OSDMutex);
 
     return true;
 }
@@ -946,7 +946,7 @@ bool cOglCmdFill::Execute(void) {
     glm::vec4 col;
     ConvertColor(color, col);
     fb->Bind();
-	glClearColor(col.r, col.g, col.b, col.a);
+    glClearColor(col.r, col.g, col.b, col.a);
     glClear(GL_COLOR_BUFFER_BIT);
     fb->Unbind();
     return true;
@@ -977,7 +977,7 @@ bool cOglCmdDrawRectangle::Execute(void) {
     VertexBuffers[vbRect]->ActivateShader();
     VertexBuffers[vbRect]->SetShaderColor(color);
     VertexBuffers[vbRect]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
-    
+
     fb->Bind();
     VertexBuffers[vbRect]->DisableBlending();
     VertexBuffers[vbRect]->Bind();
@@ -1027,7 +1027,7 @@ bool cOglCmdDrawEllipse::Execute(void) {
     VertexBuffers[vbEllipse]->SetShaderColor(color);
     VertexBuffers[vbEllipse]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
 
-    //not antialiased
+    // not antialiased
     fb->Bind();
     VertexBuffers[vbEllipse]->DisableBlending();
     VertexBuffers[vbEllipse]->Bind();
@@ -1111,7 +1111,7 @@ GLfloat *cOglCmdDrawEllipse::CreateVerticesQuadrant(int &numVertices) {
             vertices[0] = x + width;
             vertices[1] = y + height;
             startAngle = 270;
-            break;            
+            break;
         default:
             break;
     }
@@ -1129,7 +1129,7 @@ GLfloat *cOglCmdDrawEllipse::CreateVerticesHalf(int &numVertices) {
     GLfloat radiusY = 0.0f;
     GLint transX = 0;
     GLint transY = 0;
-    GLint startAngle = 0;    
+    GLint startAngle = 0;
     GLfloat *vertices = new GLfloat[size];
     switch (quadrants) {
         case 5:
@@ -1245,7 +1245,7 @@ bool cOglCmdDrawSlope::Execute(void) {
     VertexBuffers[vbSlope]->SetShaderColor(color);
     VertexBuffers[vbSlope]->SetShaderProjectionMatrix(fb->Width(), fb->Height());
 
-    //not antialiased
+    // not antialiased
     fb->Bind();
     VertexBuffers[vbSlope]->DisableBlending();
     VertexBuffers[vbSlope]->Bind();
@@ -1260,7 +1260,7 @@ bool cOglCmdDrawSlope::Execute(void) {
 }
 
 //------------------ cOglCmdDrawText --------------------
-cOglCmdDrawText::cOglCmdDrawText( cOglFb *fb, GLint x, GLint y, unsigned int *symbols, GLint limitX, 
+cOglCmdDrawText::cOglCmdDrawText( cOglFb *fb, GLint x, GLint y, unsigned int *symbols, GLint limitX,
                                   const char *name, int fontSize, tColor colorText) : cOglCmd(fb), fontName(name)  {
     this->x = x;
     this->y = y;
@@ -1318,9 +1318,9 @@ bool cOglCmdDrawText::Execute(void) {
 
             x1, y2,   0.0, 1.0,     // left bottom
             x2, y1,   1.0, 0.0,     // right top
-            x2, y2,   1.0, 1.0      // right bottom     
+            x2, y2,   1.0, 1.0      // right bottom
         };
-    
+
         g->BindTexture();
         VertexBuffers[vbText]->SetVertexData(vertices);
         VertexBuffers[vbText]->DrawArrays();
@@ -1356,8 +1356,8 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_shared_context();
+    OSD_release_context();
+    OSD_get_shared_context();
 #endif
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -1378,10 +1378,10 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_context();	
+    OSD_release_context();
+    OSD_get_context();
 #endif
-	
+
     GLfloat x1 = x;          //left
     GLfloat y1 = y;          //top
     GLfloat x2 = x + width;  //right
@@ -1394,7 +1394,7 @@ bool cOglCmdDrawImage::Execute(void) {
 
         x1, y2,   0.0, 1.0,     // left bottom
         x2, y1,   1.0, 0.0,     // right top
-        x2, y2,   1.0, 1.0      // right bottom     
+        x2, y2,   1.0, 1.0      // right bottom
     };
 
     VertexBuffers[vbTexture]->ActivateShader();
@@ -1462,7 +1462,7 @@ bool cOglCmdDrawTexture::Execute(void) {
 //------------------ cOglCmdStoreImage --------------------
 cOglCmdStoreImage::cOglCmdStoreImage(sOglImage *imageRef, tColor *argb) : cOglCmd(NULL) {
     this->imageRef = imageRef;
-    data = argb;    
+    data = argb;
 }
 
 cOglCmdStoreImage::~cOglCmdStoreImage(void) {
@@ -1471,8 +1471,8 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 
 bool cOglCmdStoreImage::Execute(void) {
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_shared_context();	
+    OSD_release_context();
+    OSD_get_shared_context();
 #endif
     glGenTextures(1, &imageRef->texture);
     glBindTexture(GL_TEXTURE_2D, imageRef->texture);
@@ -1493,8 +1493,8 @@ bool cOglCmdStoreImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 #ifdef VAAPI
-	OSD_release_context();
-	OSD_get_context();	
+    OSD_release_context();
+    OSD_get_context();
 #endif
     return true;
 }
@@ -1524,7 +1524,7 @@ cOglThread::cOglThread(cCondWait *startWait, int maxCacheSize) : cThread("oglThr
     maxTextureSize = 0;
     for (int i = 0; i < OGL_MAX_OSDIMAGES; i++) {
         imageCache[i].used = false;
-        imageCache[i].texture = GL_NONE;        
+        imageCache[i].texture = GL_NONE;
         imageCache[i].width = 0;
         imageCache[i].height = 0;
     }
@@ -1550,7 +1550,7 @@ void cOglThread::Stop(void) {
 void cOglThread::DoCmd(cOglCmd* cmd) {
     while (stalled)
         cCondWait::SleepMs(10);
-    
+
     bool doSignal = false;
     Lock();
     if (commands.size() == 0)
@@ -1584,7 +1584,7 @@ int cOglThread::StoreImage(const cImage &image) {
         esyslog("[softhddev]Maximum size for GPU cache reached. Used: %.2fMB Max: %.2fMB", cachedMB, maxMB);
         return 0;
     }
-    
+
     int slot = GetFreeSlot();
     if (!slot)
         return 0;
@@ -1635,7 +1635,7 @@ void cOglThread::ClearSlot(int slot) {
     int i = -slot - 1;
     if (i >= 0 && i < OGL_MAX_OSDIMAGES) {
         Lock();
-        imageCache[i].used = false;    
+        imageCache[i].used = false;
         imageCache[i].texture = GL_NONE;
         imageCache[i].width = 0;
         imageCache[i].height = 0;
@@ -1671,7 +1671,7 @@ void cOglThread::Action(void) {
         return;
     }
     dsyslog("[softhddev]OpenGL Context initialized");
-    
+
     if (!InitShaders()) {
         esyslog("[softhddev]Could not initiate Shaders");
         Cleanup();
@@ -1679,7 +1679,7 @@ void cOglThread::Action(void) {
         return;
     }
     dsyslog("[softhddev]Shaders initialized");
-    
+
     if (!InitVdpauInterop()) {
         esyslog("[softhddev]: vdpau interop NOT initialized");
         Cleanup();
@@ -1702,7 +1702,7 @@ void cOglThread::Action(void) {
     //now Thread is ready to do his job
     startWait->Signal();
     stalled = false;
-    
+
     while(Running()) {
 
         if (commands.empty()) {
@@ -1714,14 +1714,14 @@ void cOglThread::Action(void) {
         cOglCmd* cmd = commands.front();
         commands.pop();
         Unlock();
-        //uint64_t start = cTimeMs::Now();
+        // uint64_t start = cTimeMs::Now();
         cmd->Execute();
-        //esyslog("[softhddev]\"%s\", %dms, %d commands left, time %" PRIu64 "", cmd->Description(), (int)(cTimeMs::Now() - start), commands.size(), cTimeMs::Now());
+        // esyslog("[softhddev]\"%s\", %dms, %d commands left, time %" PRIu64 "", cmd->Description(), (int)(cTimeMs::Now() - start), commands.size(), cTimeMs::Now());
         delete cmd;
         if (stalled && commands.size() < OGL_CMDQUEUE_SIZE / 2)
             stalled = false;
     }
-   
+
     dsyslog("[softhddev]Cleaning up OpenGL stuff");
     Cleanup();
     dsyslog("[softhddev]OpenGL Worker Thread Ended");
@@ -1733,7 +1733,7 @@ extern "C" int GlxInitopengl();
 
 
 bool cOglThread::InitOpenGL(void) {
-	
+
 
 #ifdef PLACEBO
     const char *displayName = X11DisplayName;
@@ -1762,7 +1762,7 @@ bool cOglThread::InitOpenGL(void) {
     free(buffer[0]);
     free(buffer[1]);
     free(buffer[2]);
-	
+
     GLenum err = glewInit();
     if( err != GLEW_OK) {
         esyslog("[softhddev]glewInit failed, aborting\n");
@@ -1770,8 +1770,8 @@ bool cOglThread::InitOpenGL(void) {
     }
 #else
 
-	if (!GlxInitopengl())
-		return false;
+    if (!GlxInitopengl())
+        return false;
 #endif
     VertexBuffers[vbText]->EnableBlending();
     glDisable(GL_DEPTH_TEST);
@@ -1800,7 +1800,7 @@ bool cOglThread::InitVdpauInterop(void) {
     void *procAdress = GetVDPAUProcAdress();
     while (glGetError() != GL_NO_ERROR);
     glVDPAUInitNV(vdpDevice, procAdress);
-    if (glGetError() != GL_NO_ERROR)        
+    if (glGetError() != GL_NO_ERROR)
         return false;
 #endif
     return true;
@@ -1823,21 +1823,21 @@ void cOglThread::DeleteVertexBuffers(void) {
 }
 
 void cOglThread::Cleanup(void) {
-	esyslog("[softhddev]OglThread cleanup\n");
-	pthread_mutex_lock(&OSDMutex);
-	OsdClose();
+    esyslog("[softhddev]OglThread cleanup\n");
+    pthread_mutex_lock(&OSDMutex);
+    OsdClose();
 
     DeleteVertexBuffers();
     delete cOglOsd::oFb;
 
     cOglOsd::oFb = NULL;
     DeleteShaders();
-//    glVDPAUFiniNV();
+    // glVDPAUFiniNV();
     cOglFont::Cleanup();
 #ifdef PLACEBO
     glutExit();
 #endif
-	pthread_mutex_unlock(&OSDMutex);
+    pthread_mutex_unlock(&OSDMutex);
 }
 
 /****************************************************************************************
@@ -1849,7 +1849,7 @@ cOglPixmap::cOglPixmap(std::shared_ptr<cOglThread> oglThread, int Layer, const c
     int width = DrawPort.IsEmpty() ? ViewPort.Width() : DrawPort.Width();
     int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
     fb = new cOglFb(width, height, ViewPort.Width(), ViewPort.Height());
-    dirty = true; 
+    dirty = true;
 }
 
 cOglPixmap::~cOglPixmap(void) {
@@ -1922,7 +1922,7 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
             oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y()));
     }
     /*
-    Fallback to VDR implementation, needs to separate cSoftOsdProvider from softhddevice.cpp 
+    Fallback to VDR implementation, needs to separate cSoftOsdProvider from softhddevice.cpp
     else {
         if (cSoftOsdProvider::GetImageData(ImageHandle))
             DrawImage(Point, *cSoftOsdProvider::GetImageData(ImageHandle));
@@ -1935,7 +1935,7 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
 void cOglPixmap::DrawPixel(const cPoint &Point, tColor Color) {
     cRect r(Point.X(), Point.Y(), 1, 1);
     oglThread->DoCmd(new cOglCmdDrawRectangle(fb, r.X(), r.Y(), r.Width(), r.Height(), Color));
-    
+
     SetDirty();
     MarkDrawPortDirty(r);
 }
@@ -1984,7 +1984,7 @@ void cOglPixmap::DrawText(const cPoint &Point, const char *s, tColor ColorFg, tC
     int cw = Width ? Width : w;
     int ch = Height ? Height : h;
     cRect r(x, y, cw, ch);
-    
+
     if (ColorBg != clrTransparent)
         oglThread->DoCmd(new cOglCmdDrawRectangle(fb, r.X(), r.Y(), r.Width(), r.Height(), ColorBg));
 
@@ -2077,40 +2077,40 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     isSubtitleOsd = false;
     int osdWidth = 0;
     int osdHeight = 0;
-	
+
     pthread_mutex_lock(&OSDMutex);
     VideoGetOsdSize(&osdWidth, &osdHeight);
-//	osdWidth = 1920;
-//	osdHeight = 1080;
-	
+    // osdWidth = 1920;
+    // osdHeight = 1080;
+
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 #ifdef PLACEBO
-	if (posd)
-		free(posd);
-	posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
+    if (posd)
+        free(posd);
+    posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
 #endif
-    //create  output framebuffer
-#ifdef VAAPI	
-	OSD_release_context();
-	OSD_get_shared_context();
+    // create output framebuffer
+#ifdef VAAPI
+    OSD_release_context();
+    OSD_get_shared_context();
 #endif
     if (!oFb) {
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
 #ifdef VAAPI
-	OSD_release_context();
+    OSD_release_context();
 #endif
-	pthread_mutex_unlock(&OSDMutex);
+    pthread_mutex_unlock(&OSDMutex);
 }
 
 cOglOsd::~cOglOsd() {
     OsdClose();
     SetActive(false);
 #ifdef PLACEBO
-	if (posd)
-		free(posd);
-	posd = 0;
+    if (posd)
+        free(posd);
+    posd = 0;
 #endif
     oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
 }
@@ -2124,9 +2124,9 @@ eOsdError cOglOsd::SetAreas(const tArea *Areas, int NumAreas) {
 
     tArea area = { r.Left(), r.Top(), r.Right(), r.Bottom(), 32 };
 
-    //now we know the actuaL osd size, create double buffer frame buffer
+    // now we know the actuaL osd size, create double buffer frame buffer
     if (bFb) {
-        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));		
+        oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
         DestroyPixmap(oglPixmaps[0]);
     }
     bFb = new cOglFb(r.Width(), r.Height(), r.Width(), r.Height());
@@ -2145,7 +2145,7 @@ cPixmap *cOglOsd::CreatePixmap(int Layer, const cRect &ViewPort, const cRect &Dr
     int height = DrawPort.IsEmpty() ? ViewPort.Height() : DrawPort.Height();
 
     if (width > oglThread->MaxTextureSize() || height > oglThread->MaxTextureSize()) {
-        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!", 
+        esyslog("[softhddev] cannot allocate pixmap of %dpx x %dpx, clipped to %dpx x %dpx!",
                     width, height, std::min(width, oglThread->MaxTextureSize()), std::min(height, oglThread->MaxTextureSize()));
         width = std::min(width, oglThread->MaxTextureSize());
         height = std::min(height, oglThread->MaxTextureSize());
@@ -2154,11 +2154,11 @@ cPixmap *cOglOsd::CreatePixmap(int Layer, const cRect &ViewPort, const cRect &Dr
     cOglPixmap *p = new cOglPixmap(oglThread, Layer, ViewPort, DrawPort);
 
     if (cOsd::AddPixmap(p)) {
-        //find free slot
+        // find free slot
         for (int i = 0; i < oglPixmaps.Size(); i++)
             if (!oglPixmaps[i])
                 return oglPixmaps[i] = p;
-        //append at end
+        // append at end
         oglPixmaps.Append(p);
         return p;
     }
@@ -2190,28 +2190,28 @@ void cOglOsd::Flush(void) {
     if (!oglThread->Active())
         return;
     LOCK_PIXMAPS;
-    //check if any pixmap is dirty
+    // check if any pixmap is dirty
     bool dirty = false;
     for (int i = 0; i < oglPixmaps.Size() && !dirty; i++)
         if (oglPixmaps[i] && oglPixmaps[i]->Layer() >= 0 && oglPixmaps[i]->IsDirty())
             dirty = true;
     if (!dirty)
         return;
-    //clear buffer
-    //uint64_t start = cTimeMs::Now();
-    //dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
+    // clear buffer
+    // uint64_t start = cTimeMs::Now();
+    // dsyslog("[softhddev]Start Flush at %" PRIu64 "", cTimeMs::Now());
 
 
     oglThread->DoCmd(new cOglCmdFill(bFb, clrTransparent));
 
-    //render pixmap textures blended to buffer
+    // render pixmap textures blended to buffer
     for (int layer = 0; layer < MAXPIXMAPLAYERS; layer++) {
         for (int i = 0; i < oglPixmaps.Size(); i++) {
             if (oglPixmaps[i]) {
                 if (oglPixmaps[i]->Layer() == layer) {
-                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(), 
-                                                                    bFb, 
-                                                                    oglPixmaps[i]->ViewPort().X(), 
+                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(),
+                                                                    bFb,
+                                                                    oglPixmaps[i]->ViewPort().X(),
                                                                     (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0,
                                                                     oglPixmaps[i]->Alpha(),
                                                                     oglPixmaps[i]->DrawPort().X(),
@@ -2223,7 +2223,7 @@ void cOglOsd::Flush(void) {
     }
     oglThread->DoCmd(new cOglCmdCopyBufferToOutputFb(bFb, oFb, Left(), Top()));
 
-    //dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
+    // dsyslog("[softhddev]End Flush at %" PRIu64 ", duration %d", cTimeMs::Now(), (int)(cTimeMs::Now()-start));
 }
 
 void cOglOsd::DrawScaledBitmap(int x, int y, const cBitmap &Bitmap, double FactorX, double FactorY, bool AntiAlias) {
