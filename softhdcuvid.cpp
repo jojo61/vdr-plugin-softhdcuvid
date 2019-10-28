@@ -55,13 +55,6 @@ extern "C"
 #endif
 }
 
-#if APIVERSNUM >= 20301
-#define MURKS ->
-#else
-#define MURKS .
-#define LOCK_CHANNELS_READ  do { } while (0)
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 
 /// vdr-plugin version number.
@@ -616,11 +609,7 @@ void cSoftOsd::Flush(void)
 #endif
         OsdDrawARGB(xp, yp, w, h, stride, pm->Data(), x, y);
 
-#if APIVERSNUM >= 20110
         DestroyPixmap(pm);
-#else
-        delete pm;
-#endif
     }
     Dirty = 0;
 }
@@ -1741,11 +1730,7 @@ class cSoftReceiver:public cReceiver
 {
   protected:
     virtual void Activate(bool);
-#if APIVERSNUM >= 20301
     virtual void Receive(const uchar *, int);
-#else
-    virtual void Receive(uchar *, int);
-#endif
   public:
      cSoftReceiver(const cChannel *);   ///< receiver constructor
      virtual ~ cSoftReceiver();         ///< receiver destructor
@@ -1868,11 +1853,7 @@ static void PipPesParse(const uint8_t * data, int size, int is_start)
 **  @param data ts packet
 **  @param size size (#TS_PACKET_SIZE=188) of tes packet
 */
-#if APIVERSNUM >= 20301
 void cSoftReceiver::Receive(const uchar * data, int size)
-#else
-void cSoftReceiver::Receive(uchar * data, int size)
-#endif
 {
     const uint8_t *p;
 
@@ -1964,7 +1945,7 @@ static void NewPip(int channel_nr)
         channel_nr = cDevice::CurrentChannel();
     }
     LOCK_CHANNELS_READ;
-    if (channel_nr && (channel = Channels MURKS GetByNumber(channel_nr))
+    if (channel_nr && (channel = Channels->GetByNumber(channel_nr))
         && (device = cDevice::GetDevice(channel, 0, false, false))) {
 
         DelPip();
@@ -2015,10 +1996,10 @@ static void PipNextAvailableChannel(int direction)
         bool ndr;
         cDevice *device;
 
-        channel = direction > 0 ? Channels MURKS Next(channel)
-            : Channels MURKS Prev(channel);
+        channel = direction > 0 ? Channels->Next(channel)
+            : Channels->Prev(channel);
         if (!channel && Setup.ChannelsWrap) {
-            channel = direction > 0 ? Channels MURKS First() : Channels MURKS Last();
+            channel = direction > 0 ? Channels->First() : Channels->Last();
         }
         if (channel && !channel->GroupSep()
             && (device = cDevice::GetDevice(channel, 0, false, true))
@@ -2049,7 +2030,7 @@ static void SwapPipChannels(void)
     if (channel) {
         LOCK_CHANNELS_READ;
 
-        Channels MURKS SwitchTo(channel->Number());
+        Channels->SwitchTo(channel->Number());
     }
 }
 
@@ -2454,11 +2435,7 @@ class cSoftHdDevice:public cDevice
     virtual bool HasDecoder(void) const;
     virtual bool CanReplay(void) const;
     virtual bool SetPlayMode(ePlayMode);
-#if APIVERSNUM >= 20103
     virtual void TrickSpeed(int, bool);
-#else
-    virtual void TrickSpeed(int);
-#endif
     virtual void Clear(void);
     virtual void Play(void);
     virtual void Freeze(void);
@@ -2467,10 +2444,8 @@ class cSoftHdDevice:public cDevice
     virtual bool Poll(cPoller &, int = 0);
     virtual bool Flush(int = 0);
     virtual int64_t GetSTC(void);
-#if APIVERSNUM >= 10733
     virtual cRect CanScaleVideo(const cRect &, int = taCenter);
     virtual void ScaleVideo(const cRect & = cRect::Null);
-#endif
     virtual void SetVideoDisplayFormat(eVideoDisplayFormat);
     virtual void SetVideoFormat(bool);
     virtual void GetVideoSize(int &, int &, double &);
@@ -2656,21 +2631,12 @@ int64_t cSoftHdDevice::GetSTC(void)
 **  @param speed    trick speed
 **  @param forward  flag forward direction
 */
-#if APIVERSNUM >= 20103
 void cSoftHdDevice::TrickSpeed(int speed, bool forward)
 {
     dsyslog("[softhddev]%s: %d %d\n", __FUNCTION__, speed, forward);
 
     ::TrickSpeed(speed);
 }
-#else
-void cSoftHdDevice::TrickSpeed(int speed)
-{
-    dsyslog("[softhddev]%s: %d\n", __FUNCTION__, speed);
-
-    ::TrickSpeed(speed);
-}
-#endif
 
 /**
 **  Clears all video and audio data from the device.
@@ -2947,8 +2913,6 @@ uchar *cSoftHdDevice::GrabImage(int &size, bool jpeg, int quality, int width, in
     return::GrabImage(&size, jpeg, quality, width, height);
 }
 
-#if APIVERSNUM >= 10733
-
 /**
 **  Ask the output, if it can scale video.
 **
@@ -2974,8 +2938,6 @@ void cSoftHdDevice::ScaleVideo(const cRect & rect)
 #endif
     ::ScaleVideo(rect.X(), rect.Y(), rect.Width(), rect.Height());
 }
-
-#endif
 
 /**
 **  Call rgb to jpeg for C Plugin.
