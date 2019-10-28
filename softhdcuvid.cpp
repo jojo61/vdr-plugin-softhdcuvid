@@ -2330,7 +2330,6 @@ eOSState cSoftHdMenu::ProcessKey(eKeys key)
     //dsyslog("[softhddev]%s: %x\n", __FUNCTION__, key);
 
     switch (HotkeyState) {
-
         case HksInitial:               // initial state, waiting for hot key
             if (key == kBlue) {
                 HotkeyState = HksBlue;  // blue button
@@ -2365,6 +2364,7 @@ eOSState cSoftHdMenu::ProcessKey(eKeys key)
                 return osEnd;
             }
             HotkeyState = HksInitial;
+            break;
         case HksRed:                   // red and first number
             if (k0 <= key && key <= k9) {
                 HotkeyCode = 100 + key - k0;
