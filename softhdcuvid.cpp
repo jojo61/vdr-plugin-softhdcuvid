@@ -2364,6 +2364,7 @@ eOSState cSoftHdMenu::ProcessKey(eKeys key)
                 return osEnd;
             }
             HotkeyState = HksInitial;
+            break;
         case HksRed:                   // red and first number
             if (k0 <= key && key <= k9) {
                 HotkeyCode = 100 + key - k0;
