@@ -1,23 +1,23 @@
 ///
-///	@file video.h	@brief Video module header file
+/// @file video.h   @brief Video module header file
 ///
-///	Copyright (c) 2009 - 2015 by Johns.  All Rights Reserved.
+/// Copyright (c) 2009 - 2015 by Johns.  All Rights Reserved.
 ///
-///	Contributor(s):
+/// Contributor(s):
 ///
-///	License: AGPLv3
+/// License: AGPLv3
 ///
-///	This program is free software: you can redistribute it and/or modify
-///	it under the terms of the GNU Affero General Public License as
-///	published by the Free Software Foundation, either version 3 of the
-///	License.
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU Affero General Public License as
+/// published by the Free Software Foundation, either version 3 of the
+/// License.
 ///
-///	This program is distributed in the hope that it will be useful,
-///	but WITHOUT ANY WARRANTY; without even the implied warranty of
-///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-///	GNU Affero General Public License for more details.
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU Affero General Public License for more details.
 ///
-///	$Id: 83cd827a8744e8c80c8adba6cb87653b0ad58c45 $
+/// $Id: 83cd827a8744e8c80c8adba6cb87653b0ad58c45 $
 //////////////////////////////////////////////////////////////////////////////
 
 /// @addtogroup Video
@@ -27,7 +27,7 @@
 #include <GL/glx.h>
 
 //----------------------------------------------------------------------------
-//	Typedefs
+//  Typedefs
 //----------------------------------------------------------------------------
 
     /// Video hardware decoder typedef
@@ -37,16 +37,16 @@ typedef struct _video_hw_decoder_ VideoHwDecoder;
 typedef struct __video_stream__ VideoStream;
 
 //----------------------------------------------------------------------------
-//	Variables
+//  Variables
 //----------------------------------------------------------------------------
 
-extern signed char VideoHardwareDecoder;	///< flag use hardware decoder
-extern char VideoIgnoreRepeatPict;	///< disable repeat pict warning
-extern int VideoAudioDelay;		///< audio/video delay
-extern char ConfigStartX11Server;	///< flag start the x11 server
+extern signed char VideoHardwareDecoder;    ///< flag use hardware decoder
+extern char VideoIgnoreRepeatPict;      ///< disable repeat pict warning
+extern int VideoAudioDelay;             ///< audio/video delay
+extern char ConfigStartX11Server;       ///< flag start the x11 server
 
 //----------------------------------------------------------------------------
-//	Prototypes
+//  Prototypes
 //----------------------------------------------------------------------------
 
     /// Allocate new video hardware decoder.
@@ -62,20 +62,17 @@ extern unsigned VideoGetSurface(VideoHwDecoder *, const AVCodecContext *);
 extern void VideoReleaseSurface(VideoHwDecoder *, unsigned);
 
     /// Callback to negotiate the PixelFormat.
-extern enum AVPixelFormat Video_get_format(VideoHwDecoder *, AVCodecContext *,
-    const enum AVPixelFormat *);
+extern enum AVPixelFormat Video_get_format(VideoHwDecoder *, AVCodecContext *, const enum AVPixelFormat *);
 
     /// Render a ffmpeg frame.
-extern void VideoRenderFrame(VideoHwDecoder *, const AVCodecContext *,
-    const AVFrame *);
+extern void VideoRenderFrame(VideoHwDecoder *, const AVCodecContext *, const AVFrame *);
 
     /// Get hwaccel context for ffmpeg.
 extern void *VideoGetHwAccelContext(VideoHwDecoder *);
 
 #ifdef AVCODEC_VDPAU_H
     /// Draw vdpau render state.
-extern void VideoDrawRenderState(VideoHwDecoder *,
-    struct vdpau_render_state *);
+extern void VideoDrawRenderState(VideoHwDecoder *, struct vdpau_render_state *);
 #endif
 
 #ifdef USE_OPENGLOSD
@@ -189,8 +186,7 @@ extern void VideoSetAutoCrop(int, int, int);
 extern void VideoOsdClear(void);
 
     /// Draw an OSD ARGB image.
-extern void VideoOsdDrawARGB(int, int, int, int, int, const uint8_t *, int,
-    int);
+extern void VideoOsdDrawARGB(int, int, int, int, int, const uint8_t *, int, int);
 
     /// Get OSD size.
 extern void VideoGetOsdSize(int *, int *);
@@ -228,11 +224,11 @@ extern void VideoGetStats(VideoHwDecoder *, int *, int *, int *, int *, float *)
     /// Get video stream size
 extern void VideoGetVideoSize(VideoHwDecoder *, int *, int *, int *, int *);
 
-extern void VideoOsdInit(void);		///< Setup osd.
-extern void VideoOsdExit(void);		///< Cleanup osd.
+extern void VideoOsdInit(void);         ///< Setup osd.
+extern void VideoOsdExit(void);         ///< Cleanup osd.
 
-extern void VideoInit(const char *);	///< Setup video module.
-extern void VideoExit(void);		///< Cleanup and exit video module.
+extern void VideoInit(const char *);    ///< Setup video module.
+extern void VideoExit(void);            ///< Cleanup and exit video module.
 
     /// Poll video input buffers.
 extern int VideoPollInput(VideoStream *);
@@ -248,13 +244,14 @@ extern void SetDPMSatBlackScreen(int);
 
     /// Raise the frontend window
 extern int VideoRaiseWindow(void);
+
 #ifdef USE_OPENGLOSD
-extern void ActivateOsd(GLuint,int,int,int,int);
+extern void ActivateOsd(GLuint, int, int, int, int);
 #endif
 #if 0
 long int gettid()
 {
-	return (long int)syscall(224);
+    return (long int)syscall(224);
 }
 #endif
 

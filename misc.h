@@ -1,24 +1,24 @@
 ///
-///	@file misc.h	@brief Misc function header file
+/// @file misc.h    @brief Misc function header file
 ///
-///	Copyright (c) 2009 - 2012 by Lutz Sammer.  All Rights Reserved.
+/// Copyright (c) 2009 - 2012 by Lutz Sammer.  All Rights Reserved.
 ///
-///	Contributor(s):
-///		Copied from uwm.
+/// Contributor(s):
+/// Copied from uwm.
 ///
-///	License: AGPLv3
+/// License: AGPLv3
 ///
-///	This program is free software: you can redistribute it and/or modify
-///	it under the terms of the GNU Affero General Public License as
-///	published by the Free Software Foundation, either version 3 of the
-///	License.
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU Affero General Public License as
+/// published by the Free Software Foundation, either version 3 of the
+/// License.
 ///
-///	This program is distributed in the hope that it will be useful,
-///	but WITHOUT ANY WARRANTY; without even the implied warranty of
-///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-///	GNU Affero General Public License for more details.
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU Affero General Public License for more details.
 ///
-///	$Id: f5ff4b300aa33eb721d658c0c9374c8499b67318 $
+/// $Id: f5ff4b300aa33eb721d658c0c9374c8499b67318 $
 //////////////////////////////////////////////////////////////////////////////
 
 /// @addtogroup misc
@@ -26,37 +26,37 @@
 
 #include <syslog.h>
 #include <stdarg.h>
-#include <time.h>			// clock_gettime
+#include <time.h>                       // clock_gettime
 
 //////////////////////////////////////////////////////////////////////////////
-//	Defines
-//////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////
-//	Declares
+//  Defines
 //////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
-//	Variables
+//  Declares
 //////////////////////////////////////////////////////////////////////////////
 
-extern int SysLogLevel;			///< how much information wanted
+//////////////////////////////////////////////////////////////////////////////
+//  Variables
+//////////////////////////////////////////////////////////////////////////////
+
+extern int SysLogLevel;                 ///< how much information wanted
 
 //////////////////////////////////////////////////////////////////////////////
-//	Prototypes
+//  Prototypes
 //////////////////////////////////////////////////////////////////////////////
 
 static inline void Syslog(const int, const char *format, ...)
-    __attribute__ ((format(printf, 2, 3)));
+    __attribute__((format(printf, 2, 3)));
 
 //////////////////////////////////////////////////////////////////////////////
-//	Inlines
+//  Inlines
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG
-#define DebugLevel 4			/// private debug level
+#define DebugLevel 4                    /// private debug level
 #else
-#define DebugLevel 0			/// private debug level
+#define DebugLevel 0                    /// private debug level
 #endif
 
 /**
@@ -70,11 +70,11 @@ static inline void Syslog(const int, const char *format, ...)
 static inline void Syslog(const int level, const char *format, ...)
 {
     if (SysLogLevel > level || DebugLevel > level) {
-	va_list ap;
+        va_list ap;
 
-	va_start(ap, format);
-	vsyslog(LOG_ERR, format, ap);
-	va_end(ap);
+        va_start(ap, format);
+        vsyslog(LOG_ERR, format, ap);
+        va_end(ap);
     }
 }
 
@@ -104,7 +104,7 @@ static inline void Syslog(const int level, const char *format, ...)
 #ifdef DEBUG
 #define Debug(level, fmt...)	Syslog(level, fmt)
 #else
-#define Debug(level, fmt...)		/* disabled */
+#define Debug(level, fmt...)            /* disabled */
 #endif
 
 #ifndef AV_NOPTS_VALUE
@@ -122,12 +122,11 @@ static inline const char *Timestamp2String(int64_t ts)
     static int idx;
 
     if (ts == (int64_t) AV_NOPTS_VALUE) {
-	return "--:--:--.---";
+        return "--:--:--.---";
     }
     idx = (idx + 1) % 3;
-    snprintf(buf[idx], sizeof(buf[idx]), "%2d:%02d:%02d.%03d",
-	(int)(ts / (90 * 3600000)), (int)((ts / (90 * 60000)) % 60),
-	(int)((ts / (90 * 1000)) % 60), (int)((ts / 90) % 1000));
+    snprintf(buf[idx], sizeof(buf[idx]), "%2d:%02d:%02d.%03d", (int)(ts / (90 * 3600000)),
+        (int)((ts / (90 * 60000)) % 60), (int)((ts / (90 * 1000)) % 60), (int)((ts / 90) % 1000));
 
     return buf[idx];
 }
@@ -148,24 +147,25 @@ static inline uint32_t GetMsTicks(void)
     struct timeval tval;
 
     if (gettimeofday(&tval, NULL) < 0) {
-	return 0;
+        return 0;
     }
     return (tval.tv_sec * 1000) + (tval.tv_usec / 1000);
 #endif
 }
+
 static inline uint64_t GetusTicks(void)
 {
-	
+
 #ifdef CLOCK_MONOTONIC
     struct timespec tspec;
 
     clock_gettime(CLOCK_MONOTONIC, &tspec);
-    return (uint64_t) (tspec.tv_sec * 1000000) + (tspec.tv_nsec) ;
+    return (uint64_t) (tspec.tv_sec * 1000000) + (tspec.tv_nsec);
 #else
     struct timeval tval;
 
     if (gettimeofday(&tval, NULL) < 0) {
-	return 0;
+        return 0;
     }
     return (tval.tv_sec * 1000) + (tval.tv_usec / 1000);
 #endif
