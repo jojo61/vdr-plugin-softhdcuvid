@@ -3628,13 +3628,14 @@ void make_osd_overlay(int x, int y, int width, int height)
 
     pl = &osdoverlay;
 
-    if (pl->plane.texture) {
-        pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
+    if (pl->plane.texture && (pl->plane.texture->params.w != width || pl->plane.texture->params.h != height)) {
+//        pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
         pl_tex_destroy(p->gpu, &pl->plane.texture);
     }
-
+    
     // make texture for OSD
-    pl->plane.texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+	if (pl->plane.texture == NULL ) {
+        pl->plane.texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
             .w = width,
             .h = height,
             .d = 0,
@@ -3645,7 +3646,7 @@ void make_osd_overlay(int x, int y, int width, int height)
             .sample_mode = PL_TEX_SAMPLE_LINEAR,
             .address_mode = PL_TEX_ADDRESS_CLAMP,
         });
-
+	}
     // make overlay
     pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
     pl->plane.components = 4;
