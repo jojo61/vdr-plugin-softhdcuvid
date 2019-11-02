@@ -374,7 +374,7 @@ void cOglGlyph::BindTexture(void) {
 
 void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     // Disable byte-alignment restriction
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_shared_context();
 #endif
@@ -399,7 +399,7 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_context();
 #endif
@@ -568,7 +568,7 @@ cOglFb::~cOglFb(void) {
 
 bool cOglFb::Init(void) {
     initiated = true;
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_shared_context();
 #endif
@@ -587,13 +587,13 @@ bool cOglFb::Init(void) {
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         esyslog("[softhddev]ERROR: %d Framebuffer is not complete!\n",__LINE__);
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
         OSD_release_context();
         OSD_get_context();
 #endif
         return false;
     }
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_context();
 #endif
@@ -1355,7 +1355,7 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_shared_context();
 #endif
@@ -1377,7 +1377,7 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_context();
 #endif
@@ -1470,7 +1470,7 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 }
 
 bool cOglCmdStoreImage::Execute(void) {
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_shared_context();
 #endif
@@ -1492,7 +1492,7 @@ bool cOglCmdStoreImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_context();
 #endif
@@ -2090,7 +2090,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
 #endif
     // create output framebuffer
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
     OSD_get_shared_context();
 #endif
@@ -2098,7 +2098,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
         oFb = new cOglOutputFb(osdWidth, osdHeight);
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (PLACEBO)
     OSD_release_context();
 #endif
     pthread_mutex_unlock(&OSDMutex);
