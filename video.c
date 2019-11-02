@@ -3718,37 +3718,32 @@ static void CuvidDisplayFrame(void)
         if (ldiff < 100.0 && ldiff > 0.0)
             CuvidDecoders[0]->Frameproc = (CuvidDecoders[0]->Frameproc + ldiff + ldiff) / 3.0;
     }
+
     round_time = GetusTicks();
 #if 1
     diff = (GetusTicks() - last_time) / 1000;
 
     // last_time = GetusTicks();
     // printf("Roundtrip Displayframe %d\n",diff);
-    if (diff < 15000 && diff > 0) {
+    if (diff < 5000 && diff > 0) {
         // printf("Sleep %d\n",15000-diff);
-        usleep((15000 - diff));         // * 1000);
+        usleep((5000 - diff));         // * 1000);
     }
 
 #endif
     if (!p->swapchain)
         return;
 
-    // last_time = GetusTicks();
-
 #ifdef CUVID
-    // first_time = GetusTicks();
     VideoThreadLock();
     if (!first) {
-        // last_time = GetusTicks();
         if (!pl_swapchain_submit_frame(p->swapchain))
             Error(_("Failed to submit swapchain buffer\n"));
         pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
-        // printf("submit and swap %d\n",(GetusTicks()-last_time)/1000000);
     }
-
 #endif
+    
     first = 0;
-
     last_time = GetusTicks();
 
     while (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame wait for previous to swap
@@ -3916,10 +3911,9 @@ static void CuvidDisplayFrame(void)
     if (!pl_swapchain_submit_frame(p->swapchain))
         Fatal(_("Failed to submit swapchain buffer\n"));
     pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
-    // printf("submit and swap %d us\n",(GetusTicks()-first_time)/1000);
+
 #endif
     VideoThreadUnlock();
-    // printf("Display time %d\n",(GetusTicks()-first_time)/1000000);
 #else
 #ifdef CUVID
     glXGetVideoSyncSGI(&Count);         // get current frame
