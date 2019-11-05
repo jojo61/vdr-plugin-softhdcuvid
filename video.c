@@ -848,13 +848,13 @@ char *eglErrorString(EGLint error)
 void OSD_get_shared_context()
 {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
-    // EglCheck();
+     EglCheck();
 }
 
 void OSD_get_context()
 {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
-    // EglCheck();
+     EglCheck();
 }
 
 void OSD_release_context()
@@ -2811,7 +2811,6 @@ int get_RGB(CuvidDecoder * decoder)
 
 #ifndef PLACEBO
 
-    // eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     glGenTextures(1, &texture);
     GlxCheck();
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -2856,12 +2855,27 @@ int get_RGB(CuvidDecoder * decoder)
     glActiveTexture(GL_TEXTURE0);
 
     if (OsdShown && decoder->grab == 2) {
+		int x,y,h,w;
         GLint texLoc;
+		if (OsdShown == 1) {
+			if (OSDtexture)
+				glDeleteTextures(1,&OSDtexture);
 
-#ifdef CUVID
-        // glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
-        GlxCheck();
-#endif
+			glGenTextures(1, &OSDtexture);
+			glBindTexture(GL_TEXTURE_2D, OSDtexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, OSDxsize, OSDysize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posd);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			OsdShown = 2;
+		}
+
+		y = OSDy*height/VideoWindowHeight;
+		x = OSDx*width/VideoWindowWidth;
+		h = OSDysize*height/VideoWindowHeight;
+		w = OSDxsize*width/VideoWindowWidth;
+		glViewport(x,(height - h - y) , w, h);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -2877,16 +2891,12 @@ int get_RGB(CuvidDecoder * decoder)
         pthread_mutex_lock(&OSDMutex);
         glBindTexture(GL_TEXTURE_2D, OSDtexture);
         glBindFramebuffer(GL_FRAMEBUFFER, fb);
-        render_pass_quad(1, 0.0, 0.0);
+        render_pass_quad(0, 0.0, 0.0);
         pthread_mutex_unlock(&OSDMutex);
 
         glUseProgram(0);
         glActiveTexture(GL_TEXTURE0);
-#ifdef CUVID
-        // glXMakeCurrent(XlibDisplay, VideoWindow, glxThreadContext);
-#else
-        // eglMakeCurrent(eglDisplay, eglSurface,eglSurface, eglThreadContext);
-#endif
+
     }
     glFlush();
     Debug(3, "Read pixels %d %d\n", width, height);
@@ -3652,9 +3662,9 @@ void make_osd_overlay(int x, int y, int width, int height)
     pl->plane.components = 4;
     pl->plane.shift_x = 0.0f;
     pl->plane.shift_y = 0.0f;
-    pl->plane.component_mapping[0] = PL_CHANNEL_B;
+    pl->plane.component_mapping[0] = PL_CHANNEL_R;
     pl->plane.component_mapping[1] = PL_CHANNEL_G;
-    pl->plane.component_mapping[2] = PL_CHANNEL_R;
+    pl->plane.component_mapping[2] = PL_CHANNEL_B;
     pl->plane.component_mapping[3] = PL_CHANNEL_A;
     pl->mode = PL_OVERLAY_NORMAL;
     pl->repr.sys = PL_COLOR_SYSTEM_RGB;
@@ -3864,22 +3874,31 @@ static void CuvidDisplayFrame(void)
 
 #ifndef PLACEBO
     //  add osd to surface
+
     if (OsdShown && valid_frame) {
         GLint texLoc;
-
-#ifdef CUVID
-        glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
-        GlxCheck();
-#endif
-#ifdef VAAPI
-        // eglMakeCurrent(eglDisplay, eglSurface, eglSurface, OSDcontext);
-#endif
+        glBindTexture(GL_TEXTURE_2D, 0);
+		if (OsdShown == 1) {
+			if (OSDtexture)
+				glDeleteTextures(1,&OSDtexture);
+			
+			glGenTextures(1, &OSDtexture);
+			glBindTexture(GL_TEXTURE_2D, OSDtexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, OSDxsize, OSDysize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posd);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			OsdShown = 2;
+		}
+        glBindTexture(GL_TEXTURE_2D, 0);
         glEnable(GL_BLEND);
         GlxCheck();
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         GlxCheck();
-        glViewport(0, 0, VideoWindowWidth, VideoWindowHeight);
-        GlxCheck();
+
+        glViewport(OSDx,(VideoWindowHeight - OSDysize - OSDy) , OSDxsize, OSDysize);
+ 
         if (gl_prog_osd == 0)
             gl_prog_osd = sc_generate_osd(gl_prog_osd); // generate shader programm
 
@@ -3891,18 +3910,13 @@ static void CuvidDisplayFrame(void)
 
         pthread_mutex_lock(&OSDMutex);
         glBindTexture(GL_TEXTURE_2D, OSDtexture);
-        render_pass_quad(0, 0, 0);
+        render_pass_quad(1, 0, 0);
         pthread_mutex_unlock(&OSDMutex);
 
         glUseProgram(0);
         glActiveTexture(GL_TEXTURE0);
-#ifdef CUVID
-        glXMakeCurrent(XlibDisplay, VideoWindow, glxThreadContext);
-#endif
-#ifdef VAAPI
-        // eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
-#endif
     }
+
 #endif
 
 #ifdef PLACEBO
@@ -4675,13 +4689,14 @@ void VideoOsdDrawARGB(int xi, int yi, int width, int height, int pitch, const ui
 void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize)
 {
 //printf("OSD open %d %d %d %d\n",x,y,xsize,ysize);
-    OsdShown = 1;
+
     OSDfb = texture;
-    OSDtexture = texture;
+//    OSDtexture = texture;
     OSDx = x;
     OSDy = y;
     OSDxsize = xsize;
     OSDysize = ysize;
+	OsdShown = 1;
 }
 
 ///
@@ -5192,7 +5207,10 @@ static void VideoThreadExit(void)
         pthread_mutex_destroy(&VideoLockMutex);
         pthread_mutex_destroy(&VideoMutex);
         pthread_mutex_destroy(&OSDMutex);
+
 #ifndef PLACEBO
+		if (OSDtexture)
+			glDeleteTextures(1,&OSDtexture);
         if (gl_prog_osd) {
             glDeleteProgram(gl_prog_osd);
             gl_prog_osd = 0;
@@ -6625,8 +6643,8 @@ int GlxInitopengl()
     }
     Debug(3, "Create OSD egl context\n");
 #ifdef VAAPI
-    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
-    EglCheck();
+//    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
+//    EglCheck();
 #else
     glXMakeCurrent(XlibDisplay, VideoWindow, OSDcontext);
     GlxCheck();

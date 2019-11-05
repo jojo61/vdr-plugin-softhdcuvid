@@ -243,14 +243,14 @@ LIBS += -L/usr/lib64
 LIBS += -L/usr/local/cuda/lib64
 
 ifeq ($(LIBPLACEBO),1)
-LIBS += -lplacebo -lglut
+LIBS += -lplacebo 
 endif
 
 ifeq ($(CUVID),1)
 LIBS += -lcuda -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid
 endif
 
-LIBS += -lGLEW -lGLU  -ldl
+LIBS += -lGLEW -lGLU  -ldl -lglut
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=
