@@ -909,6 +909,7 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
 #endif
     ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
     oFb->Unbind();
+	glFlush();
     pthread_mutex_unlock(&OSDMutex);
 
     return true;
