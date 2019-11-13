@@ -895,23 +895,15 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
-//    glClear(GL_COLOR_BUFFER_BIT);
 
-//#ifdef PLACEBO
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     if (posd)
         glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_RGBA,GL_UNSIGNED_BYTE,posd);
-//#else
-#if 0
-    fb->Blit(x, y + fb->Height(), x + fb->Width(), y);
-    glFlush();
-#endif
-    ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
-    oFb->Unbind();
-	glFlush();
+	glFlush();    
+	oFb->Unbind();
     pthread_mutex_unlock(&OSDMutex);
-
+	ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
     return true;
 }
 
@@ -2062,11 +2054,11 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 cOglOsd::~cOglOsd() {
     OsdClose();
     SetActive(false);
-
+#if 0
     if (posd)
         free(posd);
     posd = 0;
-
+#endif
     oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
 }
 
