@@ -439,9 +439,12 @@ cOglFont *cOglFont::Get(const char *name, int charHeight) {
 }
 
 void cOglFont::Init(void) {
-    fonts = new cList<cOglFont>;
-    if (FT_Init_FreeType(&ftLib))
+    
+    if (FT_Init_FreeType(&ftLib)) {
         esyslog("[softhddev]failed to initialize FreeType library!");
+		return;
+	}
+	fonts = new cList<cOglFont>;
     initiated = true;
 }
 
@@ -900,10 +903,10 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     if (posd)
         glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_RGBA,GL_UNSIGNED_BYTE,posd);
-	glFlush();    
-	oFb->Unbind();
+    glFlush();    
+    oFb->Unbind();
     pthread_mutex_unlock(&OSDMutex);
-	ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
+    ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
     return true;
 }
 
