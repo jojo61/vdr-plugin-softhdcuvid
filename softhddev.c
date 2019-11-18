@@ -515,7 +515,7 @@ enum
 #define PES_START_CODE_SIZE 6           ///< size of pes start code with length
 #define PES_HEADER_SIZE 9               ///< size of pes header
 #define PES_MAX_HEADER_SIZE (PES_HEADER_SIZE + 256) ///< maximal header size
-#define PES_MAX_PAYLOAD	(512 * 1024)    ///< max pay load size
+#define PES_MAX_PAYLOAD (512 * 1024)    ///< max pay load size
 
 ///
 /// PES demuxer.
@@ -885,9 +885,9 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size, int is_st
 //////////////////////////////////////////////////////////////////////////////
 
 /// Transport stream packet size
-#define TS_PACKET_SIZE	188
+#define TS_PACKET_SIZE  188
 /// Transport stream packet sync byte
-#define TS_PACKET_SYNC	0x47
+#define TS_PACKET_SYNC  0x47
 
 ///
 /// transport stream demuxer typedef.
@@ -982,11 +982,11 @@ static int TsDemuxer(TsDemux * tsdx, const uint8_t * data, int size)
 #endif
 
 /**
-**	Play audio packet.
+**  Play audio packet.
 **
-**	@param data	data of exactly one complete PES packet
-**	@param size	size of PES packet
-**	@param id	PES packet type
+**  @param data data of exactly one complete PES packet
+**  @param size size of PES packet
+**  @param id   PES packet type
 */
 int PlayAudio(const uint8_t * data, int size, uint8_t id)
 {
@@ -1211,14 +1211,14 @@ int PlayAudio(const uint8_t * data, int size, uint8_t id)
 #ifndef NO_TS_AUDIO
 
 /**
-**	Play transport stream audio packet.
+**  Play transport stream audio packet.
 **
-**	VDR can have buffered data belonging to previous channel!
+**  VDR can have buffered data belonging to previous channel!
 **
-**	@param data	data of exactly one complete TS packet
-**	@param size	size of TS packet (always TS_PACKET_SIZE)
+**  @param data data of exactly one complete TS packet
+**  @param size size of TS packet (always TS_PACKET_SIZE)
 **
-**	@returns number of bytes consumed;
+**  @returns number of bytes consumed;
 */
 int PlayTsAudio(const uint8_t * data, int size)
 {
@@ -1265,9 +1265,9 @@ int PlayTsAudio(const uint8_t * data, int size)
 #endif
 
 /**
-**	Set volume of audio device.
+**  Set volume of audio device.
 **
-**	@param volume	VDR volume (0 .. 255)
+**  @param volume   VDR volume (0 .. 255)
 */
 void SetVolumeDevice(int volume)
 {
@@ -1275,7 +1275,7 @@ void SetVolumeDevice(int volume)
 }
 
 /**
-***	Resets channel ID (restarts audio).
+*** Resets channel ID (restarts audio).
 **/
 void ResetChannelId(void)
 {
@@ -1291,7 +1291,7 @@ void ResetChannelId(void)
 #define VIDEO_PACKET_MAX 256            ///< max number of video packets  192
 
 /**
-**	Video output stream device structure.	Parser, decoder, display.
+**  Video output stream device structure.   Parser, decoder, display.
 */
 struct __video_stream__
 {
@@ -1344,9 +1344,9 @@ static volatile char Usr1Signal;        ///< true got usr1 signal
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Initialize video packet ringbuffer.
+**  Initialize video packet ringbuffer.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 */
 static void VideoPacketInit(VideoStream * stream)
 {
@@ -1367,9 +1367,9 @@ static void VideoPacketInit(VideoStream * stream)
 }
 
 /**
-**	Cleanup video packet ringbuffer.
+**  Cleanup video packet ringbuffer.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 */
 static void VideoPacketExit(VideoStream * stream)
 {
@@ -1383,12 +1383,12 @@ static void VideoPacketExit(VideoStream * stream)
 }
 
 /**
-**	Place video data in packet ringbuffer.
+**  Place video data in packet ringbuffer.
 **
-**	@param stream	video stream
-**	@param pts	presentation timestamp of pes packet
-**	@param data	data of pes packet
-**	@param size	size of pes packet
+**  @param stream   video stream
+**  @param pts  presentation timestamp of pes packet
+**  @param data data of pes packet
+**  @param size size of pes packet
 */
 static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const void *data, int size)
 {
@@ -1431,9 +1431,9 @@ static void VideoEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const v
 }
 
 /**
-**	Reset current packet.
+**  Reset current packet.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 */
 static void VideoResetPacket(VideoStream * stream)
 {
@@ -1449,10 +1449,10 @@ static void VideoResetPacket(VideoStream * stream)
 }
 
 /**
-**	Finish current packet advance to next.
+**  Finish current packet advance to next.
 **
-**	@param stream	video stream
-**	@param codec_id	codec id of packet (MPEG/H264)
+**  @param stream   video stream
+**  @param codec_id codec id of packet (MPEG/H264)
 */
 static void VideoNextPacket(VideoStream * stream, int codec_id)
 {
@@ -1493,18 +1493,18 @@ static void VideoNextPacket(VideoStream * stream, int codec_id)
 #ifdef USE_PIP
 
 /**
-**	Place mpeg video data in packet ringbuffer.
+**  Place mpeg video data in packet ringbuffer.
 **
-**	Some tv-stations sends mulitple pictures in a single PES packet.
-**	Split the packet into single picture packets.
-**	Nick/CC, Viva, MediaShop, Deutsches Music Fernsehen
+**  Some tv-stations sends mulitple pictures in a single PES packet.
+**  Split the packet into single picture packets.
+**  Nick/CC, Viva, MediaShop, Deutsches Music Fernsehen
 **
-**	FIXME: this code can be written much faster
+**  FIXME: this code can be written much faster
 **
-**	@param stream	video stream
-**	@param pts	presentation timestamp of pes packet
-**	@param data	data of pes packet
-**	@param size	size of pes packet
+**  @param stream   video stream
+**  @param pts  presentation timestamp of pes packet
+**  @param data data of pes packet
+**  @param size size of pes packet
 */
 static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, const uint8_t * data, int size)
 {
@@ -1533,7 +1533,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, con
 #endif
             if (!p[0] || p[0] == 0xb3) {
 #ifdef DEBUG
-                printf("last: %d start	aspect %02x\n", stream->StartCodeState, p[4]);
+                printf("last: %d start  aspect %02x\n", stream->StartCodeState, p[4]);
 #endif
                 stream->PacketRb[stream->PacketWrite].stream_index -= 3;
                 VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1551,7 +1551,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, con
 #endif
             if (p[0] == 0x01 && (!p[1] || p[1] == 0xb3)) {
 #ifdef DEBUG
-                printf("last: %d start	aspect %02x\n", stream->StartCodeState, p[5]);
+                printf("last: %d start  aspect %02x\n", stream->StartCodeState, p[5]);
 #endif
                 stream->PacketRb[stream->PacketWrite].stream_index -= 2;
                 VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1568,7 +1568,7 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, con
 #endif
             if (!p[0] && p[1] == 0x01 && (!p[2] || p[2] == 0xb3)) {
 #ifdef DEBUG
-                printf("last: %d start	aspect %02x\n", stream->StartCodeState, p[6]);
+                printf("last: %d start  aspect %02x\n", stream->StartCodeState, p[6]);
 #endif
                 stream->PacketRb[stream->PacketWrite].stream_index -= 1;
                 VideoNextPacket(stream, AV_CODEC_ID_MPEG2VIDEO);
@@ -1650,19 +1650,19 @@ static void VideoMpegEnqueue(VideoStream * stream, int64_t pts, int64_t dts, con
 #endif
 
 /**
-**	Fix packet for FFMpeg.
+**  Fix packet for FFMpeg.
 **
-**	Some tv-stations sends mulitple pictures in a single PES packet.
-**	Current ffmpeg 0.10 and libav-0.8 has problems with this.
-**	Split the packet into single picture packets.
+**  Some tv-stations sends mulitple pictures in a single PES packet.
+**  Current ffmpeg 0.10 and libav-0.8 has problems with this.
+**  Split the packet into single picture packets.
 **
-**	FIXME: there are stations which have multiple pictures and
-**	the last picture incomplete in the PES packet.
+**  FIXME: there are stations which have multiple pictures and
+**  the last picture incomplete in the PES packet.
 **
-**	FIXME: move function call into PlayVideo, than the hardware
-**	decoder didn't need to support multiple frames decoding.
+**  FIXME: move function call into PlayVideo, than the hardware
+**  decoder didn't need to support multiple frames decoding.
 **
-**	@param avpkt	ffmpeg a/v packet
+**  @param avpkt    ffmpeg a/v packet
 */
 
 #ifndef USE_PIP
@@ -1728,9 +1728,9 @@ static void FixPacketForFFMpeg(VideoDecoder * vdecoder, AVPacket * avpkt)
 #endif
 
 /**
-**	Open video stream.
+**  Open video stream.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 */
 static void VideoStreamOpen(VideoStream * stream)
 {
@@ -1745,13 +1745,13 @@ static void VideoStreamOpen(VideoStream * stream)
 }
 
 /**
-**	Close video stream.
+**  Close video stream.
 **
-**	@param stream	video stream
-**	@param delhw	flag delete hardware decoder
+**  @param stream   video stream
+**  @param delhw    flag delete hardware decoder
 **
-**	@note must be called from the video thread, otherwise xcb has a
-**	deadlock.
+**  @note must be called from the video thread, otherwise xcb has a
+**  deadlock.
 */
 static void VideoStreamClose(VideoStream * stream, int delhw)
 {
@@ -1782,14 +1782,14 @@ static void VideoStreamClose(VideoStream * stream, int delhw)
 }
 
 /**
-**	Poll PES packet ringbuffer.
+**  Poll PES packet ringbuffer.
 **
-**	Called if video frame buffers are full.
+**  Called if video frame buffers are full.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 **
-**	@retval	1	something todo
-**	@retval	-1	empty stream
+**  @retval 1   something todo
+**  @retval -1  empty stream
 */
 int VideoPollInput(VideoStream * stream)
 {
@@ -1824,13 +1824,13 @@ int VideoPollInput(VideoStream * stream)
 }
 
 /**
-**	Decode from PES packet ringbuffer.
+**  Decode from PES packet ringbuffer.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 **
-**	@retval 0	packet decoded
-**	@retval	1	stream paused
-**	@retval	-1	empty stream
+**  @retval 0   packet decoded
+**  @retval 1   stream paused
+**  @retval -1  empty stream
 */
 int VideoDecodeInput(VideoStream * stream)
 {
@@ -1975,9 +1975,9 @@ int VideoDecodeInput(VideoStream * stream)
 }
 
 /**
-**	Get number of video buffers.
+**  Get number of video buffers.
 **
-**	@param stream	video stream
+**  @param stream   video stream
 */
 int VideoGetBuffers(const VideoStream * stream)
 {
@@ -1985,9 +1985,9 @@ int VideoGetBuffers(const VideoStream * stream)
 }
 
 /**
-**	Try video start.
+**  Try video start.
 **
-**	NOT TRUE: Could be called, when already started.
+**  NOT TRUE: Could be called, when already started.
 */
 static void StartVideo(void)
 {
@@ -2005,7 +2005,7 @@ static void StartVideo(void)
 }
 
 /**
-**	Stop video.
+**  Stop video.
 */
 static void StopVideo(void)
 {
@@ -2043,9 +2043,9 @@ static void StopVideo(void)
 #ifdef DEBUG
 
 /**
-**	Dump mpeg video packet.
+**  Dump mpeg video packet.
 **
-**	Function to dump a mpeg packet, not needed.
+**  Function to dump a mpeg packet, not needed.
 */
 static void DumpMpeg(const uint8_t * data, int size)
 {
@@ -2067,9 +2067,9 @@ static void DumpMpeg(const uint8_t * data, int size)
 }
 
 /**
-**	Dump h264 video packet.
+**  Dump h264 video packet.
 **
-**	Function to Dump a h264 packet, not needed.
+**  Function to Dump a h264 packet, not needed.
 */
 static int DumpH264(const uint8_t * data, int size)
 {
@@ -2091,9 +2091,9 @@ static int DumpH264(const uint8_t * data, int size)
 }
 
 /**
-**	Validate mpeg video packet.
+**  Validate mpeg video packet.
 **
-**	Function to validate a mpeg packet, not needed.
+**  Function to validate a mpeg packet, not needed.
 */
 static int ValidateMpeg(const uint8_t * data, int size)
 {
@@ -2126,13 +2126,13 @@ static int ValidateMpeg(const uint8_t * data, int size)
 #endif
 
 /**
-**	Play video packet.
+**  Play video packet.
 **
-**	@param stream	video stream
-**	@param data	data of exactly one complete PES packet
-**	@param size	size of PES packet
+**  @param stream   video stream
+**  @param data data of exactly one complete PES packet
+**  @param size size of PES packet
 **
-**	@return number of bytes used, 0 if internal buffer are full.
+**  @return number of bytes used, 0 if internal buffer are full.
 **
 */
 int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
@@ -2352,20 +2352,20 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
 }
 
 /**
-**	Play video packet.
+**  Play video packet.
 **
-**	@param data	data of exactly one complete PES packet
-**	@param size	size of PES packet
+**  @param data data of exactly one complete PES packet
+**  @param size size of PES packet
 **
-**	@return number of bytes used, 0 if internal buffer are full.
+**  @return number of bytes used, 0 if internal buffer are full.
 **
-**	@note vdr sends incomplete packets, va-api h264 decoder only
-**	supports complete packets.
-**	We buffer here until we receive an complete PES Packet, which
-**	is no problem, the audio is always far behind us.
-**	cTsToPes::GetPes splits the packets.
+**  @note vdr sends incomplete packets, va-api h264 decoder only
+**  supports complete packets.
+**  We buffer here until we receive an complete PES Packet, which
+**  is no problem, the audio is always far behind us.
+**  cTsToPes::GetPes splits the packets.
 **
-**	@todo FIXME: combine the 5 ifs at start of the function
+**  @todo FIXME: combine the 5 ifs at start of the function
 */
 int PlayVideo(const uint8_t * data, int size)
 {
@@ -2378,16 +2378,16 @@ extern uint8_t *CreateJpeg(uint8_t *, int *, int, int, int);
 #if defined(USE_JPEG) && JPEG_LIB_VERSION >= 80
 
 /**
-**	Create a jpeg image in memory.
+**  Create a jpeg image in memory.
 **
-**	@param image		raw RGB image
-**	@param raw_size		size of raw image
-**	@param size[out]	size of jpeg image
-**	@param quality		jpeg quality
-**	@param width		number of horizontal pixels in image
-**	@param height		number of vertical pixels in image
+**  @param image        raw RGB image
+**  @param raw_size     size of raw image
+**  @param size[out]    size of jpeg image
+**  @param quality      jpeg quality
+**  @param width        number of horizontal pixels in image
+**  @param height       number of vertical pixels in image
 **
-**	@returns allocated jpeg image.
+**  @returns allocated jpeg image.
 */
 uint8_t *CreateJpeg(uint8_t * image, int raw_size, int *size, int quality, int width, int height)
 {
@@ -2429,13 +2429,13 @@ uint8_t *CreateJpeg(uint8_t * image, int raw_size, int *size, int quality, int w
 #endif
 
 /**
-**	Grabs the currently visible screen image.
+**  Grabs the currently visible screen image.
 **
-**	@param size	size of the returned data
-**	@param jpeg	flag true, create JPEG data
-**	@param quality	JPEG quality
-**	@param width	number of horizontal pixels in the frame
-**	@param height	number of vertical pixels in the frame
+**  @param size size of the returned data
+**  @param jpeg flag true, create JPEG data
+**  @param quality  JPEG quality
+**  @param width    number of horizontal pixels in the frame
+**  @param height   number of vertical pixels in the frame
 */
 uint8_t *GrabImage(int *size, int jpeg, int quality, int width, int height)
 {
@@ -2461,9 +2461,9 @@ uint8_t *GrabImage(int *size, int jpeg, int quality, int width, int height)
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Set play mode, called on channel switch.
+**  Set play mode, called on channel switch.
 **
-**	@param play_mode	play mode (none, video+audio, audio-only, ...)
+**  @param play_mode    play mode (none, video+audio, audio-only, ...)
 */
 int SetPlayMode(int play_mode)
 {
@@ -2514,8 +2514,8 @@ int SetPlayMode(int play_mode)
 }
 
 /**
-**	Gets the current System Time Counter, which can be used to
-**	synchronize audio, video and subtitles.
+**  Gets the current System Time Counter, which can be used to
+**  synchronize audio, video and subtitles.
 */
 int64_t GetSTC(void)
 {
@@ -2528,11 +2528,11 @@ int64_t GetSTC(void)
 }
 
 /**
-**	Get video stream size and aspect.
+**  Get video stream size and aspect.
 **
-**	@param width[OUT]	width of video stream
-**	@param height[OUT]	height of video stream
-**	@param aspect[OUT]	aspect ratio (4/3, 16/9, ...) of video stream
+**  @param width[OUT]   width of video stream
+**  @param height[OUT]  height of video stream
+**  @param aspect[OUT]  aspect ratio (4/3, 16/9, ...) of video stream
 */
 void GetVideoSize(int *width, int *height, double *aspect)
 {
@@ -2562,12 +2562,12 @@ void GetVideoSize(int *width, int *height, double *aspect)
 }
 
 /**
-**	Set trick play speed.
+**  Set trick play speed.
 **
-**	Every single frame shall then be displayed the given number of
-**	times.
+**  Every single frame shall then be displayed the given number of
+**  times.
 **
-**	@param speed	trick speed
+**  @param speed    trick speed
 */
 void TrickSpeed(int speed)
 {
@@ -2583,7 +2583,7 @@ void TrickSpeed(int speed)
 }
 
 /**
-**	Clears all video and audio data from the device.
+**  Clears all video and audio data from the device.
 */
 void Clear(void)
 {
@@ -2606,7 +2606,7 @@ void Clear(void)
 }
 
 /**
-**	Sets the device into play mode.
+**  Sets the device into play mode.
 */
 void Play(void)
 {
@@ -2616,7 +2616,7 @@ void Play(void)
 }
 
 /**
-**	Sets the device into "freeze frame" mode.
+**  Sets the device into "freeze frame" mode.
 */
 void Freeze(void)
 {
@@ -2626,7 +2626,7 @@ void Freeze(void)
 }
 
 /**
-**	Turns off audio while replaying.
+**  Turns off audio while replaying.
 */
 void Mute(void)
 {
@@ -2636,10 +2636,10 @@ void Mute(void)
 }
 
 /**
-**	Display the given I-frame as a still picture.
+**  Display the given I-frame as a still picture.
 **
-**	@param data	pes frame data
-**	@param size	number of bytes in frame
+**  @param data pes frame data
+**  @param size number of bytes in frame
 */
 void StillPicture(const uint8_t * data, int size)
 {
@@ -2746,17 +2746,17 @@ void StillPicture(const uint8_t * data, int size)
 }
 
 /**
-**	Poll if device is ready.  Called by replay.
+**  Poll if device is ready.  Called by replay.
 **
-**	This function is useless, the return value is ignored and
-**	all buffers are overrun by vdr.
+**  This function is useless, the return value is ignored and
+**  all buffers are overrun by vdr.
 **
-**	The dvd plugin is using this correct.
+**  The dvd plugin is using this correct.
 **
-**	@param timeout	timeout to become ready in ms
+**  @param timeout  timeout to become ready in ms
 **
-**	@retval true	if ready
-**	@retval false	if busy
+**  @retval true    if ready
+**  @retval false   if busy
 */
 int Poll(int timeout)
 {
@@ -2789,9 +2789,9 @@ int Poll(int timeout)
 }
 
 /**
-**	Flush the device output buffers.
+**  Flush the device output buffers.
 **
-**	@param timeout	timeout to flush in ms
+**  @param timeout  timeout to flush in ms
 */
 int Flush(int timeout)
 {
@@ -2809,11 +2809,11 @@ int Flush(int timeout)
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Get OSD size and aspect.
+**  Get OSD size and aspect.
 **
-**	@param width[OUT]	width of OSD
-**	@param height[OUT]	height of OSD
-**	@param aspect[OUT]	aspect ratio (4/3, 16/9, ...) of OSD
+**  @param width[OUT]   width of OSD
+**  @param height[OUT]  height of OSD
+**  @param aspect[OUT]  aspect ratio (4/3, 16/9, ...) of OSD
 */
 void GetOsdSize(int *width, int *height, double *aspect)
 {
@@ -2835,7 +2835,7 @@ void GetOsdSize(int *width, int *height, double *aspect)
 }
 
 /**
-**	Close OSD.
+**  Close OSD.
 */
 void OsdClose(void)
 {
@@ -2843,16 +2843,16 @@ void OsdClose(void)
 }
 
 /**
-**	Draw an OSD pixmap.
+**  Draw an OSD pixmap.
 **
-**	@param xi	x-coordinate in argb image
-**	@param yi	y-coordinate in argb image
-**	@paran height	height in pixel in argb image
-**	@paran width	width in pixel in argb image
-**	@param pitch	pitch of argb image
-**	@param argb	32bit ARGB image data
-**	@param x	x-coordinate on screen of argb image
-**	@param y	y-coordinate on screen of argb image
+**  @param xi   x-coordinate in argb image
+**  @param yi   y-coordinate in argb image
+**  @paran height   height in pixel in argb image
+**  @paran width    width in pixel in argb image
+**  @param pitch    pitch of argb image
+**  @param argb 32bit ARGB image data
+**  @param x    x-coordinate on screen of argb image
+**  @param y    y-coordinate on screen of argb image
 */
 void OsdDrawARGB(int xi, int yi, int height, int width, int pitch, const uint8_t * argb, int x, int y)
 {
@@ -2864,17 +2864,17 @@ void OsdDrawARGB(int xi, int yi, int height, int width, int pitch, const uint8_t
 //////////////////////////////////////////////////////////////////////////////
 
 /**
-**	Return command line help string.
+**  Return command line help string.
 */
 const char *CommandLineHelp(void)
 {
     return "  -a device\taudio device (fe. alsa: hw:0,0 oss: /dev/dsp)\n"
         "  -p device\taudio device for pass-through (hw:0,1 or /dev/dsp1)\n"
-        "  -c channel\taudio mixer channel name (fe. PCM)\n" "	-d display\tdisplay of x11 server (fe. :0.0)\n"
+        "  -c channel\taudio mixer channel name (fe. PCM)\n" "  -d display\tdisplay of x11 server (fe. :0.0)\n"
         "  -f\t\tstart with fullscreen window (only with window manager)\n"
         "  -g geometry\tx11 window geometry wxh+x+y\n" "  -v device\tvideo driver device (cuvid)\n"
         "  -s\t\tstart in suspended mode\n" "  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
-        "  -X args\tX11 server arguments (f.e. -nocursor)\n" "	-w workaround\tenable/disable workarounds\n"
+        "  -X args\tX11 server arguments (f.e. -nocursor)\n" "  -w workaround\tenable/disable workarounds\n"
         "\tno-hw-decoder\t\tdisable hw decoder, use software decoder only\n"
         "\tno-mpeg-hw-decoder\tdisable hw decoder for mpeg only\n"
         "\tstill-hw-decoder\tenable hardware decoder for still-pictures\n"
@@ -2883,14 +2883,14 @@ const char *CommandLineHelp(void)
         "\talsa-no-close-open\tdisable close open to fix alsa no sound bug\n"
         "\talsa-close-open-delay\tenable close open delay to fix no sound bug\n"
         "\tignore-repeat-pict\tdisable repeat pict message\n"
-        "\tuse-possible-defect-frames prefer faster channel switch\n" "	 -D\t\tstart in detached mode\n";
+        "\tuse-possible-defect-frames prefer faster channel switch\n" "  -D\t\tstart in detached mode\n";
 }
 
 /**
-**	Process the command line arguments.
+**  Process the command line arguments.
 **
-**	@param argc	number of arguments
-**	@param argv	arguments vector
+**  @param argc number of arguments
+**  @param argv arguments vector
 */
 int ProcessArgs(int argc, char *const argv[])
 {
@@ -3008,9 +3008,9 @@ static const char *X11Server = LOCALBASE "/bin/X";  ///< default x11 server
 static pid_t X11ServerPid;              ///< x11 server pid
 
 /**
-**	USR1 signal handler.
+**  USR1 signal handler.
 **
-**	@param sig	signal number
+**  @param sig  signal number
 */
 static void Usr1Handler(int __attribute__((unused)) sig)
 {
@@ -3020,7 +3020,7 @@ static void Usr1Handler(int __attribute__((unused)) sig)
 }
 
 /**
-**	Start the X server
+**  Start the X server
 */
 static void StartXServer(void)
 {
@@ -3104,7 +3104,7 @@ static void StartXServer(void)
 }
 
 /**
-**	Exit + cleanup.
+**  Exit + cleanup.
 */
 void SoftHdDeviceExit(void)
 {
@@ -3164,11 +3164,11 @@ void SoftHdDeviceExit(void)
 }
 
 /**
-**	Prepare plugin.
+**  Prepare plugin.
 **
-**	@retval 0	normal start
-**	@retval 1	suspended start
-**	@retval -1	detached start
+**  @retval 0   normal start
+**  @retval 1   suspended start
+**  @retval -1  detached start
 */
 int Start(void)
 {
@@ -3210,9 +3210,9 @@ int Start(void)
 }
 
 /**
-**	Stop plugin.
+**  Stop plugin.
 **
-**	@note stop everything, but don't cleanup, module is still called.
+**  @note stop everything, but don't cleanup, module is still called.
 */
 void Stop(void)
 {
@@ -3222,7 +3222,7 @@ void Stop(void)
 }
 
 /**
-**	Perform any cleanup or other regular tasks.
+**  Perform any cleanup or other regular tasks.
 */
 void Housekeeping(void)
 {
@@ -3252,7 +3252,7 @@ void Housekeeping(void)
 }
 
 /**
-**	Main thread hook, periodic called from main thread.
+**  Main thread hook, periodic called from main thread.
 */
 void MainThreadHook(void)
 {
@@ -3273,11 +3273,11 @@ void MainThreadHook(void)
 extern void DelPip(void);
 
 /**
-**	Suspend plugin.
+**  Suspend plugin.
 **
-**	@param video	suspend closes video
-**	@param audio	suspend closes audio
-**	@param dox11	suspend closes x11 server
+**  @param video    suspend closes video
+**  @param audio    suspend closes audio
+**  @param dox11    suspend closes x11 server
 */
 void Suspend(int video, int audio, int dox11)
 {
@@ -3320,7 +3320,7 @@ void Suspend(int video, int audio, int dox11)
 }
 
 /**
-**	Resume plugin.
+**  Resume plugin.
 */
 void Resume(void)
 {
@@ -3354,12 +3354,12 @@ void Resume(void)
 }
 
 /*
-**	Get decoder statistics.
+**  Get decoder statistics.
 **
-**	@param[out] missed	missed frames
-**	@param[out] duped	duped frames
-**	@param[out] dropped	dropped frames
-**	@param[out] count	number of decoded frames
+**  @param[out] missed  missed frames
+**  @param[out] duped   duped frames
+**  @param[out] dropped dropped frames
+**  @param[out] count   number of decoded frames
 */
 void GetStats(int *missed, int *duped, int *dropped, int *counter, float *frametime)
 {
@@ -3374,12 +3374,12 @@ void GetStats(int *missed, int *duped, int *dropped, int *counter, float *framet
 }
 
 /**
-**	Scale the currently shown video.
+**  Scale the currently shown video.
 **
-**	@param x	video window x coordinate OSD relative
-**	@param y	video window y coordinate OSD relative
-**	@param width	video window width OSD relative
-**	@param height	video window height OSD relative
+**  @param x    video window x coordinate OSD relative
+**  @param y    video window y coordinate OSD relative
+**  @param width    video window width OSD relative
+**  @param height   video window height OSD relative
 */
 void ScaleVideo(int x, int y, int width, int height)
 {
@@ -3395,16 +3395,16 @@ void ScaleVideo(int x, int y, int width, int height)
 #ifdef USE_PIP
 
 /**
-**	Set PIP position.
+**  Set PIP position.
 **
-**	@param x		video window x coordinate OSD relative
-**	@param y		video window y coordinate OSD relative
-**	@param width		video window width OSD relative
-**	@param height		video window height OSD relative
-**	@param pip_x		pip window x coordinate OSD relative
-**	@param pip_y		pip window y coordinate OSD relative
-**	@param pip_width	pip window width OSD relative
-**	@param pip_height	pip window height OSD relative
+**  @param x        video window x coordinate OSD relative
+**  @param y        video window y coordinate OSD relative
+**  @param width        video window width OSD relative
+**  @param height       video window height OSD relative
+**  @param pip_x        pip window x coordinate OSD relative
+**  @param pip_y        pip window y coordinate OSD relative
+**  @param pip_width    pip window width OSD relative
+**  @param pip_height   pip window height OSD relative
 */
 void PipSetPosition(int x, int y, int width, int height, int pip_x, int pip_y, int pip_width, int pip_height)
 {
@@ -3420,16 +3420,16 @@ void PipSetPosition(int x, int y, int width, int height, int pip_x, int pip_y, i
 }
 
 /**
-**	Start PIP stream.
+**  Start PIP stream.
 **
-**	@param x		video window x coordinate OSD relative
-**	@param y		video window y coordinate OSD relative
-**	@param width		video window width OSD relative
-**	@param height		video window height OSD relative
-**	@param pip_x		pip window x coordinate OSD relative
-**	@param pip_y		pip window y coordinate OSD relative
-**	@param pip_width	pip window width OSD relative
-**	@param pip_height	pip window height OSD relative
+**  @param x        video window x coordinate OSD relative
+**  @param y        video window y coordinate OSD relative
+**  @param width        video window width OSD relative
+**  @param height       video window height OSD relative
+**  @param pip_x        pip window x coordinate OSD relative
+**  @param pip_y        pip window y coordinate OSD relative
+**  @param pip_width    pip window width OSD relative
+**  @param pip_height   pip window height OSD relative
 */
 void PipStart(int x, int y, int width, int height, int pip_x, int pip_y, int pip_width, int pip_height)
 {
@@ -3444,7 +3444,7 @@ void PipStart(int x, int y, int width, int height, int pip_x, int pip_y, int pip
 }
 
 /**
-**	Stop PIP.
+**  Stop PIP.
 */
 void PipStop(void)
 {
@@ -3464,12 +3464,12 @@ void PipStop(void)
 }
 
 /**
-**	PIP play video packet.
+**  PIP play video packet.
 **
-**	@param data	data of exactly one complete PES packet
-**	@param size	size of PES packet
+**  @param data data of exactly one complete PES packet
+**  @param size size of PES packet
 **
-**	@return number of bytes used, 0 if internal buffer are full.
+**  @return number of bytes used, 0 if internal buffer are full.
 */
 int PipPlayVideo(const uint8_t * data, int size)
 {
