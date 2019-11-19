@@ -848,13 +848,13 @@ char *eglErrorString(EGLint error)
 void OSD_get_shared_context()
 {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
-     EglCheck();
+    EglCheck();
 }
 
 void OSD_get_context()
 {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, OSDcontext);
-     EglCheck();
+    EglCheck();
 }
 
 void OSD_release_context()
@@ -2855,11 +2855,12 @@ int get_RGB(CuvidDecoder * decoder)
     glActiveTexture(GL_TEXTURE0);
 
     if (OsdShown && decoder->grab == 2) {
-        int x,y,h,w;
+        int x, y, h, w;
         GLint texLoc;
+
         if (OsdShown == 1) {
             if (OSDtexture)
-                glDeleteTextures(1,&OSDtexture);
+                glDeleteTextures(1, &OSDtexture);
             pthread_mutex_lock(&OSDMutex);
             glGenTextures(1, &OSDtexture);
             glBindTexture(GL_TEXTURE_2D, OSDtexture);
@@ -2872,11 +2873,11 @@ int get_RGB(CuvidDecoder * decoder)
             OsdShown = 2;
         }
 
-        y = OSDy*height/VideoWindowHeight;
-        x = OSDx*width/VideoWindowWidth;
-        h = OSDysize*height/VideoWindowHeight;
-        w = OSDxsize*width/VideoWindowWidth;
-        glViewport(x,(height - h - y) , w, h);
+        y = OSDy * height / VideoWindowHeight;
+        x = OSDx * width / VideoWindowWidth;
+        h = OSDysize * height / VideoWindowHeight;
+        w = OSDxsize * width / VideoWindowWidth;
+        glViewport(x, (height - h - y), w, h);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -3643,21 +3644,21 @@ void make_osd_overlay(int x, int y, int width, int height)
 //        pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
         pl_tex_destroy(p->gpu, &pl->plane.texture);
     }
-    
+
     // make texture for OSD
-	if (pl->plane.texture == NULL ) {
+    if (pl->plane.texture == NULL) {
         pl->plane.texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
-            .w = width,
-            .h = height,
-            .d = 0,
-            .format = fmt,
-            .sampleable = true,
-            .host_writable = true,
-            .blit_dst = true,
-            .sample_mode = PL_TEX_SAMPLE_LINEAR,
-            .address_mode = PL_TEX_ADDRESS_CLAMP,
-        });
-	}
+                .w = width,
+                .h = height,
+                .d = 0,
+                .format = fmt,
+                .sampleable = true,
+                .host_writable = true,
+                .blit_dst = true,
+                .sample_mode = PL_TEX_SAMPLE_LINEAR,
+                .address_mode = PL_TEX_ADDRESS_CLAMP,
+            });
+    }
     // make overlay
     pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
     pl->plane.components = 4;
@@ -3738,7 +3739,7 @@ static void CuvidDisplayFrame(void)
     // printf("Roundtrip Displayframe %d\n",diff);
     if (diff < 5000 && diff > 0) {
         // printf("Sleep %d\n",15000-diff);
-        usleep((5000 - diff));         // * 1000);
+        usleep((5000 - diff));          // * 1000);
     }
 
 #endif
@@ -3753,7 +3754,7 @@ static void CuvidDisplayFrame(void)
         pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
     }
 #endif
-    
+
     first = 0;
     last_time = GetusTicks();
 
@@ -3878,12 +3879,13 @@ static void CuvidDisplayFrame(void)
 
     if (OsdShown && valid_frame) {
         GLint texLoc;
-        int x,y,w,h;
+        int x, y, w, h;
+
         glBindTexture(GL_TEXTURE_2D, 0);
         if (OsdShown == 1) {
             if (OSDtexture)
-                glDeleteTextures(1,&OSDtexture);
-            pthread_mutex_lock(&OSDMutex);			
+                glDeleteTextures(1, &OSDtexture);
+            pthread_mutex_lock(&OSDMutex);
             glGenTextures(1, &OSDtexture);
             glBindTexture(GL_TEXTURE_2D, OSDtexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, OSDxsize, OSDysize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posd);
@@ -3893,7 +3895,7 @@ static void CuvidDisplayFrame(void)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             glFlush();
             pthread_mutex_unlock(&OSDMutex);
-			OsdShown = 2;
+            OsdShown = 2;
         }
         glBindTexture(GL_TEXTURE_2D, 0);
         glEnable(GL_BLEND);
@@ -3901,12 +3903,12 @@ static void CuvidDisplayFrame(void)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         GlxCheck();
 
-        y = OSDy*VideoWindowHeight/OsdHeight;
-        x = OSDx*VideoWindowWidth/OsdWidth;
-        h = OSDysize*VideoWindowHeight/OsdHeight;
-        w = OSDxsize*VideoWindowWidth/OsdWidth;
-        glViewport(x,(VideoWindowHeight - h - y) , w, h);
- 
+        y = OSDy * VideoWindowHeight / OsdHeight;
+        x = OSDx * VideoWindowWidth / OsdWidth;
+        h = OSDysize * VideoWindowHeight / OsdHeight;
+        w = OSDxsize * VideoWindowWidth / OsdWidth;
+        glViewport(x, (VideoWindowHeight - h - y), w, h);
+
         if (gl_prog_osd == 0)
             gl_prog_osd = sc_generate_osd(gl_prog_osd); // generate shader programm
 
@@ -4704,7 +4706,7 @@ void ActivateOsd(GLuint texture, int x, int y, int xsize, int ysize)
     OSDy = y;
     OSDxsize = xsize;
     OSDysize = ysize;
-	OsdShown = 1;
+    OsdShown = 1;
 }
 
 ///
@@ -5217,8 +5219,8 @@ static void VideoThreadExit(void)
         pthread_mutex_destroy(&OSDMutex);
 
 #ifndef PLACEBO
-		if (OSDtexture)
-			glDeleteTextures(1,&OSDtexture);
+        if (OSDtexture)
+            glDeleteTextures(1, &OSDtexture);
         if (gl_prog_osd) {
             glDeleteProgram(gl_prog_osd);
             gl_prog_osd = 0;

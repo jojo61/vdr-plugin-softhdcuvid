@@ -129,13 +129,13 @@ struct _video_decoder_
 //----------------------------------------------------------------------------
 
 /**
-**	Callback to negotiate the PixelFormat.
+**  Callback to negotiate the PixelFormat.
 **
-**	@param video_ctx	codec context
-**	@param fmt		is the list of formats which are supported by
-**				the codec, it is terminated by -1 as 0 is a
-**				valid format, the formats are ordered by
-**				quality.
+**  @param video_ctx    codec context
+**  @param fmt          is the list of formats which are supported by
+**                      the codec, it is terminated by -1 as 0 is a
+**                      valid format, the formats are ordered by
+**                      quality.
 */
 static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx, const enum AVPixelFormat *fmt)
 {
@@ -157,12 +157,12 @@ static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx, const enu
 // static void Codec_free_buffer(void *opaque, uint8_t *data);
 
 /**
-**	Video buffer management, get buffer for frame.
+**  Video buffer management, get buffer for frame.
 **
-**	Called at the beginning of each frame to get a buffer for it.
+**  Called at the beginning of each frame to get a buffer for it.
 **
-**	@param video_ctx	Codec context
-**	@param frame		Get buffer for this frame
+**  @param video_ctx    Codec context
+**  @param frame        Get buffer for this frame
 */
 static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int flags)
 {
@@ -195,11 +195,11 @@ static int Codec_get_buffer2(AVCodecContext * video_ctx, AVFrame * frame, int fl
 //----------------------------------------------------------------------------
 
 /**
-**	Allocate a new video decoder context.
+**  Allocate a new video decoder context.
 **
-**	@param hw_decoder	video hardware decoder
+**  @param hw_decoder   video hardware decoder
 **
-**	@returns private decoder pointer for video decoder.
+**  @returns private decoder pointer for video decoder.
 */
 VideoDecoder *CodecVideoNewDecoder(VideoHwDecoder * hw_decoder)
 {
@@ -214,9 +214,9 @@ VideoDecoder *CodecVideoNewDecoder(VideoHwDecoder * hw_decoder)
 }
 
 /**
-**	Deallocate a video decoder context.
+**  Deallocate a video decoder context.
 **
-**	@param decoder	private video decoder
+**  @param decoder  private video decoder
 */
 void CodecVideoDelDecoder(VideoDecoder * decoder)
 {
@@ -224,10 +224,10 @@ void CodecVideoDelDecoder(VideoDecoder * decoder)
 }
 
 /**
-**	Open video decoder.
+**  Open video decoder.
 **
-**	@param decoder	private video decoder
-**	@param codec_id	video codec id
+**  @param decoder  private video decoder
+**  @param codec_id video codec id
 */
 void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 {
@@ -393,9 +393,9 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 }
 
 /**
-**	Close video decoder.
+**  Close video decoder.
 **
-**	@param video_decoder	private video decoder
+**  @param video_decoder    private video decoder
 */
 void CodecVideoClose(VideoDecoder * video_decoder)
 {
@@ -423,15 +423,15 @@ void CodecVideoClose(VideoDecoder * video_decoder)
 #if 0
 
 /**
-**	Display pts...
+**  Display pts...
 **
-**	ffmpeg-0.9 pts always AV_NOPTS_VALUE
-**	ffmpeg-0.9 pkt_pts nice monotonic (only with HD)
-**	ffmpeg-0.9 pkt_dts wild jumping -160 - 340 ms
+**  ffmpeg-0.9 pts always AV_NOPTS_VALUE
+**  ffmpeg-0.9 pkt_pts nice monotonic (only with HD)
+**  ffmpeg-0.9 pkt_dts wild jumping -160 - 340 ms
 **
-**	libav 0.8_pre20111116 pts always AV_NOPTS_VALUE
-**	libav 0.8_pre20111116 pkt_pts always 0 (could be fixed?)
-**	libav 0.8_pre20111116 pkt_dts wild jumping -160 - 340 ms
+**  libav 0.8_pre20111116 pts always AV_NOPTS_VALUE
+**  libav 0.8_pre20111116 pkt_pts always 0 (could be fixed?)
+**  libav 0.8_pre20111116 pkt_dts wild jumping -160 - 340 ms
 */
 void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
 {
@@ -445,7 +445,7 @@ void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
     }
     ms_delay = (1000 * video_ctx->time_base.num) / video_ctx->time_base.den;
     ms_delay += frame->repeat_pict * ms_delay / 2;
-    printf("codec: PTS %s%s %" PRId64 " %d %d/%d %d/%d	%dms\n", frame->repeat_pict ? "r" : " ",
+    printf("codec: PTS %s%s %" PRId64 " %d %d/%d %d/%d  %dms\n", frame->repeat_pict ? "r" : " ",
         frame->interlaced_frame ? "I" : " ", pts, (int)(pts - last_pts) / 90, video_ctx->time_base.num,
         video_ctx->time_base.den, video_ctx->framerate.num, video_ctx->framerate.den, ms_delay);
 
@@ -457,10 +457,10 @@ void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
 #endif
 
 /**
-**	Decode a video packet.
+**  Decode a video packet.
 **
-**	@param decoder	video decoder data
-**	@param avpkt	video packet
+**  @param decoder  video decoder data
+**  @param avpkt    video packet
 */
 extern int CuvidTestSurfaces();
 
@@ -599,9 +599,9 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 #endif
 
 /**
-**	Flush the video decoder.
+**  Flush the video decoder.
 **
-**	@param decoder	video decoder data
+**  @param decoder  video decoder data
 */
 void CodecVideoFlushBuffers(VideoDecoder * decoder)
 {
@@ -686,8 +686,8 @@ enum IEC61937
 };
 
 #ifdef USE_AUDIO_DRIFT_CORRECTION
-#define CORRECT_PCM	1                   ///< do PCM audio-drift correction
-#define CORRECT_AC3	2                   ///< do AC-3 audio-drift correction
+#define CORRECT_PCM 1                   ///< do PCM audio-drift correction
+#define CORRECT_AC3 2                   ///< do AC-3 audio-drift correction
 static char CodecAudioDrift;            ///< flag: enable audio-drift correction
 #else
 static const int CodecAudioDrift = 0;
@@ -703,9 +703,9 @@ static const int CodecPassthrough = 0;
 static char CodecDownmix;               ///< enable AC-3 decoder downmix
 
 /**
-**	Allocate a new audio decoder context.
+**  Allocate a new audio decoder context.
 **
-**	@returns private decoder pointer for audio decoder.
+**  @returns private decoder pointer for audio decoder.
 */
 AudioDecoder *CodecAudioNewDecoder(void)
 {
@@ -722,9 +722,9 @@ AudioDecoder *CodecAudioNewDecoder(void)
 }
 
 /**
-**	Deallocate an audio decoder context.
+**  Deallocate an audio decoder context.
 **
-**	@param decoder	private audio decoder
+**  @param decoder  private audio decoder
 */
 void CodecAudioDelDecoder(AudioDecoder * decoder)
 {
@@ -733,10 +733,10 @@ void CodecAudioDelDecoder(AudioDecoder * decoder)
 }
 
 /**
-**	Open audio decoder.
+**  Open audio decoder.
 **
-**	@param audio_decoder	private audio decoder
-**	@param codec_id	audio	codec id
+**  @param audio_decoder    private audio decoder
+**  @param codec_id audio   codec id
 */
 void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 {
@@ -784,9 +784,9 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 }
 
 /**
-**	Close audio decoder.
+**  Close audio decoder.
 **
-**	@param audio_decoder	private audio decoder
+**  @param audio_decoder    private audio decoder
 */
 void CodecAudioClose(AudioDecoder * audio_decoder)
 {
@@ -831,9 +831,9 @@ void CodecAudioClose(AudioDecoder * audio_decoder)
 }
 
 /**
-**	Set audio drift correction.
+**  Set audio drift correction.
 **
-**	@param mask	enable mask (PCM, AC-3)
+**  @param mask enable mask (PCM, AC-3)
 */
 void CodecSetAudioDrift(int mask)
 {
@@ -844,9 +844,9 @@ void CodecSetAudioDrift(int mask)
 }
 
 /**
-**	Set audio pass-through.
+**  Set audio pass-through.
 **
-**	@param mask	enable mask (PCM, AC-3, E-AC-3)
+**  @param mask enable mask (PCM, AC-3, E-AC-3)
 */
 void CodecSetAudioPassthrough(int mask)
 {
@@ -857,9 +857,9 @@ void CodecSetAudioPassthrough(int mask)
 }
 
 /**
-**	Set audio downmix.
+**  Set audio downmix.
 **
-**	@param onoff	enable/disable downmix.
+**  @param onoff    enable/disable downmix.
 */
 void CodecSetAudioDownmix(int onoff)
 {
@@ -871,15 +871,15 @@ void CodecSetAudioDownmix(int onoff)
 }
 
 /**
-**	Reorder audio frame.
+**  Reorder audio frame.
 **
-**	ffmpeg L  R  C	Ls Rs		-> alsa L R  Ls Rs C
-**	ffmpeg L  R  C	LFE Ls Rs	-> alsa L R  Ls Rs C  LFE
-**	ffmpeg L  R  C	LFE Ls Rs Rl Rr	-> alsa L R  Ls Rs C  LFE Rl Rr
+**  ffmpeg L  R  C  Ls Rs       -> alsa L R  Ls Rs C
+**  ffmpeg L  R  C  LFE Ls Rs   -> alsa L R  Ls Rs C  LFE
+**  ffmpeg L  R  C  LFE Ls Rs Rl Rr -> alsa L R  Ls Rs C  LFE Rl Rr
 **
-**	@param buf[IN,OUT]	sample buffer
-**	@param size		size of sample buffer in bytes
-**	@param channels		number of channels interleaved in sample buffer
+**  @param buf[IN,OUT]  sample buffer
+**  @param size         size of sample buffer in bytes
+**  @param channels     number of channels interleaved in sample buffer
 */
 static void CodecReorderAudioFrame(int16_t * buf, int size, int channels)
 {
@@ -931,10 +931,10 @@ static void CodecReorderAudioFrame(int16_t * buf, int size, int channels)
 }
 
 /**
-**	Handle audio format changes helper.
+**  Handle audio format changes helper.
 **
-**	@param audio_decoder	audio decoder data
-**	@param[out] passthrough	pass-through output
+**  @param audio_decoder    audio decoder data
+**  @param[out] passthrough pass-through output
 */
 static int CodecAudioUpdateHelper(AudioDecoder * audio_decoder, int *passthrough)
 {
@@ -991,10 +991,10 @@ static int CodecAudioUpdateHelper(AudioDecoder * audio_decoder, int *passthrough
 }
 
 /**
-**	Audio pass-through decoder helper.
+**  Audio pass-through decoder helper.
 **
-**	@param audio_decoder	audio decoder data
-**	@param avpkt		undecoded audio packet
+**  @param audio_decoder    audio decoder data
+**  @param avpkt            undecoded audio packet
 */
 static int CodecAudioPassthroughHelper(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 {
@@ -1106,10 +1106,10 @@ static int CodecAudioPassthroughHelper(AudioDecoder * audio_decoder, const AVPac
 #if !defined(USE_SWRESAMPLE) && !defined(USE_AVRESAMPLE)
 
 /**
-**	Set/update audio pts clock.
+**  Set/update audio pts clock.
 **
-**	@param audio_decoder	audio decoder data
-**	@param pts		presentation timestamp
+**  @param audio_decoder audio decoder data
+**  @param pts           presentation timestamp
 */
 static void CodecAudioSetClock(AudioDecoder * audio_decoder, int64_t pts)
 {
@@ -1206,11 +1206,11 @@ static void CodecAudioSetClock(AudioDecoder * audio_decoder, int64_t pts)
 }
 
 /**
-**	Handle audio format changes.
+**  Handle audio format changes.
 **
-**	@param audio_decoder	audio decoder data
+**  @param audio_decoder    audio decoder data
 **
-**	@note this is the old not good supported version
+**  @note this is the old not good supported version
 */
 static void CodecAudioUpdateFormat(AudioDecoder * audio_decoder)
 {
@@ -1277,11 +1277,11 @@ static void CodecAudioUpdateFormat(AudioDecoder * audio_decoder)
 }
 
 /**
-**	Codec enqueue audio samples.
+**  Codec enqueue audio samples.
 **
-**	@param audio_decoder	audio decoder data
-**	@param data		samples data
-**	@param count		number of bytes in sample data
+**  @param audio_decoder    audio decoder data
+**  @param data             samples data
+**  @param count            number of bytes in sample data
 */
 void CodecAudioEnqueue(AudioDecoder * audio_decoder, int16_t * data, int count)
 {
@@ -1410,12 +1410,12 @@ int myavcodec_decode_audio3(AVCodecContext * avctx, int16_t * samples, int *fram
 }
 
 /**
-**	Decode an audio packet.
+**  Decode an audio packet.
 **
-**	PTS must be handled self.
+**  PTS must be handled self.
 **
-**	@param audio_decoder	audio decoder data
-**	@param avpkt		audio packet
+**  @param audio_decoder    audio decoder data
+**  @param avpkt            audio packet
 */
 void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 {
@@ -1486,10 +1486,10 @@ void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 #if defined(USE_SWRESAMPLE) || defined(USE_AVRESAMPLE)
 
 /**
-**	Set/update audio pts clock.
+**  Set/update audio pts clock.
 **
-**	@param audio_decoder	audio decoder data
-**	@param pts		presentation timestamp
+**  @param audio_decoder    audio decoder data
+**  @param pts              presentation timestamp
 */
 static void CodecAudioSetClock(AudioDecoder * audio_decoder, int64_t pts)
 {
@@ -1604,9 +1604,9 @@ static void CodecAudioSetClock(AudioDecoder * audio_decoder, int64_t pts)
 }
 
 /**
-**	Handle audio format changes.
+**  Handle audio format changes.
 **
-**	@param audio_decoder	audio decoder data
+**  @param audio_decoder    audio decoder data
 */
 static void CodecAudioUpdateFormat(AudioDecoder * audio_decoder)
 {
@@ -1665,14 +1665,14 @@ static void CodecAudioUpdateFormat(AudioDecoder * audio_decoder)
 }
 
 /**
-**	Decode an audio packet.
+**  Decode an audio packet.
 **
-**	PTS must be handled self.
+**  PTS must be handled self.
 **
-**	@note the caller has not aligned avpkt and not cleared the end.
+**  @note the caller has not aligned avpkt and not cleared the end.
 **
-**	@param audio_decoder	audio decoder data
-**	@param avpkt		audio packet
+**  @param audio_decoder    audio decoder data
+**  @param avpkt            audio packet
 */
 
 void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
@@ -1737,9 +1737,9 @@ void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
 #endif
 
 /**
-**	Flush the audio decoder.
+**  Flush the audio decoder.
 **
-**	@param decoder	audio decoder data
+**  @param decoder  audio decoder data
 */
 void CodecAudioFlushBuffers(AudioDecoder * decoder)
 {
@@ -1751,7 +1751,7 @@ void CodecAudioFlushBuffers(AudioDecoder * decoder)
 //----------------------------------------------------------------------------
 
 /**
-**	Empty log callback
+**  Empty log callback
 */
 static void CodecNoopCallback( __attribute__((unused))
     void *ptr, __attribute__((unused))
@@ -1761,7 +1761,7 @@ static void CodecNoopCallback( __attribute__((unused))
 }
 
 /**
-**	Codec init
+**  Codec init
 */
 void CodecInit(void)
 {
@@ -1776,7 +1776,7 @@ void CodecInit(void)
 }
 
 /**
-**	Codec exit.
+**  Codec exit.
 */
 void CodecExit(void)
 {
