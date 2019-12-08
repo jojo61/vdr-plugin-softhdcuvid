@@ -1,0 +1,38 @@
+diff --git a/drivers/gpu/drm/i915/display/intel_dp.c b/drivers/gpu/drm/i915/display/intel_dp.c
+index cc616fd31d8b..f2d1d7bd87d3 100644
+--- a/drivers/gpu/drm/i915/display/intel_dp.c
++++ b/drivers/gpu/drm/i915/display/intel_dp.c
+@@ -616,8 +616,10 @@ intel_dp_mode_valid(struct drm_connector *connector,
+ {
+ 	struct intel_dp *intel_dp = intel_attached_dp(connector);
+ 	struct intel_connector *intel_connector = to_intel_connector(connector);
++	struct intel_encoder *intel_encoder = intel_attached_encoder(connector);
+ 	struct drm_display_mode *fixed_mode = intel_connector->panel.fixed_mode;
+ 	struct drm_i915_private *dev_priv = to_i915(connector->dev);
++	struct intel_lspcon *lspcon = enc_to_intel_lspcon(&intel_encoder->base);
+ 	int target_clock = mode->clock;
+ 	int max_rate, mode_rate, max_lanes, max_link_clock;
+ 	int max_dotclk;
+@@ -639,6 +641,21 @@ intel_dp_mode_valid(struct drm_connector *connector,
+ 		target_clock = fixed_mode->clock;
+ 	}
+ 
++	/*
++	 * Reducing Blanking to incorporate DP and HDMI timing/link bandwidth
++	 * limitations for CEA modes (4k@60 at 10 bpp). DP can drive 17.28Gbs
++	 * while 4k modes (VIC97 etc) at 10 bpp required 17.8 Gbps. This will
++	 * cause mode to blank out. Reduced Htotal by shortening the back porch
++	 * and front porch within permissible limits.
++	 */
++	if (lspcon->active && lspcon->hdr_supported &&
++	    mode->clock > 570000) {
++		mode->clock = 570000;
++		mode->htotal -= 180;
++		mode->hsync_start -= 72;
++		mode->hsync_end -= 72;
++	}
++
+ 	max_link_clock = intel_dp_max_link_rate(intel_dp);
+ 	max_lanes = intel_dp_max_lane_count(intel_dp);
+ 
+-- 
