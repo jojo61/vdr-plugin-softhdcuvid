@@ -61,7 +61,7 @@ extern "C"
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "2.1.0"
+static const char *const VERSION = "3.0.0"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -2472,10 +2472,16 @@ class cSoftHdDevice:public cDevice
         return "softhdcuvid";
     }
 #endif
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (USE_DRM)
     virtual cString DeviceName(void) const
     {
         return "softhdvaapi";
+    }
+#endif
+#if defined (VAAPI) && defined (USE_DRM)
+    virtual cString DeviceName(void) const
+    {
+        return "softhddrm";
     }
 #endif
     virtual bool HasDecoder(void) const;

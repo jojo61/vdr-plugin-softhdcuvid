@@ -1,6 +1,6 @@
 #
 # Makefile for a Video Disk Recorder plugin
-#
+# 
 # $Id: 2a41981a57e5e83036463c6a08c84b86ed9d2be3 $
 
 # The official name of this plugin.
@@ -11,13 +11,20 @@
 ### Configuration (edit this for your needs)
 #  comment out if not needed
 
-# what kind of driver do we make -
-# if VAAPI is enabled the drivername is softhdvaapi
-# if CUVID is enabled the drivername is softhdcuvid
+# what kind of decoder do we make - 
+# if VAAPI is enabled the pluginname is softhdvaapi
+# if CUVID is enabled the pluginname is softhdcuvid
+# if DRM   is enabled the pluginname is softhddrm
 #VAAPI=1
 CUVID=1
 
-# use libplacebo - available for both drivers
+# if you enable DRM then the plugin will only run without X server
+# only valid for VAAPI 
+# does not work with libplacebo
+#DRM=1
+
+
+# use libplacebo - available for both decoders but not for DRM  
 #LIBPLACEBO=1
 
 # use YADIF deint - only available with cuvid
@@ -25,6 +32,7 @@ CUVID=1
 
 
 
+CONFIG :=  #-DDEBUG 		# remove # to enable debug output
 
 
 
@@ -60,7 +68,6 @@ SWRESAMPLE = 1
 #AVRESAMPLE = 1
 #endif
 
-CONFIG :=  #-DDEBUG #-DOSD_DEBUG	# enable debug output+functions
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
 CONFIG += -DAV_INFO -DAV_INFO_TIME=3000	# info/debug a/v sync
@@ -92,7 +99,7 @@ TMPDIR ?= /tmp
 
 ### The compiler options:
 
-export CFLAGS   = $(call PKGCFG,cflags)
+export CFLAGS	= $(call PKGCFG,cflags) 
 export CXXFLAGS = $(call PKGCFG,cxxflags)
 
 ifeq ($(CFLAGS),)
@@ -136,26 +143,34 @@ endif
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
-#LIBS += $(shell pkg-config --libs glu glew)
+#LIBS += $(shell pkg-config --libs glu  glew)
 _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
 endif
 
 ifeq ($(VAAPI),1)
-CONFIG += -DVAAPI
+CONFIG += -DVAAPI 
 #LIBPLACEBO=1
 PLUGIN = softhdvaapi
-LIBS += -lEGL
+LIBS += -lEGL  
 endif
 
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
 endif
 
+ifeq ($(DRM),1)
+PLUGIN = softhddrm
+CONFIG += -DUSE_DRM -DVAAPI
+_CFLAGS += $(shell pkg-config --cflags libdrm)
+LIBS += -lgbm -ldrm
+endif
+
+
 ifeq ($(CUVID),1)
 CONFIG += -DUSE_PIP			# PIP support
 CONFIG += -DCUVID			# enable CUVID decoder
-LIBS += -lEGL -lGL
+LIBS += -lEGL -lGL 
 ifeq ($(YADIF),1)
 CONFIG += -DYADIF			# Yadif only with CUVID
 endif
@@ -173,7 +188,7 @@ SOFILE = libvdr-$(PLUGIN).so
 
 
 #
-# Test that libswresample is available
+# Test that libswresample is available 
 #
 #ifneq (exists, $(shell pkg-config libswresample && echo exists))
 #  $(warning ******************************************************************)
@@ -182,7 +197,7 @@ SOFILE = libvdr-$(PLUGIN).so
 #endif
 
 #
-# Test and set config for libavutil
+# Test and set config for libavutil 
 #
 ifneq (exists, $(shell pkg-config libavutil && echo exists))
   $(warning ******************************************************************)
@@ -193,7 +208,7 @@ _CFLAGS += $(shell pkg-config --cflags libavutil)
 LIBS += $(shell pkg-config --libs libavutil)
 
 #
-# Test and set config for libswscale
+# Test and set config for libswscale 
 #
 ifneq (exists, $(shell pkg-config libswscale && echo exists))
   $(warning ******************************************************************)
@@ -233,10 +248,10 @@ endif
 
 #_CFLAGS += $(shell pkg-config --cflags libavcodec x11 x11-xcb xcb xcb-icccm)
 #LIBS += -lrt $(shell pkg-config --libs libavcodec x11 x11-xcb xcb xcb-icccm)
-_CFLAGS += $(shell pkg-config --cflags x11 x11-xcb xcb xcb-icccm)
-LIBS += -lrt $(shell pkg-config --libs x11 x11-xcb xcb xcb-icccm)
+_CFLAGS += $(shell pkg-config --cflags  x11 x11-xcb xcb xcb-icccm)
+LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
 
-_CFLAGS += -I/usr/local/cuda/include
+_CFLAGS += -I/usr/local/cuda/include 
 _CFLAGS += -I./opengl -I./
 
 LIBS += -L/usr/lib64
@@ -247,10 +262,10 @@ LIBS += -lplacebo
 endif
 
 ifeq ($(CUVID),1)
-LIBS += -lcuda -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid
+LIBS +=  -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid  
 endif
 
-LIBS += -lGLEW -lGLU  -ldl -lglut
+LIBS += -lGLEW -lGLU  -ldl -lglut 
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=
@@ -261,19 +276,19 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE $(CONFIG) \
 ### Make it standard
 
 override CXXFLAGS += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
-    -g -Wextra -Winit-self -Werror=overloaded-virtual -std=c++0x
-override CFLAGS   += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
+    -g  -W -Wextra -Winit-self -Werror=overloaded-virtual  -Wno-unused-parameter 
+override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
     -g -W  -Wextra -Winit-self -Wdeclaration-after-statement
 
 
 ### The object files (add further files here):
 
-OBJS = softhdcuvid.o softhddev.o video.o audio.o codec.o ringbuffer.o
+OBJS = softhdcuvid.o softhddev.o video.o audio.o codec.o ringbuffer.o  
 ifeq ($(OPENGLOSD),1)
-OBJS += openglosd.o
+OBJS += openglosd.o 
 endif
 
-SRCS = $(wildcard $(OBJS:.o=.c)) softhdcuvid.cpp
+SRCS = $(wildcard $(OBJS:.o=.c)) *.cpp
 
 ### The main target:
 
@@ -290,11 +305,11 @@ $(DEPFILE): Makefile
 
 ### Internationalization (I18N):
 
-PODIR     = po
-I18Npo    = $(wildcard $(PODIR)/*.po)
-I18Nmo    = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
+PODIR	  = po
+I18Npo	  = $(wildcard $(PODIR)/*.po)
+I18Nmo	  = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
 I18Nmsgs  = $(addprefix $(DESTDIR)$(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
-I18Npot   = $(PODIR)/$(PLUGIN).pot
+I18Npot	  = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
 	msgfmt -c -o $@ $<
@@ -322,7 +337,7 @@ $(OBJS): Makefile
 
 
 $(SOFILE): $(OBJS) shaders.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(OBJS) $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(OBJS) $(LIBS)  -o $@
 
 install-lib: $(SOFILE)
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
@@ -343,11 +358,13 @@ clean:
 
 ## Private Targets:
 
-HDRS=   $(wildcard *.h)
+HDRS=	$(wildcard *.h)
 
 indent:
 	for i in $(SRCS) $(HDRS); do \
 		indent $$i; \
+		unexpand -a $$i | sed -e s/constconst/const/ > $$i.up; \
+		mv $$i.up $$i; \
 	done
 
 video_test: video.c Makefile

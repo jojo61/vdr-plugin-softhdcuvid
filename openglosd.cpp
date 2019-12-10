@@ -220,6 +220,18 @@ void main() \
 } \
 ";
 #endif
+///
+/// GLX check error.
+///
+#define GlxCheck(void)\
+{\
+    GLenum err;\
+\
+    if ((err = glGetError()) != GL_NO_ERROR) {\
+        esyslog( "video/glx: error %s:%d %d '%s'\n",__FILE__,__LINE__, err, gluErrorString(err));\
+    }\
+}
+
 static cShader *Shaders[stCount];
 
 void cShader::Use(void) {
@@ -322,14 +334,14 @@ bool cShader::CheckCompileErrors(GLuint object, bool program) {
         glGetShaderiv(object, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(object, 1024, NULL, infoLog);
-            esyslog("[softhddev]:SHADER: Compile-time error: Type: %d - \n%s\n", type, infoLog);
+            esyslog("\n[softhddev]:SHADER: Compile-time error: Type: %d - \n>%s<\n", type, infoLog);
             return false;
         }
     } else {
         glGetProgramiv(object, GL_LINK_STATUS, &success);
         if (!success) {
             glGetProgramInfoLog(object, 1024, NULL, infoLog);
-            esyslog("[softhddev]:SHADER: Link-time error: Type: %d - \n%s\n", type, infoLog);
+            esyslog("[softhddev]:SHADER: Link-time error: Type: %d - \n>%s<\n", type, infoLog);
             return false;
         }
     }
@@ -398,7 +410,8 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
 
 }
 
-
+extern "C" void GlxInitopengl();
+extern "C" void GlxDrawopengl();
 /****************************************************************************************
 * cOglFont
 ****************************************************************************************/
@@ -439,7 +452,7 @@ cOglFont *cOglFont::Get(const char *name, int charHeight) {
 }
 
 void cOglFont::Init(void) {
-    
+   
     if (FT_Init_FreeType(&ftLib)) {
         esyslog("[softhddev]failed to initialize FreeType library!");
 		return;
@@ -1273,8 +1286,9 @@ bool cOglCmdDrawText::Execute(void) {
             esyslog("[softhddev]ERROR: could not load glyph %x", sym);
         }
 
-        if ( limitX && xGlyph + g->AdvanceX() > limitX )
+        if ( limitX && xGlyph + g->AdvanceX() > limitX )  {
             break;
+		}
 
         kerning = f->Kerning(g, prevSym);
         prevSym = sym;
@@ -1320,6 +1334,7 @@ cOglCmdDrawImage::cOglCmdDrawImage(cOglFb *fb, tColor *argb, GLint width, GLint 
     this->overlay = overlay;
     this->scaleX = scaleX;
     this->scaleY = scaleY;
+
 }
 
 cOglCmdDrawImage::~cOglCmdDrawImage(void) {
@@ -1328,7 +1343,10 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
-
+#ifdef USE_DRM
+	GlxDrawopengl();  // here we need the Shared Context for upload
+	GlxCheck();
+#endif
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(
@@ -1347,7 +1365,10 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+#ifdef USE_DRM
+	GlxInitopengl();  // Reset Context
+	GlxCheck();
+#endif
 
     GLfloat x1 = x;          //left
     GLfloat y1 = y;          //top
@@ -1479,6 +1500,7 @@ bool cOglCmdDropImage::Execute(void) {
 cOglThread::cOglThread(cCondWait *startWait, int maxCacheSize) : cThread("oglThread") {
     stalled = false;
     memCached = 0;
+
     this->maxCacheSize = maxCacheSize * 1024 * 1024;
     this->startWait = startWait;
     wait = new cCondWait();
@@ -1491,6 +1513,7 @@ cOglThread::cOglThread(cCondWait *startWait, int maxCacheSize) : cThread("oglThr
     }
 
     Start();
+
 }
 
 cOglThread::~cOglThread() {
@@ -1689,13 +1712,12 @@ void cOglThread::Action(void) {
     dsyslog("[softhddev]OpenGL Worker Thread Ended");
 }
 
-extern "C" int GlxInitopengl();
-
-
 
 
 bool cOglThread::InitOpenGL(void) {
-
+#ifdef USE_DRM
+	GlxInitopengl();
+#else
     const char *displayName = X11DisplayName;
     if (!displayName) {
         displayName = getenv("DISPLAY");
@@ -1728,7 +1750,8 @@ bool cOglThread::InitOpenGL(void) {
         esyslog("[softhddev]glewInit failed, aborting\n");
         return false;
     }
-
+#endif
+	
     VertexBuffers[vbText]->EnableBlending();
     glDisable(GL_DEPTH_TEST);
     return true;
@@ -1790,8 +1813,9 @@ void cOglThread::Cleanup(void) {
     DeleteShaders();
     // glVDPAUFiniNV();
     cOglFont::Cleanup();
+#ifndef USE_DRM
     glutExit();
-
+#endif
     pthread_mutex_unlock(&OSDMutex);
 }
 
