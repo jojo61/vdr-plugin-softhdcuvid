@@ -22,6 +22,7 @@ struct _Drm_Render_
     int bpp;
     uint32_t connector_id, crtc_id, video_plane;
     uint32_t hdr_metadata;
+	uint32_t mmWidth,mmHeight;   // Size in mm
  
 };
 typedef struct _Drm_Render_ VideoRender;
@@ -199,6 +200,8 @@ static int FindDevice(VideoRender * render)
         
         if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
             render->connector_id = connector->connector_id;
+			render->mmHeight     = connector->mmHeight;
+			render->mmWidth      = connector->mmWidth;
 
             // FIXME: use default encoder/crtc pair
             if ((encoder = drmModeGetEncoder(render->fd_drm, connector->encoder_id)) == NULL){
@@ -219,7 +222,7 @@ static int FindDevice(VideoRender * render)
 				if (VideoWindowWidth && VideoWindowHeight) { // preset by command line 
 					if (VideoWindowWidth == mode->hdisplay && 
 							VideoWindowHeight == mode->vdisplay && 
-							mode->vrefresh == 50 &&
+							mode->vrefresh == DRMRefresh &&
 							!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
 						memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
 						break;
@@ -363,6 +366,11 @@ void VideoInitDrm()
 
 }
 
+void get_drm_aspect(int *num,int *den)
+{
+	*num = VideoWindowWidth * render->mmHeight;
+	*den = VideoWindowHeight * render->mmWidth;
+}
 
 struct gbm_bo *bo = NULL, *next_bo=NULL;
 struct drm_fb *fb;

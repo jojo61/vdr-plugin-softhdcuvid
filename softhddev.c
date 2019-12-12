@@ -2872,7 +2872,10 @@ const char *CommandLineHelp(void)
         "  -p device\taudio device for pass-through (hw:0,1 or /dev/dsp1)\n"
         "  -c channel\taudio mixer channel name (fe. PCM)\n" "  -d display\tdisplay of x11 server (fe. :0.0)\n"
         "  -f\t\tstart with fullscreen window (only with window manager)\n"
-        "  -g geometry\tx11 window geometry wxh+x+y\n" "  -v device\tvideo driver device (cuvid)\n"
+        "  -g geometry\tx11 window geometry wxh+x+y\n" 
+		"  -r Refresh\tRefreshrate for DRM (default is 50 Hz)\n"
+		"  -C Connector\tConnector for DRM (default is current Connector)\n"
+		"  -v device\tvideo driver device (cuvid)\n"
         "  -s\t\tstart in suspended mode\n" "  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
         "  -X args\tX11 server arguments (f.e. -nocursor)\n" "  -w workaround\tenable/disable workarounds\n"
         "\tno-hw-decoder\t\tdisable hw decoder, use software decoder only\n"
@@ -2905,13 +2908,19 @@ int ProcessArgs(int argc, char *const argv[])
 #endif
 
     for (;;) {
-        switch (getopt(argc, argv, "-a:c:d:fg:p:sv:w:xDX:")) {
+        switch (getopt(argc, argv, "-a:c:C:r:d:fg:p:sv:w:xDX:")) {
             case 'a':                  // audio device for pcm
                 AudioSetDevice(optarg);
                 continue;
             case 'c':                  // channel of audio mixer
                 AudioSetChannel(optarg);
                 continue;
+            case 'C':                  // Connector for DRM
+                VideoSetConnector(optarg);
+                continue;	
+			case 'r':                  // Connector for DRM
+                VideoSetRefresh(optarg);
+                continue;	
             case 'p':                  // pass-through audio device
                 AudioSetPassthroughDevice(optarg);
                 continue;

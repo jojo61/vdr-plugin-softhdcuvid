@@ -416,6 +416,12 @@ static VideoZoomModes Video4to3ZoomMode;
 /// Default zoom mode for 16:9 and others
 static VideoZoomModes VideoOtherZoomMode;
 
+/// Default Value for DRM Connector
+static char *DRMConnector = NULL;
+
+/// Default Value for DRM Refreshrate
+static int DRMRefresh = 50;
+
 static char Video60HzMode;              ///< handle 60hz displays
 static char VideoSoftStartSync;         ///< soft start sync audio/video
 static const int VideoSoftStartFrames = 100;    ///< soft start frames
@@ -636,8 +642,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
         input_aspect_ratio.den = 1;
     }
 #ifdef USE_DRM
-    display_aspect_ratio.num = 16;VideoWindowWidth;
-    display_aspect_ratio.den = 9; VideoWindowHeight;
+	get_drm_aspect(&display_aspect_ratio.num,&display_aspect_ratio.den);
 #else
     display_aspect_ratio.num = VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
     display_aspect_ratio.den = VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
@@ -2527,6 +2532,7 @@ static unsigned CuvidGetVideoSurface(CuvidDecoder * decoder, const AVCodecContex
 #if defined (VAAPI) || defined (YADIF)
 static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, const AVFrame * frame);
 
+
 int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * frame)
 {
     
@@ -2543,7 +2549,7 @@ int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
     while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0 ) {
         filt_frame->pts /= 2;
         decoder->Interlaced = 0;
-//         printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
+ //        printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
         CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
         filt_frame = av_frame_alloc();  // get new frame
 
@@ -5930,7 +5936,18 @@ void VideoSetDevice(const char *device)
 {
     VideoDriverName = device;
 }
+	
+	
+void VideoSetConnector( char *c)
+{
+    DRMConnector = c;
+}
 
+void VideoSetRefresh(char *r)
+{
+    DRMRefresh = atoi(r);
+}
+	
 ///
 /// Get video driver name.
 ///

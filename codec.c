@@ -473,7 +473,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
     AVCodecContext *video_ctx = decoder->VideoCtx;
 
-    if (video_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+    if (video_ctx->codec_type == AVMEDIA_TYPE_VIDEO && CuvidTestSurfaces()) {
         int ret;
         AVPacket pkt[1];
         AVFrame *frame;
@@ -483,7 +483,11 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
         if (ret < 0) {
             Debug(4, "codec: sending video packet failed");
             return;
-        }
+        } 
+		
+		if (!CuvidTestSurfaces())
+        	usleep(1000);
+		
         frame = av_frame_alloc();
         ret = avcodec_receive_frame(video_ctx, frame);
         if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
