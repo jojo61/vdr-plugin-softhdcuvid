@@ -489,9 +489,9 @@ static int GlxVSyncEnabled = 1;         ///< enable/disable v-sync
 static GLXContext glxSharedContext;     ///< shared gl context
 static GLXContext glxContext;           ///< our gl context
 
-#ifdef USE_VIDEO_THREAD
+
 static GLXContext glxThreadContext;     ///< our gl context for the thread
-#endif
+
 static XVisualInfo *GlxVisualInfo;      ///< our gl visual
 static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContext context);
 GLXContext OSDcontext;
@@ -513,9 +513,8 @@ PFNEGLWAITSYNCKHRPROC eglWaitSyncKHR;
 PFNEGLCLIENTWAITSYNCKHRPROC eglClientWaitSyncKHR;
 PFNEGLDUPNATIVEFENCEFDANDROIDPROC eglDupNativeFenceFDANDROID;
 
-#ifdef USE_VIDEO_THREAD
 static EGLContext eglThreadContext;     ///< our gl context for the thread
-#endif
+
 static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContext context);
 EGLContext OSDcontext;
 #endif
@@ -3963,7 +3962,7 @@ static void CuvidDisplayFrame(void)
 
         glUseProgram(0);
         glActiveTexture(GL_TEXTURE0);
-        eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
+//        eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
     }
 
 #endif
@@ -5123,30 +5122,8 @@ void InitPlacebo()
 ///
 static void *VideoDisplayHandlerThread(void *dummy)
 {
-#ifdef CUVID
-    CUcontext cuda_ctx;
-#endif
-    EGLint contextAttrs[] = {
-        EGL_CONTEXT_CLIENT_VERSION, 3,
-        EGL_NONE
-    };
-    prctl(PR_SET_NAME, "cuvid video", 0, 0, 0);
 
-    if (EglEnabled) {
-#ifdef CUVID
-        glxThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, glxSharedContext, GL_TRUE);
-        GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, glxThreadContext);
-#else
-#if 0
-        eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
-        if (!eglThreadContext) {
-            EglCheck();
-            Fatal(_("video/egl: can't create thread egl context\n"));
-            return NULL;
-        }
-#endif
-#endif
-    }
+    prctl(PR_SET_NAME, "cuvid video", 0, 0, 0);
     sleep(2);
     for (;;) {
         // fix dead-lock with CuvidExit
@@ -5167,19 +5144,29 @@ static void *VideoHandlerThread(void *dummy)
         EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_NONE
     };
+    
     prctl(PR_SET_NAME, "cuvid video display", 0, 0, 0);
+    
 #ifdef PLACEBO
     InitPlacebo();
     pthread_cleanup_push(delete_placebo, NULL);
 
 #else
-        eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
-        if (!eglThreadContext) {
-            EglCheck();
-            Fatal(_("video/egl: can't create thread egl context\n"));
-            return NULL;
-        }
+#ifdef CUVID   
+    if (EglEnabled) {
+        glxThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, glxSharedContext, GL_TRUE);
+        GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, glxThreadContext);
+    }
+#endif  
+#ifdef VAAPI
+    eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
+    if (!eglThreadContext) {
+        EglCheck();
+        Fatal(_("video/egl: can't create thread egl context\n"));
+        return NULL;
+    }
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
+#endif
 #endif
     for (;;) {
 
