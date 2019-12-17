@@ -22,7 +22,7 @@ struct _Drm_Render_
     int bpp;
     uint32_t connector_id, crtc_id, video_plane;
     uint32_t hdr_metadata;
-	uint32_t mmWidth,mmHeight;   // Size in mm
+    uint32_t mmWidth,mmHeight;   // Size in mm
  
 };
 typedef struct _Drm_Render_ VideoRender;
@@ -37,6 +37,53 @@ VideoRender *render;
 //----------------------------------------------------------------------------
 //  Helper functions
 //----------------------------------------------------------------------------
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#endif
+struct type_name {
+    unsigned int type;
+    const char *name;
+};
+
+static const char *util_lookup_type_name(unsigned int type,
+                     const struct type_name *table,
+                     unsigned int count)
+{
+    unsigned int i;
+
+    for (i = 0; i < count; i++)
+        if (table[i].type == type)
+            return table[i].name;
+
+    return NULL;
+}
+
+static const struct type_name connector_type_names[] = {
+    { DRM_MODE_CONNECTOR_Unknown, "unknown" },
+    { DRM_MODE_CONNECTOR_VGA, "VGA" },
+    { DRM_MODE_CONNECTOR_DVII, "DVI-I" },
+    { DRM_MODE_CONNECTOR_DVID, "DVI-D" },
+    { DRM_MODE_CONNECTOR_DVIA, "DVI-A" },
+    { DRM_MODE_CONNECTOR_Composite, "composite" },
+    { DRM_MODE_CONNECTOR_SVIDEO, "s-video" },
+    { DRM_MODE_CONNECTOR_LVDS, "LVDS" },
+    { DRM_MODE_CONNECTOR_Component, "component" },
+    { DRM_MODE_CONNECTOR_9PinDIN, "9-pin DIN" },
+    { DRM_MODE_CONNECTOR_DisplayPort, "DP" },
+    { DRM_MODE_CONNECTOR_HDMIA, "HDMI-A" },
+    { DRM_MODE_CONNECTOR_HDMIB, "HDMI-B" },
+    { DRM_MODE_CONNECTOR_TV, "TV" },
+    { DRM_MODE_CONNECTOR_eDP, "eDP" },
+    { DRM_MODE_CONNECTOR_VIRTUAL, "Virtual" },
+    { DRM_MODE_CONNECTOR_DSI, "DSI" },
+    { DRM_MODE_CONNECTOR_DPI, "DPI" },
+};
+
+const char *util_lookup_connector_type_name(unsigned int type)
+{
+    return util_lookup_type_name(type, connector_type_names,
+                     ARRAY_SIZE(connector_type_names));
+}
 
 static uint64_t GetPropertyValue(int fd_drm, uint32_t objectID,
                         uint32_t objectType, const char *propName)
@@ -149,6 +196,8 @@ static int FindDevice(VideoRender * render)
     uint64_t has_dumb;
     uint64_t has_prime;
     int i,ii=0;
+    char connectorstr[10];
+    int found = 0;
 
     render->fd_drm = open("/dev/dri/card0", O_RDWR);
     if (render->fd_drm < 0) {
@@ -159,26 +208,26 @@ static int FindDevice(VideoRender * render)
     
     version = drmGetVersion(render->fd_drm);
     fprintf(stderr, "FindDevice: open /dev/dri/card0: %i %s\n", version->name_len, version->name);
-	
-	// check capability
-	if (drmGetCap(render->fd_drm, DRM_CAP_DUMB_BUFFER, &has_dumb) < 0 || has_dumb == 0)
-		fprintf(stderr, "FindDevice: drmGetCap DRM_CAP_DUMB_BUFFER failed or doesn't have dumb buffer\n");
+    
+    // check capability
+    if (drmGetCap(render->fd_drm, DRM_CAP_DUMB_BUFFER, &has_dumb) < 0 || has_dumb == 0)
+        fprintf(stderr, "FindDevice: drmGetCap DRM_CAP_DUMB_BUFFER failed or doesn't have dumb buffer\n");
 
-	if (drmSetClientCap(render->fd_drm, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0)
-		fprintf(stderr, "FindDevice: DRM_CLIENT_CAP_UNIVERSAL_PLANES not available.\n");
+    if (drmSetClientCap(render->fd_drm, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0)
+        fprintf(stderr, "FindDevice: DRM_CLIENT_CAP_UNIVERSAL_PLANES not available.\n");
 
-	if (drmSetClientCap(render->fd_drm, DRM_CLIENT_CAP_ATOMIC, 1) != 0)
-		fprintf(stderr, "FindDevice: DRM_CLIENT_CAP_ATOMIC not available.\n");
+    if (drmSetClientCap(render->fd_drm, DRM_CLIENT_CAP_ATOMIC, 1) != 0)
+        fprintf(stderr, "FindDevice: DRM_CLIENT_CAP_ATOMIC not available.\n");
 
-	if (drmGetCap(render->fd_drm, DRM_CAP_PRIME, &has_prime) < 0)
-		fprintf(stderr, "FindDevice: DRM_CAP_PRIME not available.\n");
+    if (drmGetCap(render->fd_drm, DRM_CAP_PRIME, &has_prime) < 0)
+        fprintf(stderr, "FindDevice: DRM_CAP_PRIME not available.\n");
 
-	if (drmGetCap(render->fd_drm, DRM_PRIME_CAP_EXPORT, &has_prime) < 0)
-		fprintf(stderr, "FindDevice: DRM_PRIME_CAP_EXPORT not available.\n");
+    if (drmGetCap(render->fd_drm, DRM_PRIME_CAP_EXPORT, &has_prime) < 0)
+        fprintf(stderr, "FindDevice: DRM_PRIME_CAP_EXPORT not available.\n");
 
-	if (drmGetCap(render->fd_drm, DRM_PRIME_CAP_IMPORT, &has_prime) < 0)
-		fprintf(stderr, "FindDevice: DRM_PRIME_CAP_IMPORT not available.\n");
-	
+    if (drmGetCap(render->fd_drm, DRM_PRIME_CAP_IMPORT, &has_prime) < 0)
+        fprintf(stderr, "FindDevice: DRM_PRIME_CAP_IMPORT not available.\n");
+    
     if ((resources = drmModeGetResources(render->fd_drm)) == NULL){
         fprintf(stderr, "FindDevice: cannot retrieve DRM resources (%d): %m\n", errno);
         return -errno;
@@ -195,13 +244,18 @@ static int FindDevice(VideoRender * render)
         connector = drmModeGetConnector(render->fd_drm, resources->connectors[i]);
         if (!connector) {
             fprintf(stderr, "FindDevice: cannot retrieve DRM connector (%d): %m\n", errno);
-        	return -errno;
+            return -errno;
         }
+        
+        sprintf(connectorstr,"%s-%u",util_lookup_connector_type_name(connector->connector_type),connector->connector_type_id);
+        printf("Connector >%s< is %sconnected\n",connectorstr,connector->connection == DRM_MODE_CONNECTED?"":"not ");
+        if (DRMConnector && strcmp(DRMConnector,connectorstr))
+            continue;
         
         if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
             render->connector_id = connector->connector_id;
-			render->mmHeight     = connector->mmHeight;
-			render->mmWidth      = connector->mmWidth;
+            render->mmHeight     = connector->mmHeight;
+            render->mmWidth      = connector->mmWidth;
 
             // FIXME: use default encoder/crtc pair
             if ((encoder = drmModeGetEncoder(render->fd_drm, connector->encoder_id)) == NULL){
@@ -213,38 +267,47 @@ static int FindDevice(VideoRender * render)
             render->hdr_metadata = GetPropertyID(render->fd_drm, connector->connector_id,
                             DRM_MODE_OBJECT_CONNECTOR, "HDR_OUTPUT_METADATA");      
             printf("ID %d of METADATA in Connector %d connected %d\n",render->hdr_metadata,connector->connector_id,connector->connection);
-     			
-			memcpy(&render->mode, &connector->modes[0], sizeof(drmModeModeInfo));  // set fallback
-			// search Modes for Connector
-			for (ii = 0; ii < connector->count_modes; ii++) {
-				mode = &connector->modes[ii];
-				printf("Mode %d %dx%d Rate %d\n",ii,mode->hdisplay,mode->vdisplay,mode->vrefresh);
-				if (VideoWindowWidth && VideoWindowHeight) { // preset by command line 
-					if (VideoWindowWidth == mode->hdisplay && 
-							VideoWindowHeight == mode->vdisplay && 
-							mode->vrefresh == DRMRefresh &&
-							!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
-						memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
-						break;
-					}
-				} 
-				else {
-					if (!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
-						memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
-						VideoWindowWidth = mode->hdisplay;
-						VideoWindowHeight = mode->vdisplay;
-						break;
-					}
-				}
-			}
-			i = resources->count_connectors;   // uuuuhh 
-		}
-		VideoWindowWidth = render->mode.hdisplay;
-		VideoWindowHeight = render->mode.vdisplay;
-		printf("Use Mode %d %dx%d Rate %d\n",ii,render->mode.hdisplay,render->mode.vdisplay,render->mode.vrefresh);
+                
+            memcpy(&render->mode, &connector->modes[0], sizeof(drmModeModeInfo));  // set fallback
+            // search Modes for Connector
+            for (ii = 0; ii < connector->count_modes; ii++) {
+                mode = &connector->modes[ii];
+                
+                printf("Mode %d %dx%d Rate %d\n",ii,mode->hdisplay,mode->vdisplay,mode->vrefresh);
+                
+                if (VideoWindowWidth && VideoWindowHeight) { // preset by command line 
+                    if (VideoWindowWidth == mode->hdisplay && 
+                            VideoWindowHeight == mode->vdisplay && 
+                            mode->vrefresh == DRMRefresh &&
+                            !(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
+                        memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
+                        break;
+                    }
+                } 
+                else {
+                    if (!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
+                        memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
+                        VideoWindowWidth = mode->hdisplay;
+                        VideoWindowHeight = mode->vdisplay;
+                        break;
+                    }
+                }
+            }
+            found = 1;
+            i = resources->count_connectors;   // uuuuhh 
+        }
+        VideoWindowWidth = render->mode.hdisplay;
+        VideoWindowHeight = render->mode.vdisplay;
+        if (found)
+            printf("Use Mode %d %dx%d Rate %d\n",ii,render->mode.hdisplay,render->mode.vdisplay,render->mode.vrefresh);
         drmModeFreeConnector(connector);
     }
-
+    if (!found) {
+        Debug(3,"Requested Connector not found or not connected\n");
+        printf("Requested Connector not found or not connected\n");
+        return -1;
+    }
+    
     // find first plane
     if ((plane_res = drmModeGetPlaneResources(render->fd_drm)) == NULL)
         fprintf(stderr, "FindDevice: cannot retrieve PlaneResources (%d): %m\n", errno);
@@ -315,12 +378,12 @@ void VideoInitDrm()
     int i;
     
     if (!(render = calloc(1, sizeof(*render)))) {
-        Error(_("video/DRM: out of memory\n"));
+        Fatal(_("video/DRM: out of memory\n"));
         return;
     }
     
     if (FindDevice(render)){
-        fprintf(stderr, "VideoInit: FindDevice() failed\n");
+        Fatal(_( "VideoInit: FindDevice() failed\n"));
     }
     
     gbm.dev = gbm_create_device (render->fd_drm);
@@ -358,18 +421,18 @@ void VideoInitDrm()
    
     if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
         fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
-	
-	if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
-		fprintf(stderr, "cannot destroy prperty blob (%d): %m\n", errno);
-	
+    
+    if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
+        fprintf(stderr, "cannot destroy prperty blob (%d): %m\n", errno);
+    
     drmModeAtomicFree(ModeReq);
 
 }
 
 void get_drm_aspect(int *num,int *den)
 {
-	*num = VideoWindowWidth * render->mmHeight;
-	*den = VideoWindowHeight * render->mmWidth;
+    *num = VideoWindowWidth * render->mmHeight;
+    *den = VideoWindowHeight * render->mmWidth;
 }
 
 struct gbm_bo *bo = NULL, *next_bo=NULL;
@@ -381,8 +444,8 @@ void InitBo(int bpp) {
     // create the GBM and EGL surface
     render->bpp = bpp;
     gbm.surface = gbm_surface_create (gbm.dev, VideoWindowWidth,VideoWindowHeight, 
-									  bpp==10?GBM_FORMAT_XRGB2101010:GBM_FORMAT_ARGB8888, 
-									  GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
+                                      bpp==10?GBM_FORMAT_XRGB2101010:GBM_FORMAT_ARGB8888, 
+                                      GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
     assert(gbm.surface != NULL);
     eglSurface = eglCreateWindowSurface (eglDisplay, eglConfig, gbm.surface, NULL);
     assert(eglSurface != NULL);
@@ -392,14 +455,14 @@ static struct gbm_bo *previous_bo = NULL;
 static uint32_t previous_fb;
 
 static void drm_swap_buffers () {
-	
+    
     uint32_t fb;
-	
+    
     eglSwapBuffers (eglDisplay, eglSurface);
     struct gbm_bo *bo = gbm_surface_lock_front_buffer (gbm.surface);
 #if 1
-	if (bo == NULL)
-		bo = gbm_surface_lock_front_buffer (gbm.surface);
+    if (bo == NULL)
+        bo = gbm_surface_lock_front_buffer (gbm.surface);
 #endif
     assert (bo != NULL);
     uint32_t handle = gbm_bo_get_handle (bo).u32;
@@ -407,50 +470,50 @@ static void drm_swap_buffers () {
 
 
     drmModeAddFB (render->fd_drm, VideoWindowWidth,VideoWindowHeight,render->bpp==10? 30:24, 32, pitch, handle, &fb);
-//	drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
+//  drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
    
-	if (m_need_modeset) {
-		drmModeAtomicReqPtr ModeReq;
-		const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
-		uint32_t modeID = 0;
+    if (m_need_modeset) {
+        drmModeAtomicReqPtr ModeReq;
+        const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+        uint32_t modeID = 0;
 
-		if (drmModeCreatePropertyBlob(render->fd_drm, &render->mode, sizeof(render->mode), &modeID) != 0) {
-			fprintf(stderr, "Failed to create mode property.\n");
-			return;
-		}
-		if (!(ModeReq = drmModeAtomicAlloc())) {
-			fprintf(stderr, "cannot allocate atomic request (%d): %m\n", errno);
-			return;
-		}
-		
-		// Need to disable the CRTC in order to submit the HDR data.... 
-		SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
-							DRM_MODE_OBJECT_CRTC, "ACTIVE", 0);		
-		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-			fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
-		sleep(2);
-		
-	    SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
-	                        DRM_MODE_OBJECT_CONNECTOR, "Colorspace",old_color==AVCOL_PRI_BT2020?9:2 );
-		SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
-							DRM_MODE_OBJECT_CRTC, "MODE_ID", modeID);
-		SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
-							DRM_MODE_OBJECT_CONNECTOR, "CRTC_ID", render->crtc_id);
-		SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
-							DRM_MODE_OBJECT_CRTC, "ACTIVE", 1);
-		
-		if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
-			fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
+        if (drmModeCreatePropertyBlob(render->fd_drm, &render->mode, sizeof(render->mode), &modeID) != 0) {
+            fprintf(stderr, "Failed to create mode property.\n");
+            return;
+        }
+        if (!(ModeReq = drmModeAtomicAlloc())) {
+            fprintf(stderr, "cannot allocate atomic request (%d): %m\n", errno);
+            return;
+        }
+        
+        // Need to disable the CRTC in order to submit the HDR data.... 
+        SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
+                            DRM_MODE_OBJECT_CRTC, "ACTIVE", 0);     
+        if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+            fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
+        sleep(2);
+        
+        SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
+                            DRM_MODE_OBJECT_CONNECTOR, "Colorspace",old_color==AVCOL_PRI_BT2020?9:2 );
+        SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
+                            DRM_MODE_OBJECT_CRTC, "MODE_ID", modeID);
+        SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
+                            DRM_MODE_OBJECT_CONNECTOR, "CRTC_ID", render->crtc_id);
+        SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
+                            DRM_MODE_OBJECT_CRTC, "ACTIVE", 1);
+        
+        if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
+            fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
 
-		if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
-			fprintf(stderr, "cannot destroy prperty blob (%d): %m\n", errno);
+        if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
+            fprintf(stderr, "cannot destroy prperty blob (%d): %m\n", errno);
 
-		drmModeAtomicFree(ModeReq);
-		m_need_modeset = 0;
-	}
-	drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
-	
-	if (previous_bo) {
+        drmModeAtomicFree(ModeReq);
+        m_need_modeset = 0;
+    }
+    drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
+    
+    if (previous_bo) {
         drmModeRmFB (render->fd_drm, previous_fb);
         gbm_surface_release_buffer (gbm.surface, previous_bo);
     }
@@ -460,7 +523,10 @@ static void drm_swap_buffers () {
 
 static void drm_clean_up () {
     // set the previous crtc
-
+    
+    if (!render)
+        return;
+    
     drmModeSetCrtc (render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id,
                     render->saved_crtc->x, render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
     drmModeFreeCrtc (render->saved_crtc);
