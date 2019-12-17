@@ -2053,10 +2053,12 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
     EglCheck();
 #endif
-#endif
+#endif 
+#if defined PLACEBO || defined VAAPI
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
         CuvidDestroySurfaces(decoder);
     }
+#endif   
     if (decoder == CuvidDecoders[0])
         VideoThreadUnlock();
 
