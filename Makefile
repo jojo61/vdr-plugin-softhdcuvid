@@ -164,6 +164,7 @@ PLUGIN = softhddrm
 CONFIG += -DUSE_DRM -DVAAPI
 _CFLAGS += $(shell pkg-config --cflags libdrm)
 LIBS += -lgbm -ldrm
+LIBS += -lEGL  
 endif
 
 
