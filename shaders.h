@@ -1,121 +1,17 @@
 // shader
+
 #ifdef CUVID
-char vertex_osd[] = { "\
-#version 330\n\
-in vec2 vertex_position;\n\
-in vec2 vertex_texcoord0;\n\
-out vec2 texcoord0;\n\
-void main() {\n\
-gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
-texcoord0 = vertex_texcoord0;\n\
-}\n" };
-
-char fragment_osd[] = { "\
-#version 330\n\
-#define texture1D texture\n\
-precision mediump float; \
-layout(location = 0) out vec4 out_color;\n\
-in vec2 texcoord0;\n\
-uniform sampler2D texture0;\n\
-void main() {\n\
-vec4 color; \n\
-color = vec4(texture(texture0, texcoord0));\n\
-out_color = color;\n\
-}\n" };
-
-char vertex[] = { "\
-#version 310 es\n\
-in vec2 vertex_position;\n\
-in vec2 vertex_texcoord0;\n\
-out vec2 texcoord0;\n\
-in vec2 vertex_texcoord1;\n\
-out vec2 texcoord1;\n\
-void main() {\n\
-gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
-texcoord0 = vertex_texcoord0;\n\
-texcoord1 = vertex_texcoord1;\n\
-}\n" };
-
-char fragment[] = { "\
-#version 310 es\n\
-#define texture1D texture\n\
-#define texture3D texture\n\
-precision mediump float; \
-layout(location = 0) out vec4 out_color;\n\
-in vec2 texcoord0;\n\
-in vec2 texcoord1;\n\
-uniform mat3 colormatrix;\n\
-uniform vec3 colormatrix_c;\n\
-uniform sampler2D texture0;\n\
-uniform sampler2D texture1;\n\
-void main() {\n\
-vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
-color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;\n\
-color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg;\n\
-// color conversion\n\
-color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
-color.a = 1.0;\n\
-// color mapping\n\
-out_color = color;\n\
-}\n" };
-
-char fragment_bt2100[] = { "\
-#version 310 es\n \
-#define texture1D texture\n\
-#define texture3D texture\n\
-precision mediump float; \
-layout(location = 0) out vec4 out_color;\n\
-in vec2 texcoord0;\n\
-in vec2 texcoord1;\n\
-uniform mat3 colormatrix;\n\
-uniform vec3 colormatrix_c;\n\
-uniform mat3 cms_matrix;\n\
-uniform sampler2D texture0;\n\
-uniform sampler2D texture1;\n\
-//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
-void main() {\n\
-vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
-color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;\n\
-color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;\n\
-// color conversion\n\
-color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
-color.a = 1.0;\n\
-// color mapping\n\
-color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
-color.rgb = pow(color.rgb, vec3(2.4));\n\
-color.rgb = cms_matrix * color.rgb;\n\
-color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
-color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
-out_color = color;\n\
-}\n" };
+const char *gl_version = "#version 330";
+#else
+#ifdef RASPI
+const char *gl_version = "#version 300 es";
+#else
+const char *gl_version = " ";
+#endif
 #endif
 
-#ifdef RASPI
-char vertex_osd[] = {"\
-#version 300 es\n\
-in vec2 vertex_position;\n\
-in vec2 vertex_texcoord0;\n\
-out vec2 texcoord0;\n\
-void main() {\n\
-gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
-texcoord0 = vertex_texcoord0;\n\
-}\n"};
-
-char fragment_osd[] = {"\
-#version 300 es\n\
-#define texture1D texture\n\
-precision mediump float; \
-layout(location = 0) out vec4 out_color;\n\
-in vec2 texcoord0;\n\
-uniform sampler2D texture0;\n\
-void main() {\n\
-vec4 color; \n\
-color = vec4(texture(texture0, texcoord0));\n\
-out_color = color;\n\
-}\n"};
-
-char vertex[] = {"\
-#version 300 es\n\
+char vertex_3[] = {"\
+%s\n\
 in vec2 vertex_position;\n\
 in vec2 vertex_texcoord0;\n\
 out vec2 texcoord0;\n\
@@ -130,8 +26,8 @@ texcoord1 = vertex_texcoord1;\n\
 texcoord2 = vertex_texcoord1;\n\
 }\n"};
 
-char fragment[] = {"\
-#version 300 es\n\
+char fragment_3[] = {"\
+%s\n\
 #define texture1D texture\n\
 #define texture3D texture\n\
 precision mediump float; \
@@ -157,8 +53,8 @@ color.a = 1.0;\n\
 out_color = color;\n\
 }\n"};
 
-char fragment_bt2100[] = {"\
-#version 300 es\n \
+char fragment_bt2100_3[] = {"\
+%s\n \
 #define texture1D texture\n\
 #define texture3D texture\n\
 precision mediump float; \
@@ -189,10 +85,10 @@ color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
 color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
 out_color = color;\n\
 }\n"};
-#endif
-#if defined VAAPI && !defined RASPI
+
+
 char vertex_osd[] = { "\
-\n\
+%s\n\
 in vec2 vertex_position;\n\
 in vec2 vertex_texcoord0;\n\
 out vec2 texcoord0;\n\
@@ -202,7 +98,7 @@ texcoord0 = vertex_texcoord0;\n\
 }\n" };
 
 char fragment_osd[] = { "\
-\n\
+%s\n\
 #define texture1D texture\n\
 precision mediump float; \
 layout(location = 0) out vec4 out_color;\n\
@@ -215,7 +111,7 @@ out_color = color;\n\
 }\n" };
 
 char vertex[] = { "\
-\n\
+%s\n\
 in vec2 vertex_position;\n\
 in vec2 vertex_texcoord0;\n\
 out vec2 texcoord0;\n\
@@ -228,7 +124,7 @@ texcoord1 = vertex_texcoord1;\n\
 }\n" };
 
 char fragment[] = { "\
-\n\
+%s\n\
 #define texture1D texture\n\
 #define texture3D texture\n\
 precision mediump float; \
@@ -252,7 +148,7 @@ out_color = color;\n\
 }\n" };
 
 char fragment_bt2100[] = { "\
-\n \
+%s\n \
 #define texture1D texture\n\
 #define texture3D texture\n\
 precision mediump float; \
@@ -280,7 +176,7 @@ color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
 color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
 out_color = color;\n\
 }\n" };
-#endif
+
 
 /* Color conversion matrix: RGB = m * YUV + c
  * m is in row-major matrix, with m[row][col], e.g.:
@@ -382,9 +278,10 @@ static void compile_attach_shader(GLuint program, GLenum type, const char *sourc
     GLint status, log_length;
     char log[4000];
     GLsizei len;
-
+	char *buffer = (char *) malloc(1000);
+	sprintf(buffer,source,gl_version);
     shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
+    glShaderSource(shader, 1, (const GLchar **)&buffer, NULL);
     glCompileShader(shader);
     status = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -396,6 +293,7 @@ static void compile_attach_shader(GLuint program, GLenum type, const char *sourc
 
     glAttachShader(program, shader);
     glDeleteShader(shader);
+	free(buffer);
 }
 
 static void link_shader(GLuint program)
@@ -439,27 +337,27 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
         case AVCOL_SPC_RGB:
             m = &yuv_bt601.m[0][0];
             c = &yuv_bt601.c[0];
-            frag = fragment;
+            frag = Planes == 3?fragment_3:fragment;
             Debug(3, "BT601 Colorspace used\n");
             break;
         case AVCOL_SPC_BT709:
         case AVCOL_SPC_UNSPECIFIED:    //  comes with UHD
             m = &yuv_bt709.m[0][0];
             c = &yuv_bt709.c[0];
-            frag = fragment;
+            frag = Planes==3?fragment_3:fragment;
             Debug(3, "BT709 Colorspace used\n");
             break;
         case AVCOL_SPC_BT2020_NCL:
             m = &yuv_bt2020ncl.m[0][0];
             c = &yuv_bt2020ncl.c[0];
             cms = &cms_matrix[0][0];
-            frag = fragment_bt2100;
+            frag = Planes == 3?fragment_bt2100_3:fragment_bt2100;
             Debug(3, "BT2020NCL Colorspace used\n");
             break;
         default:                       // fallback
             m = &yuv_bt709.m[0][0];
             c = &yuv_bt709.c[0];
-            frag = fragment;
+            frag = Planes==3?fragment_3:fragment;
             Debug(3, "default BT709 Colorspace used  %d\n", colorspace);
             break;
     }
@@ -467,7 +365,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
     Debug(3, "vor create\n");
     gl_prog = glCreateProgram();
     Debug(3, "vor compile vertex\n");
-    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, vertex);
+    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, Planes==3?vertex_3:vertex);
     Debug(3, "vor compile fragment\n");
     compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, frag);
     glBindAttribLocation(gl_prog, 0, "vertex_position");

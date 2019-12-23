@@ -21,107 +21,17 @@ void ConvertColor(const GLint &colARGB, glm::vec4 &col) {
 ****************************************************************************************/
 
 #ifdef CUVID
-const char *rectVertexShader =
-"#version 330 core \n\
-\
-layout (location = 0) in vec2 position; \
-out vec4 rectCol; \
-uniform vec4 inColor; \
-uniform mat4 projection; \
-\
-void main() \
-{ \
-    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
-    rectCol = inColor; \
-} \
-";
-
-const char *rectFragmentShader =
-"#version 330 core \n\
-\
-in vec4 rectCol; \
-out vec4 color; \
-\
-void main() \
-{ \
-    color = rectCol; \
-} \
-";
-
-const char *textureVertexShader =
-"#version 330 core \n\
-\
-layout (location = 0) in vec2 position; \
-layout (location = 1) in vec2 texCoords; \
-\
-out vec2 TexCoords; \
-out vec4 alphaValue;\
-\
-uniform mat4 projection; \
-uniform vec4 alpha; \
-\
-void main() \
-{ \
-    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
-    TexCoords = texCoords; \
-    alphaValue = alpha; \
-} \
-";
-
-const char *textureFragmentShader =
-"#version 330 core \n\
-in vec2 TexCoords; \
-in vec4 alphaValue; \
-out vec4 color; \
-\
-uniform sampler2D screenTexture; \
-\
-void main() \
-{ \
-    color = texture(screenTexture, TexCoords) * alphaValue; \
-} \
-";
-
-const char *textVertexShader =
-"#version 330 core \n\
-\
-layout (location = 0) in vec2 position; \
-layout (location = 1) in vec2 texCoords; \
-\
-out vec2 TexCoords; \
-out vec4 textColor; \
-\
-uniform mat4 projection; \
-uniform vec4 inColor; \
-\
-void main() \
-{ \
-    gl_Position = projection * vec4(position.x, position.y, 0.0, 1.0); \
-    TexCoords = texCoords; \
-    textColor = inColor; \
-} \
-";
-
-const char *textFragmentShader =
-"#version 330 core \n\
-in vec2 TexCoords; \
-in vec4 textColor; \
-\
-out vec4 color; \
-\
-uniform sampler2D glyphTexture; \
-\
-void main() \
-{  \
-    vec4 sampled = vec4(1.0, 1.0, 1.0, texture(glyphTexture, TexCoords).r); \
-    color = textColor * sampled; \
-} \
-";
-
+const char *glversion = "#version 330 core ";
 #else
+#ifdef RASPI
+const char *glversion = "#version 300 es";
+#else
+const char *glversion = " ";
+#endif
+#endif
 
 const char *rectVertexShader =
-"\n \
+"%s\n \
 \
 layout (location = 0) in vec2 position; \
 out vec4 rectCol; \
@@ -136,7 +46,7 @@ void main() \
 ";
 
 const char *rectFragmentShader =
-"\n \
+"%s\n \
 \
 precision mediump float; \
 in vec4 rectCol; \
@@ -149,7 +59,7 @@ void main() \
 ";
 
 const char *textureVertexShader =
-"\n \
+"%s\n \
 \
 layout (location = 0) in vec2 position; \
 layout (location = 1) in vec2 texCoords; \
@@ -169,7 +79,7 @@ void main() \
 ";
 
 const char *textureFragmentShader =
-"\n \
+"%s\n \
 precision mediump float; \
 in vec2 TexCoords; \
 in vec4 alphaValue; \
@@ -184,7 +94,7 @@ void main() \
 ";
 
 const char *textVertexShader =
-"\n \
+"%s\n \
 \
 layout (location = 0) in vec2 position; \
 layout (location = 1) in vec2 texCoords; \
@@ -204,7 +114,7 @@ void main() \
 ";
 
 const char *textFragmentShader =
-"\n \
+"%s\n \
 precision mediump float; \
 in vec2 TexCoords; \
 in vec4 textColor; \
@@ -219,7 +129,7 @@ void main() \
     color = textColor * sampled; \
 } \
 ";
-#endif
+
 ///
 /// GLX check error.
 ///
@@ -300,20 +210,27 @@ void cShader::SetMatrix4(const GLchar *name, const glm::mat4 &matrix) {
 
 bool cShader::Compile(const char *vertexCode, const char *fragmentCode) {
     GLuint sVertex, sFragment;
+	char *buffer = (char *)malloc(1000);
     // Vertex Shader
     sVertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(sVertex, 1, &vertexCode, NULL);
+	sprintf(buffer,vertexCode,glversion);
+    glShaderSource(sVertex, 1, (const GLchar**) &buffer, NULL);
     glCompileShader(sVertex);
     // esyslog("[softhddev]:SHADER:VERTEX %s\n",vertexCode);
-    if (!CheckCompileErrors(sVertex))
+    if (!CheckCompileErrors(sVertex)) {
+		free(buffer);
         return false;
+	}
     // Fragment Shader
     sFragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(sFragment, 1, &fragmentCode, NULL);
+	sprintf(buffer,fragmentCode,glversion);
+    glShaderSource(sFragment, 1, (const GLchar**)&buffer, NULL);
     glCompileShader(sFragment);
     // esyslog("[softhddev]:SHADER:FRAGMENT %s\n",fragmentCode);
-    if (!CheckCompileErrors(sFragment))
+    if (!CheckCompileErrors(sFragment)) {
+		free(buffer);
         return false;
+	}	
     // link Program
     id = glCreateProgram();
     glAttachShader(id, sVertex);
@@ -324,6 +241,7 @@ bool cShader::Compile(const char *vertexCode, const char *fragmentCode) {
     // Delete the shaders as they're linked into our program now and no longer necessery
     glDeleteShader(sVertex);
     glDeleteShader(sFragment);
+	free(buffer);
     return true;
 }
 
