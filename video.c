@@ -6213,6 +6213,8 @@ void VideoSetVideoMode( __attribute__((unused))
 #ifdef PLACEBO
     VideoSetOsdSize(width, height);
 #endif
+    VideoOsdExit();
+    // FIXME: must tell VDR that the OsdSize has been changed!
     VideoUsedModule->SetVideoMode();
     VideoThreadUnlock();
 
