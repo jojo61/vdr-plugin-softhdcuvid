@@ -88,8 +88,109 @@ color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
 color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
 out_color = color;\n\
 }\n" };
+#endif
 
-#else
+#ifdef RASPI
+char vertex_osd[] = {"\
+#version 300 es\n\
+in vec2 vertex_position;\n\
+in vec2 vertex_texcoord0;\n\
+out vec2 texcoord0;\n\
+void main() {\n\
+gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
+texcoord0 = vertex_texcoord0;\n\
+}\n"};
+
+char fragment_osd[] = {"\
+#version 300 es\n\
+#define texture1D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+uniform sampler2D texture0;\n\
+void main() {\n\
+vec4 color; \n\
+color = vec4(texture(texture0, texcoord0));\n\
+out_color = color;\n\
+}\n"};
+
+char vertex[] = {"\
+#version 300 es\n\
+in vec2 vertex_position;\n\
+in vec2 vertex_texcoord0;\n\
+out vec2 texcoord0;\n\
+in vec2 vertex_texcoord1;\n\
+out vec2 texcoord1;\n\
+in vec2 vertex_texcoord2;\n\
+out vec2 texcoord2;\n\
+void main() {\n\
+gl_Position = vec4(vertex_position, 1.0, 1.0);\n\
+texcoord0 = vertex_texcoord0;\n\
+texcoord1 = vertex_texcoord1;\n\
+texcoord2 = vertex_texcoord1;\n\
+}\n"};
+
+char fragment[] = {"\
+#version 300 es\n\
+#define texture1D texture\n\
+#define texture3D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+in vec2 texcoord1;\n\
+in vec2 texcoord2;\n\
+uniform mat3 colormatrix;\n\
+uniform vec3 colormatrix_c;\n\
+uniform sampler2D texture0;\n\
+uniform sampler2D texture1;\n\
+uniform sampler2D texture2;\n\
+//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
+void main() {\n\
+vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
+color.r = 1.000000 * vec4(texture(texture0, texcoord0)).r;\n\
+color.g = 1.000000 * vec4(texture(texture1, texcoord1)).r;\n\
+color.b = 1.000000 * vec4(texture(texture2, texcoord2)).r;\n\
+// color conversion\n\
+color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
+color.a = 1.0;\n\
+// color mapping\n\
+out_color = color;\n\
+}\n"};
+
+char fragment_bt2100[] = {"\
+#version 300 es\n \
+#define texture1D texture\n\
+#define texture3D texture\n\
+precision mediump float; \
+layout(location = 0) out vec4 out_color;\n\
+in vec2 texcoord0;\n\
+in vec2 texcoord1;\n\
+in vec2 texcoord2;\n\
+uniform mat3 colormatrix;\n\
+uniform vec3 colormatrix_c;\n\
+uniform mat3 cms_matrix;\n\
+uniform sampler2D texture0;\n\
+uniform sampler2D texture1;\n\
+uniform sampler2D texture2;\n\
+//#define LUT_POS(x, lut_size) mix(0.5 / (lut_size), 1.0 - 0.5 / (lut_size), (x))\n\
+void main() {\n\
+vec4 color; // = vec4(0.0, 0.0, 0.0, 1.0);\n\
+color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;\n\
+color.g = 1.003906 * vec4(texture(texture1, texcoord1)).r;\n\
+color.b = 1.003906 * vec4(texture(texture2, texcoord2)).r;\n\
+// color conversion\n\
+color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;\n\
+color.a = 1.0;\n\
+// color mapping\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(2.4));\n\
+color.rgb = cms_matrix * color.rgb;\n\
+color.rgb = clamp(color.rgb, 0.0, 1.0);\n\
+color.rgb = pow(color.rgb, vec3(1.0/2.4));\n\
+out_color = color;\n\
+}\n"};
+#endif
+#if defined VAAPI && !defined RASPI
 char vertex_osd[] = { "\
 \n\
 in vec2 vertex_position;\n\

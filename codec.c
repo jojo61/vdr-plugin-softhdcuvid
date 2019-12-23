@@ -143,7 +143,6 @@ static enum AVPixelFormat Codec_get_format(AVCodecContext * video_ctx, const enu
     enum AVPixelFormat fmt1;
 
     decoder = video_ctx->opaque;
-
     // bug in ffmpeg 1.1.1, called with zero width or height
     if (!video_ctx->width || !video_ctx->height) {
         Error("codec/video: ffmpeg/libav buggy: width or height zero\n");
@@ -258,6 +257,20 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
         }
     }
 #endif
+#ifdef RASPI
+	switch (codec_id) {
+	case AV_CODEC_ID_MPEG2VIDEO:
+		name = "mpeg2_v4l2m2m";
+		break;
+	case AV_CODEC_ID_H264:
+		name = "h264_v4l2m2m";
+//		name = "h264_mmal";
+		break;	
+	case AV_CODEC_ID_HEVC:
+		name = "hevc_v4l2m2m";
+		break;	
+	}
+#endif	
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
         Debug(3, "codec: decoder found\n");
     } else if ((video_codec = avcodec_find_decoder(codec_id)) == NULL) {
@@ -272,10 +285,16 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
         Fatal(_("codec: can't allocate video codec context\n"));
     }
-    if (!HwDeviceContext) {
-        Fatal("codec: no hw device context to be used");
+	
+#ifndef RASPI
+	if (!HwDeviceContext) {
+		Fatal("codec: no hw device context to be used");
     }
     decoder->VideoCtx->hw_device_ctx = av_buffer_ref(HwDeviceContext);
+#else
+	decoder->VideoCtx->pix_fmt = AV_PIX_FMT_DRM_PRIME;   /* request a DRM frame 
+//	decoder->VideoCtx->pix_fmt = AV_PIX_FMT_MMAL;   /* request a DRM frame */
+#endif
 
     // FIXME: for software decoder use all cpus, otherwise 1
     decoder->VideoCtx->thread_count = 1;
@@ -290,7 +309,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 #ifdef YADIF
     deint = 2;
 #endif
-#ifdef VAAPI
+#if defined VAAPI && !defined RASPI
     decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
@@ -318,6 +337,21 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
         Fatal(_("VAAPI Refcounts invalid\n"));
     decoder->VideoCtx->thread_safe_callbacks = 0;
+		    
+#endif
+	
+#ifdef RASPI
+	decoder->VideoCtx->codec_id = codec_id;
+	decoder->VideoCtx->flags |= AV_CODEC_FLAG_BITEXACT;
+    if (video_codec->capabilities & AV_CODEC_CAP_FRAME_THREADS || AV_CODEC_CAP_SLICE_THREADS) {
+        Debug(3, "codec: supports frame threads");
+        decoder->VideoCtx->thread_count = 4;
+        //   decoder->VideoCtx->thread_type |= FF_THREAD_FRAME;
+    }
+    if (video_codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
+        Debug(3, "codec: supports slice threads");
+        decoder->VideoCtx->thread_type |= FF_THREAD_SLICE;
+    }
 #endif
 
 #ifdef CUVID
@@ -367,7 +401,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     //decoder->VideoCtx->debug = FF_DEBUG_STARTCODE;
     //decoder->VideoCtx->err_recognition |= AV_EF_EXPLODE;
 
-    // av_log_set_level(AV_LOG_DEBUG);
+    //av_log_set_level(AV_LOG_DEBUG);
     av_log_set_level(0);
 
     decoder->VideoCtx->get_format = Codec_get_format;
@@ -387,7 +421,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 
     // reset buggy ffmpeg/libav flag
     decoder->GetFormatDone = 0;
-#ifdef YADIF
+#if defined (YADIF) || defined (RASPI)
     decoder->filter = 0;
 #endif
 }

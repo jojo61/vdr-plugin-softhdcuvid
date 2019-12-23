@@ -160,6 +160,10 @@ typedef enum
 
 #include <va/va_drmcommon.h>
 #include <libavcodec/vaapi.h>
+#ifdef RASPI
+#include <libavutil/hwcontext_drm.h>
+#include <libdrm/drm_fourcc.h>
+#endif
 #include <libavutil/hwcontext_vaapi.h>
 #define TO_AVHW_DEVICE_CTX(x) ((AVHWDeviceContext*)x->data)
 #define TO_AVHW_FRAMES_CTX(x) ((AVHWFramesContext*)x->data)
@@ -334,7 +338,7 @@ typedef struct
 
 #define VIDEO_SURFACES_MAX  6           ///< video output surfaces for queue
 // #define OUTPUT_SURFACES_MAX   4   ///< output surfaces for flip page
-#ifdef VAAPI
+#if defined VAAPI && !defined RASPI
 #define PIXEL_FORMAT AV_PIX_FMT_VAAPI
 #define SWAP_BUFFER_SIZE     3
 #endif
@@ -342,11 +346,21 @@ typedef struct
 #define PIXEL_FORMAT AV_PIX_FMT_CUDA
 #define SWAP_BUFFER_SIZE     1
 #endif
+#if defined RASPI
+#define PIXEL_FORMAT AV_PIX_FMT_MMAL
+#define SWAP_BUFFER_SIZE     3
+#endif
 //----------------------------------------------------------------------------
 //  Variables
 //----------------------------------------------------------------------------
 AVBufferRef *HwDeviceContext;           ///< ffmpeg HW device context
 char VideoIgnoreRepeatPict;             ///< disable repeat pict warning
+
+#ifdef RASPI
+int Planes = 3;
+#else
+int Planes = 2;
+#endif
 
 unsigned char *posd;
 
@@ -1551,7 +1565,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
         if (decoder->frames[i]) {
             av_frame_free(&decoder->frames[i]);
         }
-        for (j = 0; j < 2; j++) {
+        for (j = 0; j < Planes; j++) {
 #ifdef PLACEBO
             if (decoder->pl_images[i].planes[j].texture) {
 
@@ -1567,13 +1581,13 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
             checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
 #endif
 #ifdef VAAPI
-            if (decoder->images[i * 2 + j]) {
-                DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i * 2 + j]);
-                if (decoder->fds[i * 2 + j])
-                    close(decoder->fds[i * 2 + j]);
-            }
-            decoder->fds[i * 2 + j] = 0;
-            decoder->images[i * 2 + j] = 0;
+			if (decoder->images[i*Planes+j]) {
+                DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i*Planes+j]);
+				if (decoder->fds[i*Planes+j])
+					close(decoder->fds[i*Planes+j]);
+			}
+			decoder->fds[i*Planes+j] = 0;
+            decoder->images[i*Planes+j] = 0;
 #endif
 #endif
         }
@@ -1665,19 +1679,25 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
         }
     }
 #else
-#ifdef VAAPI
-    if (decoder->images[surface * 2]) {
-        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * 2]);
-        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * 2 + 1]);
-        if (decoder->fds[surface * 2]) {
-            close(decoder->fds[surface * 2]);
-            close(decoder->fds[surface * 2 + 1]);
-        }
-    }
-    decoder->fds[surface * 2] = 0;
-    decoder->fds[surface * 2 + 1] = 0;
-    decoder->images[surface * 2] = 0;
-    decoder->images[surface * 2 + 1] = 0;
+#ifdef VAAPI 
+		if (decoder->images[surface*Planes]) {
+			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes]);	 
+			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes+1]);
+#ifdef RASPI
+			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes+2]);
+#endif
+			if (decoder->fds[surface*Planes]) {
+				close(decoder->fds[surface*Planes]);
+				close(decoder->fds[surface*Planes+1]);
+#ifdef RASPI
+				close(decoder->fds[surface*Planes+2]);
+#endif
+			}
+		}	
+		decoder->fds[surface*Planes] = 0;
+		decoder->fds[surface*Planes+1] = 0;
+		decoder->images[surface*Planes] = 0;
+		decoder->images[surface*Planes+1] = 0;		
 #endif
 #endif
     for (i = 0; i < decoder->SurfaceUsedN; ++i) {
@@ -1803,8 +1823,8 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
         EGL_RENDERABLE_TYPE, rend,
         EGL_NONE
     };
-    EGLint num_configs;
-
+    EGLint num_configs=0;
+#ifndef RASPI
     attribs = attributes10;
     *bpp = 10;
     if (!eglChooseConfig(display, attributes10, NULL, 0, &num_configs)) {   // try 10 Bit
@@ -1814,7 +1834,9 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
         if (!eglChooseConfig(display, attributes8, NULL, 0, &num_configs)) {    // try 8 Bit
             num_configs = 0;
         }
-    } else if (num_configs == 0) {
+    } else 
+#endif
+	if (num_configs == 0) {
         EglCheck();
         Debug(3, " 10 Bit egl Failed\n");
         attribs = attributes8;
@@ -1903,7 +1925,7 @@ make_egl()
     int vID, n;
 
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
-    Debug(3, "chose visual 0x%x\n", vID);
+    Debug(3, "chose visual 0x%x bpp %d\n", vID,bpp);
 #ifdef USE_DRM
     InitBo(bpp);
 #else
@@ -1946,19 +1968,21 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
         Fatal("codec: can't allocate HW video codec context err %04x", i);
     }
 #endif
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (RASPI) 
     // if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, ":0.0" , NULL, 0)) != 0 ) {
     if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, "/dev/dri/renderD128", NULL, 0)) != 0) {
         Fatal("codec: can't allocate HW video codec context err %04x", i);
     }
 #endif
+#ifndef RASPI
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
+#endif
 
     if (!(decoder = calloc(1, sizeof(*decoder)))) {
         Error(_("video/cuvid: out of memory\n"));
         return NULL;
     }
-#ifdef VAAPI
+#if defined (VAAPI) && !defined (RASPI) 
     VaDisplay = TO_VAAPI_DEVICE_CTX(HwDeviceContext)->display;
     decoder->VaDisplay = VaDisplay;
 #endif
@@ -2384,29 +2408,34 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     glGenBuffers(1, &vao_buffer);
     GlxCheck();
     // create texture planes
-    glGenTextures(CODEC_SURFACES_MAX * 2, decoder->gl_textures);
+    glGenTextures(CODEC_SURFACES_MAX * Planes, decoder->gl_textures);
     GlxCheck();
 
     for (i = 0; i < anz; i++) {
-        for (n = 0; n < 2; n++) {       // number of planes
+        for (n = 0; n < Planes; n++) {       // number of planes
 
-            glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[i * 2 + n]);
+            glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[i * Planes + n]);
             GlxCheck();
             // set basic parameters
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            if (PixFmt == AV_PIX_FMT_NV12)
-                glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R8 : GL_RG8, n == 0 ? size_x : size_x / 2,
-                    n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_BYTE, NULL);
-            else
-                glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R16 : GL_RG16, n == 0 ? size_x : size_x / 2,
-                    n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_SHORT, NULL);
+#ifdef RASPI
+			if (PixFmt == AV_PIX_FMT_NV12)
+			   glTexImage2D(GL_TEXTURE_2D, 0,GL_R8 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, GL_RED , GL_UNSIGNED_BYTE , NULL);
+			else
+			   glTexImage2D(GL_TEXTURE_2D, 0,GL_R16,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, GL_RED , GL_UNSIGNED_SHORT, NULL);
+#else
+			if (PixFmt == AV_PIX_FMT_NV12)
+			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R8 :GL_RG8  ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_BYTE , NULL);
+			else
+			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
+#endif
             SDK_CHECK_ERROR_GL();
             // register this texture with CUDA
 #ifdef CUVID
-            checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i * 2 + n],
+            checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i * Planes + n],
                     GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
             checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
             checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n], 0,
@@ -2447,6 +2476,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
     VAStatus status;
 
     uint64_t first_time;
+#if defined  (VAAPI) && !defined (RASPI)
     VADRMPRIMESurfaceDescriptor desc;
 
     status =
@@ -2458,28 +2488,58 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         return;
     }
     vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
-//#ifndef USE_DRM
+#endif
+#ifdef RASPI
+	AVDRMFrameDescriptor desc;
+	memcpy(&desc,frame->data[0],sizeof(desc));
+    
+#endif
+
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     EglCheck();
-//#endif
-    for (int n = 0; n < 2; n++) {
+
+    for (int n = 0; n < Planes; n++) {
         int attribs[20] = { EGL_NONE };
         int num_attribs = 0;
+		int fd;
+#if defined (VAAPI) && !defined (RASPI)
+		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
+		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
+		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
+		ADD_PLANE_ATTRIBS(0);
+#endif
+#ifdef RASPI
+		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8);
+		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
+		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
+		if (n==0) {
+			fd = dup(desc.objects[0].fd);
+			ADD_ATTRIB( EGL_DMA_BUF_PLANE0_FD_EXT,fd);
+			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_OFFSET_EXT,desc.layers[0].planes[n].offset);
+			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_PITCH_EXT,desc.layers[0].planes[n].pitch);
+		} else {
+			fd = dup(desc.objects[0].fd);
+			ADD_ATTRIB( EGL_DMA_BUF_PLANE0_FD_EXT,fd);
+			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_OFFSET_EXT,desc.layers[0].planes[n].offset);
+			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_PITCH_EXT,desc.layers[0].planes[n].pitch);
+		}
+//		Debug(3,"n %d fd %d nb_planes %d nb_layers %d plane %d offeset %d offset2 %d pitch %d \n",n, fd,
+//			  desc.layers[0].nb_planes,desc.nb_layers,n,desc.layers[0].planes[n].offset,desc.layers[0].planes[n+1].offset,desc.layers[0].planes[n].pitch);
+#endif
 
-        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
-        ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
-        ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
-        ADD_PLANE_ATTRIBS(0);
-
-        decoder->images[index * 2 + n] =
+        decoder->images[index * Planes + n] =
             CreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
   
-        if (!decoder->images[index * 2 + n])
+        if (!decoder->images[index * Planes + n])
             goto esh_failed;
 
-        glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index * 2 + n]);
-        EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * 2 + n]);
-        decoder->fds[index * 2 + n] = desc.objects[desc.layers[n].object_index[0]].fd;
+        glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index * Planes + n]);
+        EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * Planes + n]);
+#ifdef RASPI
+		decoder->fds[index*Planes+n] = fd;
+#else
+		decoder->fds[index*Planes+n] = desc.objects[desc.layers[n].object_index[0]].fd;
+#endif
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -2488,7 +2548,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
 
   esh_failed:
     Debug(3, "Failure in generateVAAPIImage\n");
-    for (int n = 0; n < desc.num_objects; n++)
+    for (int n = 0; n < Planes; n++)
         close(desc.objects[n].fd);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
@@ -2859,12 +2919,18 @@ int get_RGB(CuvidDecoder * decoder)
     glUniform1i(texLoc, 0);
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
-
+#ifdef RASPI
+	texLoc = glGetUniformLocation(gl_prog, "texture2");
+	glUniform1i(texLoc, 2);
+#endif
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * 2 + 0]);
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * 2 + 1]);
-
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);
+#ifdef RASPI
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
+#endif
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
 
     render_pass_quad(1, 0.0, 0.0);
@@ -3207,32 +3273,32 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
     color = frame->colorspace;
     if (color == AVCOL_SPC_UNSPECIFIED) // if unknown
         color = AVCOL_SPC_BT709;
-#if 0
-    //
-    //  Check image, format, size
-    //
-    if (                                // decoder->PixFmt != video_ctx->pix_fmt
-        video_ctx->width != decoder->InputWidth
-        // || decoder->ColorSpace != color
-        || video_ctx->height != decoder->InputHeight) {
-        // Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->colorspace ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
+#ifdef RASPI
+ 	//
+	//	Check image, format, size
+	//
+	if ( // decoder->PixFmt != video_ctx->pix_fmt
+	     video_ctx->width != decoder->InputWidth
+//		|| decoder->ColorSpace != color
+	    || video_ctx->height != decoder->InputHeight) {
+Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->colorspace ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
+		decoder->PixFmt = AV_PIX_FMT_NV12;
+	    decoder->InputWidth = video_ctx->width;
+	    decoder->InputHeight = video_ctx->height;
+	    CuvidCleanup(decoder);
+	    decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
+	    CuvidSetupOutput(decoder);
 
-        decoder->InputWidth = video_ctx->width;
-        decoder->InputHeight = video_ctx->height;
-        CuvidCleanup(decoder);
-        decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
-        CuvidSetupOutput(decoder);
-#ifdef PLACEBO                          // dont show first frame
-        decoder->newchannel = 1;
-#endif
-    }
+	}
 #endif
     //
     //  Copy data from frame to image
     //
-
+#ifdef RASPI
+	if (video_ctx->pix_fmt == 0) { 
+#else
     if (video_ctx->pix_fmt == PIXEL_FORMAT) {
-
+#endif
         int w = decoder->InputWidth;
         int h = decoder->InputHeight;
 
@@ -3302,7 +3368,9 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
 
     }
 
-    Fatal(_("video/vdpau: pixel format %d not supported\n"), video_ctx->pix_fmt);
+//   Debug(3,"video/vdpau: pixel format %d not supported\n", video_ctx->pix_fmt);
+	 av_frame_free(&frame);
+            return;
 }
 
 ///
@@ -3478,12 +3546,20 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     glUniform1i(texLoc, 0);
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * 2 + 0]);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * 2 + 1]);
-
+#ifdef RASPI
+	texLoc = glGetUniformLocation(gl_prog, "texture2");
+	glUniform1i(texLoc, 2);
+#endif
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);	
+#ifdef RASPI
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);	
+#endif
+	
     render_pass_quad(0, xcropf, ycropf);
 
     glUseProgram(0);
