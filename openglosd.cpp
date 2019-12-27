@@ -26,7 +26,7 @@ const char *glversion = "#version 330 core ";
 #ifdef RASPI
 const char *glversion = "#version 300 es";
 #else
-const char *glversion = " ";
+const char *glversion = "#version 320 es ";
 #endif
 #endif
 
@@ -1654,6 +1654,8 @@ bool cOglThread::InitOpenGL(void) {
 
     char **argv = buffer;
     glutInit(&argc, argv);
+	glutInitContextVersion( 3, 3 );
+	glutInitContextProfile( GLUT_COMPATIBILITY_PROFILE );
     glutInitDisplayMode (GLUT_SINGLE | GLUT_RGBA | GLUT_ALPHA);
     glutInitWindowSize (1, 1);
     glutInitWindowPosition (0, 0);
