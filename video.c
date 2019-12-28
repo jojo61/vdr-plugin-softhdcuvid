@@ -1161,7 +1161,7 @@ static void EglInit(void)
     EGLContext context;
 
     // create egl context
-    setenv("MESA_GL_VERSION_OVERRIDE","3.3",0); 
+    setenv("MESA_GL_VERSION_OVERRIDE","3.3",0);
     make_egl();
     GLenum err = glewInit();
 
@@ -3599,7 +3599,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             deband.grain = 0.0f;        // no grain in HDR
             img->color.sig_scale = 1.0f;
             pl->shift_x = -0.5f;
-#ifdef VAAPI
+#if defined  VAAPI || defined USE_DRM
             render_params.peak_detect_params = NULL;
 #endif
             // img->color.primaries = PL_COLOR_PRIM_BT_2020;
