@@ -1161,6 +1161,7 @@ static void EglInit(void)
     EGLContext context;
 
     // create egl context
+    setenv("MESA_GL_VERSION_OVERRIDE","3.3",0); 
     make_egl();
     GLenum err = glewInit();
 

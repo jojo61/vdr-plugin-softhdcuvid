@@ -26,7 +26,7 @@ const char *glversion = "#version 330 core ";
 #ifdef RASPI
 const char *glversion = "#version 300 es";
 #else
-const char *glversion = " ";
+const char *glversion = "#version 320 es  ";
 #endif
 #endif
 
