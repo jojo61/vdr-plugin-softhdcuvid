@@ -5262,9 +5262,7 @@ static void *VideoHandlerThread(void *dummy)
 #ifdef PLACEBO
     pthread_cleanup_pop(NULL);
 #endif
-#ifdef USE_DRM
-    drm_clean_up();
-#endif
+
     return dummy;
 }
 
@@ -6753,7 +6751,9 @@ void VideoExit(void)
         Connection = 0;
     }
 #endif
-
+#ifdef USE_DRM
+    drm_clean_up();
+#endif
 }
 
 #ifdef USE_DRM  
