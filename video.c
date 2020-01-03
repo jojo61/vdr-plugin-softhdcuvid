@@ -5262,6 +5262,9 @@ static void *VideoHandlerThread(void *dummy)
 #ifdef PLACEBO
     pthread_cleanup_pop(NULL);
 #endif
+#ifdef USE_DRM
+    drm_clean_up();
+#endif
     return dummy;
 }
 
@@ -6693,6 +6696,7 @@ void VideoInit(const char *display_name)
 ///
 void VideoExit(void)
 {
+    Debug(3,"Video Exit\n");
 #ifndef USE_DRM
     if (!XlibDisplay) {                 // no init or failed
         return;
@@ -6749,9 +6753,7 @@ void VideoExit(void)
         Connection = 0;
     }
 #endif
-#ifdef USE_DRM
-    drm_clean_up();
-#endif
+
 }
 
 #ifdef USE_DRM  

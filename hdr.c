@@ -370,7 +370,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     if (md)
         memcpy(&md_save,md,sizeof(md_save));
         
-    printf("Update HDR to TRC %d color %d\n",trc,color);
+    Debug(3,"Update HDR to TRC %d color %d\n",trc,color);
 
     if (trc == AVCOL_TRC_BT2020_10)
         trc = AVCOL_TRC_ARIB_STD_B67;
@@ -471,6 +471,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed blob create \n");
+		blob_id = 0;
         return;
     }
 
@@ -481,11 +482,12 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
              
         if (blob_id)
             drmModeDestroyPropertyBlob(render->fd_drm, blob_id);
+		blob_id = 0;
         return;
     }
     m_need_modeset = 1;
         
-    printf("DRM: HDR metadata: prop set\n");
+    Debug(3,"DRM: HDR metadata: prop set\n");
            
 }
 
