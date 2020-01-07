@@ -23,6 +23,7 @@ struct _Drm_Render_
     uint32_t connector_id, crtc_id, video_plane;
     uint32_t hdr_metadata;
     uint32_t mmWidth,mmHeight;   // Size in mm
+	uint32_t hdr_blob_id;
  
 };
 typedef struct _Drm_Render_ VideoRender;
@@ -207,10 +208,10 @@ static int FindDevice(VideoRender * render)
         fprintf(stderr, "FindDevice: cannot open /dev/dri/card0: %m\n");
         return -errno;
     }
-
+	drmSetMaster(render->fd_drm);
     
     version = drmGetVersion(render->fd_drm);
-    fprintf(stderr, "FindDevice: open /dev/dri/card0: %i %s\n", version->name_len, version->name);
+    fprintf(stderr, "FindDevice: open /dev/dri/card0:  %s\n",  version->name);
     
     // check capability
     if (drmGetCap(render->fd_drm, DRM_CAP_DUMB_BUFFER, &has_dumb) < 0 || has_dumb == 0)
@@ -375,8 +376,6 @@ static int FindDevice(VideoRender * render)
     return 0;
 }
 
-
-
 ///
 /// Initialize video output module.
 ///
@@ -384,6 +383,7 @@ void VideoInitDrm()
 {
     int i;
     
+	
     if (!(render = calloc(1, sizeof(*render)))) {
         Fatal(_("video/DRM: out of memory\n"));
         return;
@@ -392,13 +392,13 @@ void VideoInitDrm()
     if (FindDevice(render)){
         Fatal(_( "VideoInit: FindDevice() failed\n"));
     }
-    
+	
     gbm.dev = gbm_create_device (render->fd_drm);
     assert (gbm.dev != NULL);
     
     PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
     get_platform_display =
-        (void *) eglGetProcAddress("eglGetPlatformDisplayEXT");
+        (void *) eglGetProcAddress("eglGetPlatformDisplay");
     assert(get_platform_display != NULL);
     
     eglDisplay = get_platform_display(EGL_PLATFORM_GBM_KHR, gbm.dev, NULL);
@@ -418,7 +418,7 @@ void VideoInitDrm()
         fprintf(stderr, "cannot allocate atomic request (%d): %m\n", errno);
         return;
     }
-
+	printf("set CRTC %d of Connector %d aktiv\n",render->crtc_id,render->connector_id);
     SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
                         DRM_MODE_OBJECT_CRTC, "MODE_ID", modeID);
     SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
@@ -430,7 +430,7 @@ void VideoInitDrm()
         fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
     
     if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
-        fprintf(stderr, "cannot destroy prperty blob (%d): %m\n", errno);
+        fprintf(stderr, "cannot destroy property blob (%d): %m\n", errno);
     
     drmModeAtomicFree(ModeReq);
 
@@ -438,6 +438,7 @@ void VideoInitDrm()
 
 void get_drm_aspect(int *num,int *den)
 {
+	Debug(3,"mmHeight %d mmWidth %d  VideoHeight %d VideoWidth %d\n",render->mmHeight,render->mmWidth,VideoWindowHeight,VideoWindowWidth);
     *num = VideoWindowWidth * render->mmHeight;
     *den = VideoWindowHeight * render->mmWidth;
 }
@@ -456,6 +457,7 @@ void InitBo(int bpp) {
     assert(gbm.surface != NULL);
     eglSurface = eglCreateWindowSurface (eglDisplay, eglConfig, gbm.surface, NULL);
     assert(eglSurface != NULL);
+
 }
 
 static struct gbm_bo *previous_bo = NULL;
@@ -526,27 +528,44 @@ static void drm_swap_buffers () {
     }
     previous_bo = bo;
     previous_fb = fb;
+
 }
 
 static void drm_clean_up () {
     // set the previous crtc
-    
+
     if (!render)
         return;
-    
-    drmModeSetCrtc (render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id,
-                    render->saved_crtc->x, render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
-    drmModeFreeCrtc (render->saved_crtc);
-    
-    if (previous_bo) {
+    Debug(3,"drm clean up\n");
+
+	if (previous_bo) {
         drmModeRmFB (render->fd_drm, previous_fb);
         gbm_surface_release_buffer (gbm.surface, previous_bo);
     }
-
-//  eglDestroySurface (display, eglSurface);
+	
+    drmModeSetCrtc (render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id,
+                    render->saved_crtc->x, render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
+    drmModeFreeCrtc (render->saved_crtc);
+	
+    if (render->hdr_blob_id)
+        drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
+	render->hdr_blob_id = 0;
+	
+    eglDestroySurface (eglDisplay, eglSurface);
+	EglCheck();
     gbm_surface_destroy (gbm.surface);
-//  eglDestroyContext (display, context);
-//  eglTerminate (display);
+    eglDestroyContext (eglDisplay, eglContext);
+	EglCheck();
+	eglDestroyContext (eglDisplay, eglSharedContext);
+	EglCheck();
+
+    eglTerminate (eglDisplay);	
+	EglCheck();
+	
     gbm_device_destroy (gbm.dev);
+	drmDropMaster(render->fd_drm);
     close (render->fd_drm);
+	
+	free(render);
+
 }

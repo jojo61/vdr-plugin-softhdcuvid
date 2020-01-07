@@ -551,6 +551,56 @@ static void X11DPMSReenable(xcb_connection_t *);
 static void X11DPMSDisable(xcb_connection_t *);
 #endif
 
+
+char *eglErrorString(EGLint error)
+{
+    switch (error) {
+        case EGL_SUCCESS:
+            return "No error";
+        case EGL_NOT_INITIALIZED:
+            return "EGL not initialized or failed to initialize";
+        case EGL_BAD_ACCESS:
+            return "Resource inaccessible";
+        case EGL_BAD_ALLOC:
+            return "Cannot allocate resources";
+        case EGL_BAD_ATTRIBUTE:
+            return "Unrecognized attribute or attribute value";
+        case EGL_BAD_CONTEXT:
+            return "Invalid EGL context";
+        case EGL_BAD_CONFIG:
+            return "Invalid EGL frame buffer configuration";
+        case EGL_BAD_CURRENT_SURFACE:
+            return "Current surface is no longer valid";
+        case EGL_BAD_DISPLAY:
+            return "Invalid EGL display";
+        case EGL_BAD_SURFACE:
+            return "Invalid surface";
+        case EGL_BAD_MATCH:
+            return "Inconsistent arguments";
+        case EGL_BAD_PARAMETER:
+            return "Invalid argument";
+        case EGL_BAD_NATIVE_PIXMAP:
+            return "Invalid native pixmap";
+        case EGL_BAD_NATIVE_WINDOW:
+            return "Invalid native window";
+        case EGL_CONTEXT_LOST:
+            return "Context lost";
+    }
+    return "Unknown error ";
+}
+
+///
+/// egl check error.
+///
+#define EglCheck(void) \
+{\
+    EGLint err;\
+\
+    if ((err = eglGetError()) != EGL_SUCCESS) {\
+        Debug(3, "video/egl: %s:%d error %d %s\n", __FILE__,__LINE__,err,eglErrorString(err));\
+    }\
+}
+
 //----------------------------------------------------------------------------
 //  DRM Helper Functions
 //----------------------------------------------------------------------------
@@ -657,6 +707,8 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
 #ifdef USE_DRM
 	get_drm_aspect(&display_aspect_ratio.num,&display_aspect_ratio.den);
 #else
+	Debug(3,"mmHeight %d mm Width %d VideoHeight %d VideoWidth %d\n",VideoScreen->height_in_millimeters,VideoScreen->width_in_millimeters,
+		  VideoScreen->height_in_pixels,VideoScreen->width_in_pixels);
     display_aspect_ratio.num = VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
     display_aspect_ratio.den = VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
 #endif
@@ -829,54 +881,6 @@ static PFNGLXSWAPINTERVALSGIPROC GlxSwapIntervalSGI;
     }\
 }
 
-char *eglErrorString(EGLint error)
-{
-    switch (error) {
-        case EGL_SUCCESS:
-            return "No error";
-        case EGL_NOT_INITIALIZED:
-            return "EGL not initialized or failed to initialize";
-        case EGL_BAD_ACCESS:
-            return "Resource inaccessible";
-        case EGL_BAD_ALLOC:
-            return "Cannot allocate resources";
-        case EGL_BAD_ATTRIBUTE:
-            return "Unrecognized attribute or attribute value";
-        case EGL_BAD_CONTEXT:
-            return "Invalid EGL context";
-        case EGL_BAD_CONFIG:
-            return "Invalid EGL frame buffer configuration";
-        case EGL_BAD_CURRENT_SURFACE:
-            return "Current surface is no longer valid";
-        case EGL_BAD_DISPLAY:
-            return "Invalid EGL display";
-        case EGL_BAD_SURFACE:
-            return "Invalid surface";
-        case EGL_BAD_MATCH:
-            return "Inconsistent arguments";
-        case EGL_BAD_PARAMETER:
-            return "Invalid argument";
-        case EGL_BAD_NATIVE_PIXMAP:
-            return "Invalid native pixmap";
-        case EGL_BAD_NATIVE_WINDOW:
-            return "Invalid native window";
-        case EGL_CONTEXT_LOST:
-            return "Context lost";
-    }
-    return "Unknown error ";
-}
-
-///
-/// egl check error.
-///
-#define EglCheck(void) \
-{\
-    EGLint err;\
-\
-    if ((err = eglGetError()) != EGL_SUCCESS) {\
-        Debug(3, "video/egl: %s:%d error %d %s\n", __FILE__,__LINE__,err,eglErrorString(err));\
-    }\
-}
 
 
 
@@ -978,10 +982,11 @@ static void EglInit(void)
 
     XVisualInfo *vi = NULL;
 
+    
 #ifdef PLACEBO
     return;
 #endif
-
+    
     // The desired 30-bit color visual
     int attributeList10[] = {
         GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -1016,7 +1021,7 @@ static void EglInit(void)
     if (!glXQueryVersion(XlibDisplay, &major, &minor)) {
         Fatal(_("video/glx: no GLX support\n"));
     }
-    Info(_("video/glx: glx version %d.%d\n"), major, minor);
+    Debug(3,"video/glx: glx version %d.%d\n", major, minor);
 
     //
     //  check which extension are supported
@@ -1154,7 +1159,8 @@ static void EglInit(void)
 static void EglInit(void)
 {
     int redSize, greenSize, blueSize, alphaSize;
-
+    static int glewdone = 0;
+    
 #ifdef PLACEBO
     return;
 #endif
@@ -1163,12 +1169,15 @@ static void EglInit(void)
     // create egl context
     setenv("MESA_GL_VERSION_OVERRIDE","3.3",0);
     make_egl();
-    GLenum err = glewInit();
-
-    if (err != GLEW_OK) {
-        Debug(3, "Error: %s\n", glewGetErrorString(err));
-    }
-
+	
+	if (!glewdone) {
+        GLenum err = glewInit();
+		glewdone = 1;
+		if (err != GLEW_OK) {
+			Debug(3, "Error: %s\n", glewGetErrorString(err));
+		}
+	}
+	
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_BLUE_SIZE, &blueSize);
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_RED_SIZE, &redSize);
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_GREEN_SIZE, &greenSize);
@@ -1192,7 +1201,7 @@ static void EglInit(void)
 static void EglExit(void)
 {
     Debug(3, "video/egl: %s\n", __FUNCTION__);
-#ifdef PLACEBO
+#if defined PLACEBO
     return;
 #endif
 
@@ -1215,11 +1224,7 @@ static void EglExit(void)
         GlxCheck();
         glxContext = NULL;
     }
-    if (glxThreadContext) {
-        glXDestroyContext(XlibDisplay, glxThreadContext);
-        GlxCheck();
-        glxThreadContext = NULL;
-    }
+
     if (glxSharedContext) {
         glXDestroyContext(XlibDisplay, glxSharedContext);
         GlxCheck();
@@ -1230,19 +1235,25 @@ static void EglExit(void)
         // if currently used, set to none
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
+#ifndef USE_DRM
     if (eglSharedContext) {
         eglDestroyContext(eglDisplay, eglSharedContext);
         EglCheck();
     }
+
     if (eglContext) {
         eglDestroyContext(eglDisplay, eglContext);
         EglCheck();
+		eglContext = NULL;
     }
-    if (eglThreadContext) {
-        eglDestroyContext(eglDisplay, eglThreadContext);
-        EglCheck();
-    }
+
     eglTerminate(eglDisplay);
+#endif
+	
+#ifdef USE_DRM
+    	drm_clean_up();
+#endif	
+	
 #endif
 }
 
@@ -2112,6 +2123,7 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
 static int CuvidGlxInit( __attribute__((unused))
     const char *display_name)
 {
+
 #ifndef PLACEBO
 
     EglInit();
@@ -4889,6 +4901,7 @@ void VideoOsdExit(void)
 {
     OsdDirtyWidth = 0;
     OsdDirtyHeight = 0;
+	VideoOsdClear();
 }
 
 //----------------------------------------------------------------------------
@@ -5077,29 +5090,7 @@ void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
     printf("%5s: %s\n", prefix[level], msg);
 }
 
-void delete_placebo()
-{
-    Debug(3, "delete placebo\n");
-    if (p == NULL)
-        return;
 
-    if (osdoverlay.plane.texture)
-        pl_tex_destroy(p->gpu, &osdoverlay.plane.texture);
-
-    pl_renderer_destroy(&p->renderer);
-    if (p->renderertest) {
-        pl_renderer_destroy(&p->renderertest);
-        p->renderertest = NULL;
-    }
-    pl_swapchain_destroy(&p->swapchain);
-
-    vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
-    pl_vk_inst_destroy(&p->vk_inst);
-    // pl_vulkan_destroy(&p->vk);
-    pl_context_destroy(&p->ctx);
-    free(p);
-    p = NULL;
-}
 
 void InitPlacebo()
 {
@@ -5199,11 +5190,17 @@ void InitPlacebo()
 ///
 /// Video render thread.
 ///
+	
+void delete_decode() {
+	Debug(3,"decoder thread exit\n");
+}
+	
 static void *VideoDisplayHandlerThread(void *dummy)
 {
 
-    prctl(PR_SET_NAME, "cuvid video", 0, 0, 0);
+    prctl(PR_SET_NAME, "video decode", 0, 0, 0);
     sleep(2);
+	pthread_cleanup_push(delete_decode, NULL);
     for (;;) {
         // fix dead-lock with CuvidExit
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -5212,11 +5209,50 @@ static void *VideoDisplayHandlerThread(void *dummy)
 
         VideoUsedModule->DisplayHandlerThread();
     }
-
+	pthread_cleanup_pop(NULL);
     return dummy;
 }
 
+void exit_display()
+{
+#ifdef PLACEBO
+    Debug(3, "delete placebo\n");
+    if (p == NULL)
+        return;
 
+    if (osdoverlay.plane.texture)
+        pl_tex_destroy(p->gpu, &osdoverlay.plane.texture);
+
+    pl_renderer_destroy(&p->renderer);
+    if (p->renderertest) {
+        pl_renderer_destroy(&p->renderertest);
+        p->renderertest = NULL;
+    }
+    pl_swapchain_destroy(&p->swapchain);
+
+    vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
+    pl_vk_inst_destroy(&p->vk_inst);
+    // pl_vulkan_destroy(&p->vk);
+    pl_context_destroy(&p->ctx);
+    free(p);
+    p = NULL;
+#endif
+#ifdef CUVID
+	if (glxThreadContext) {
+        glXDestroyContext(XlibDisplay, glxThreadContext);
+        GlxCheck();
+        glxThreadContext = NULL;
+    }
+#else
+	if (eglThreadContext) {
+        eglDestroyContext(eglDisplay, eglThreadContext);
+        EglCheck();
+		eglThreadContext = NULL;
+    }
+#endif
+	Debug(3,"display thread exit\n");
+}
+	
 static void *VideoHandlerThread(void *dummy)
 {
     EGLint contextAttrs[] = {
@@ -5224,12 +5260,10 @@ static void *VideoHandlerThread(void *dummy)
         EGL_NONE
     };
     
-    prctl(PR_SET_NAME, "cuvid video display", 0, 0, 0);
-    
+    prctl(PR_SET_NAME, "video display", 0, 0, 0);
+
 #ifdef PLACEBO
     InitPlacebo();
-    pthread_cleanup_push(delete_placebo, NULL);
-
 #else
 #ifdef CUVID   
     if (EglEnabled) {
@@ -5247,22 +5281,22 @@ static void *VideoHandlerThread(void *dummy)
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
 #endif
 #endif
+	pthread_cleanup_push(exit_display, NULL);
     for (;;) {
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         pthread_testcancel();
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
+#ifndef USE_DRM
         VideoPollEvent();
-
+#endif
         // first_time = GetusTicks();
         CuvidSyncDisplayFrame();
         // printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000);
     }
-#ifdef PLACEBO
-    pthread_cleanup_pop(NULL);
-#endif
 
+    pthread_cleanup_pop(NULL);
+	
     return dummy;
 }
 
@@ -5276,7 +5310,7 @@ static void VideoThreadInit(void)
 #ifdef CUVID
     glXMakeCurrent(XlibDisplay, None, NULL);
 #else
-    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
+//    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
 #endif
 #endif
     pthread_mutex_init(&VideoMutex, NULL);
@@ -5301,19 +5335,20 @@ static void VideoThreadExit(void)
 
         // FIXME: can't cancel locked
         if (pthread_cancel(VideoThread)) {
-            Error(_("video: can't queue cancel video display thread\n"));
+            Debug(3,"video: can't queue cancel video display thread\n");
         }
-
+		usleep(200000);             // 200ms
         if (pthread_join(VideoThread, &retval) || retval != PTHREAD_CANCELED) {
-            Error(_("video: can't cancel video display thread\n"));
+            Debug(3,"video: can't cancel video decoder thread\n");
         }
+		
         if (VideoDisplayThread) {
             if (pthread_cancel(VideoDisplayThread)) {
-                Error(_("video: can't queue cancel video display thread\n"));
-            }
+                Debug(3,"video: can't queue cancel video display thread\n");
+			}
             usleep(200000);             // 200ms
             if (pthread_join(VideoDisplayThread, &retval) || retval != PTHREAD_CANCELED) {
-                Error(_("video: can't cancel video display thread\n"));
+                Debug(3,"video: can't cancel video display thread\n");
             }
             VideoDisplayThread = 0;
         }
@@ -5324,8 +5359,10 @@ static void VideoThreadExit(void)
         pthread_mutex_destroy(&OSDMutex);
 
 #ifndef PLACEBO
+
         if (OSDtexture)
             glDeleteTextures(1, &OSDtexture);
+
         if (gl_prog_osd) {
             glDeleteProgram(gl_prog_osd);
             gl_prog_osd = 0;
@@ -5334,7 +5371,9 @@ static void VideoThreadExit(void)
             glDeleteProgram(gl_prog);
             gl_prog = 0;
         }
+
 #endif
+
     }
 
 }
@@ -6699,6 +6738,7 @@ void VideoExit(void)
     if (!XlibDisplay) {                 // no init or failed
         return;
     }
+
     //
     //  Reenable screensaver / DPMS.
     //
@@ -6751,9 +6791,7 @@ void VideoExit(void)
         Connection = 0;
     }
 #endif
-#ifdef USE_DRM
-    drm_clean_up();
-#endif
+
 }
 
 #ifdef USE_DRM  
@@ -6762,6 +6800,8 @@ int GlxInitopengl () {
         EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_NONE
     };
+	while (!eglSharedContext)
+		sleep(1);
 
     if (!eglOSDContext) {
         eglOSDContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);

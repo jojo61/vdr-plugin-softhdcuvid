@@ -330,7 +330,6 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     struct weston_colorspace *cs;
     enum hdr_metadata_eotf eotf;
     struct hdr_output_metadata data;
-    static uint32_t blob_id = 0;
     int ret,MaxCLL=1500,MaxFALL=400;
     int max_lum=4000,min_lum=0050;
     struct AVMasteringDisplayMetadata *md = NULL;
@@ -378,8 +377,8 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     old_color = color;
     old_trc = trc;
     
-    if (blob_id)
-        drmModeDestroyPropertyBlob(render->fd_drm, blob_id);
+    if (render->hdr_blob_id)
+        drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
     
     switch(trc) {
         case AVCOL_TRC_BT709:                                   // 1
@@ -468,21 +467,21 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     
 
     
-    ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &blob_id);
+    ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &render->hdr_blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed blob create \n");
-		blob_id = 0;
+		render->hdr_blob_id = 0;
         return;
     }
 
     ret = drmModeConnectorSetProperty(render->fd_drm, render->connector_id,
-                      render->hdr_metadata, blob_id);
+                      render->hdr_metadata, render->hdr_blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed property set %d\n",ret);
              
-        if (blob_id)
-            drmModeDestroyPropertyBlob(render->fd_drm, blob_id);
-		blob_id = 0;
+        if (render->hdr_blob_id)
+            drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
+		render->hdr_blob_id = 0;
         return;
     }
     m_need_modeset = 1;
