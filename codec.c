@@ -1810,7 +1810,6 @@ void CodecInit(void)
 #else
     (void)CodecNoopCallback;
 #endif
-    avcodec_register_all();             // register all formats and codecs
 }
 
 /**
