@@ -3215,7 +3215,7 @@ static void CuvidQueueVideoSurface(CuvidDecoder * decoder, int surface, int soft
 
     // can't wait for output queue empty
     if (atomic_read(&decoder->SurfacesFilled) >= VIDEO_SURFACES_MAX) {
-        Warning(_("video/vdpau: output buffer full, dropping frame (%d/%d)\n"), ++decoder->FramesDropped,
+        Warning(_("video/cuvid: output buffer full, dropping frame (%d/%d)\n"), ++decoder->FramesDropped,
             decoder->FrameCounter);
         if (!(decoder->FramesDisplayed % 300)) {
             CuvidPrintFrames(decoder);
@@ -3236,7 +3236,7 @@ static void CuvidQueueVideoSurface(CuvidDecoder * decoder, int surface, int soft
         }
     }
 
-    Debug(4, "video/vdpau: yy video surface %#08x@%d ready\n", surface, decoder->SurfaceWrite);
+    Debug(4, "video/cuvid: yy video surface %#08x@%d ready\n", surface, decoder->SurfaceWrite);
 
     decoder->SurfacesRb[decoder->SurfaceWrite] = surface;
     decoder->SurfaceWrite = (decoder->SurfaceWrite + 1) % VIDEO_SURFACES_MAX;
@@ -3276,7 +3276,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
 
     // update aspect ratio changes
     if (decoder->InputWidth && decoder->InputHeight && av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
-        Debug(3, "video/vdpau: aspect ratio changed\n");
+        Debug(3, "video/cuvid: aspect ratio changed\n");
 
         decoder->InputAspect = frame->sample_aspect_ratio;
         // printf("new aspect %d:%d\n",frame->sample_aspect_ratio.num,frame->sample_aspect_ratio.den);
@@ -3381,7 +3381,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 
     }
 
-//   Debug(3,"video/vdpau: pixel format %d not supported\n", video_ctx->pix_fmt);
+//   Debug(3,"video/cuvid: pixel format %d not supported\n", video_ctx->pix_fmt);
 	 av_frame_free(&frame);
             return;
 }
@@ -3743,7 +3743,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         p->renderertest = NULL;
     }
 #endif
-    Debug(4, "video/vdpau: yy video surface %p displayed\n", current, decoder->SurfaceRead);
+    Debug(4, "video/cuvid: yy video surface %p displayed\n", current, decoder->SurfaceRead);
 }
 
 #ifdef PLACEBO
