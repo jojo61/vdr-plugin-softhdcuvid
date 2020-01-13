@@ -2858,7 +2858,11 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
 #ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
 #else
-        ist->filter = 1;                // init deint vaapi
+        if (VideoDeinterlace[decoder->Resolution]) // need deinterlace
+               ist->filter = 1;                // init deint vaapi
+         else
+               ist->filter = 0;
+
         ist->active_hwaccel_id = HWACCEL_VAAPI;
 #endif
         ist->hwaccel_pix_fmt = PIXEL_FORMAT;
@@ -6392,11 +6396,19 @@ void VideoSetAbove()
 ///
 void VideoSetDeinterlace(int mode[VideoResolutionMax])
 {
+#ifdef CUVID
     VideoDeinterlace[0] = mode[0];      // 576i
     VideoDeinterlace[1] = 1;            //mode[1];  // 720p
     VideoDeinterlace[2] = mode[2];      // fake 1080
     VideoDeinterlace[3] = mode[3];      // 1080
     VideoDeinterlace[4] = 1,            //mode[4];  2160p
+#else
+    VideoDeinterlace[0] = 1;      // 576i
+    VideoDeinterlace[1] = 0;            //mode[1];  // 720p
+    VideoDeinterlace[2] = 1;      // fake 1080
+    VideoDeinterlace[3] = 1;      // 1080
+    VideoDeinterlace[4] = 0,            //mode[4];  2160p
+#endif
         VideoSurfaceModesChanged = 1;
 }
 
@@ -6819,5 +6831,11 @@ int GlxDrawopengl () {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     return;
 }
+       
+void GlxDestroy() {
+      eglDestroyContext (eglDisplay, eglOSDContext);
+      eglOSDContext = NULL;
+}
+
 #endif
 

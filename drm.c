@@ -558,6 +558,7 @@ static void drm_clean_up () {
 	EglCheck();
 	eglDestroyContext (eglDisplay, eglSharedContext);
 	EglCheck();
+	eglSharedContext = NULL;
 
     eglTerminate (eglDisplay);	
 	EglCheck();
@@ -565,7 +566,7 @@ static void drm_clean_up () {
     gbm_device_destroy (gbm.dev);
 	drmDropMaster(render->fd_drm);
     close (render->fd_drm);
-	
+	eglDisplay = NULL;
 	free(render);
 
 }

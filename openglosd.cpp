@@ -330,6 +330,7 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
 
 extern "C" void GlxInitopengl();
 extern "C" void GlxDrawopengl();
+extern "C" void GlxDestroy();
 /****************************************************************************************
 * cOglFont
 ****************************************************************************************/
@@ -1733,6 +1734,8 @@ void cOglThread::Cleanup(void) {
     cOglFont::Cleanup();
 #ifndef USE_DRM
     glutExit();
+#else
+	GlxDestroy();
 #endif
     pthread_mutex_unlock(&OSDMutex);
 }
