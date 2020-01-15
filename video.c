@@ -1168,6 +1168,7 @@ static void EglInit(void)
 
     // create egl context
     setenv("MESA_GL_VERSION_OVERRIDE","3.3",0);
+	setenv("V3D_DOUBLE_BUFFER","1",0);
     make_egl();
 	
 	if (!glewdone) {
@@ -1700,7 +1701,7 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
 #endif
 			if (decoder->fds[surface*Planes]) {
 				close(decoder->fds[surface*Planes]);
-				close(decoder->fds[surface*Planes+1]);
+//				close(decoder->fds[surface*Planes+1]);
 #ifdef RASPI
 				close(decoder->fds[surface*Planes+2]);
 #endif
@@ -2550,10 +2551,9 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * Planes + n]);
 #ifdef RASPI
 		decoder->fds[index*Planes+n] = fd;
-#else
-		decoder->fds[index*Planes+n] = desc.objects[desc.layers[n].object_index[0]].fd;
 #endif
     }
+	decoder->fds[index*Planes+n] = desc.objects[0].fd;
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
@@ -3547,8 +3547,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     	set_hdr_metadata(frame->color_primaries,frame->color_trc,sd1,sd2);
 #endif
     }
-
-    // Render Progressive frame
+	
+	// Render Progressive frame
 #ifndef PLACEBO
     y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
     if (y < 0)
@@ -4077,8 +4077,8 @@ static void CuvidDisplayFrame(void)
     glXSwapBuffers(XlibDisplay, VideoWindow);
     glXMakeCurrent(XlibDisplay, None, NULL);
 #else
-#ifndef USE_DRM
-    eglSwapBuffers(eglDisplay, eglSurface);
+#ifndef USE_DRM	
+    eglSwapBuffers(eglDisplay, eglSurface);	
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 #else
     drm_swap_buffers();
@@ -5255,6 +5255,7 @@ void exit_display()
     }
 #endif
 	Debug(3,"display thread exit\n");
+
 }
 	
 static void *VideoHandlerThread(void *dummy)

@@ -257,10 +257,15 @@ static int FindDevice(VideoRender * render)
             continue;
         
         if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
-            render->connector_id = connector->connector_id;
-            render->mmHeight     = connector->mmHeight;
-            render->mmWidth      = connector->mmWidth;
-
+			float aspect = (float)connector->mmWidth / (float)connector->mmHeight;
+			if ((aspect > 1.70) && (aspect < 1.85)) {
+				render->mmHeight     = 90;
+            	render->mmWidth      = 160;
+			} else {            
+            	render->mmHeight     = connector->mmHeight;
+            	render->mmWidth      = connector->mmWidth;
+			}
+			render->connector_id = connector->connector_id;
             // FIXME: use default encoder/crtc pair
             if ((encoder = drmModeGetEncoder(render->fd_drm, connector->encoder_id)) == NULL){
                 fprintf(stderr, "FindDevice: cannot retrieve encoder (%d): %m\n", errno);
@@ -467,7 +472,7 @@ static void drm_swap_buffers () {
     
     uint32_t fb;
     
-    eglSwapBuffers (eglDisplay, eglSurface);
+    eglSwapBuffers (eglDisplay, eglSurface);	
     struct gbm_bo *bo = gbm_surface_lock_front_buffer (gbm.surface);
 #if 1
     if (bo == NULL)

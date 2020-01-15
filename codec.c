@@ -258,19 +258,19 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     }
 #endif
 #ifdef RASPI
-	switch (codec_id) {
-	case AV_CODEC_ID_MPEG2VIDEO:
-		name = "mpeg2_v4l2m2m";
-		break;
-	case AV_CODEC_ID_H264:
-		name = "h264_v4l2m2m";
-//		name = "h264_mmal";
-		break;	
-	case AV_CODEC_ID_HEVC:
-		name = "hevc_v4l2m2m";
-		break;	
-	}
-#endif	
+    switch (codec_id) {
+    case AV_CODEC_ID_MPEG2VIDEO:
+        name = "mpeg2_v4l2m2m";
+        break;
+    case AV_CODEC_ID_H264:
+        name = "h264_v4l2m2m";
+//      name = "h264_mmal";
+        break;  
+    case AV_CODEC_ID_HEVC:
+        name = "hevc_v4l2m2m";
+        break;  
+    }
+#endif  
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
         Debug(3, "codec: decoder found\n");
     } else if ((video_codec = avcodec_find_decoder(codec_id)) == NULL) {
@@ -285,15 +285,15 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
         Fatal(_("codec: can't allocate video codec context\n"));
     }
-	
+    
 #ifndef RASPI
-	if (!HwDeviceContext) {
-		Fatal("codec: no hw device context to be used");
+    if (!HwDeviceContext) {
+        Fatal("codec: no hw device context to be used");
     }
     decoder->VideoCtx->hw_device_ctx = av_buffer_ref(HwDeviceContext);
 #else
-	decoder->VideoCtx->pix_fmt = AV_PIX_FMT_DRM_PRIME;   /* request a DRM frame 
-//	decoder->VideoCtx->pix_fmt = AV_PIX_FMT_MMAL;   /* request a DRM frame */
+    decoder->VideoCtx->pix_fmt = AV_PIX_FMT_DRM_PRIME;   /* request a DRM frame 
+//  decoder->VideoCtx->pix_fmt = AV_PIX_FMT_MMAL;   /* request a DRM frame */
 #endif
 
     // FIXME: for software decoder use all cpus, otherwise 1
@@ -337,12 +337,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
         Fatal(_("VAAPI Refcounts invalid\n"));
     decoder->VideoCtx->thread_safe_callbacks = 0;
-		    
+            
 #endif
-	
+    
 #ifdef RASPI
-	decoder->VideoCtx->codec_id = codec_id;
-	decoder->VideoCtx->flags |= AV_CODEC_FLAG_BITEXACT;
+    decoder->VideoCtx->codec_id = codec_id;
+    decoder->VideoCtx->flags |= AV_CODEC_FLAG_BITEXACT;
     if (video_codec->capabilities & AV_CODEC_CAP_FRAME_THREADS || AV_CODEC_CAP_SLICE_THREADS) {
         Debug(3, "codec: supports frame threads");
         decoder->VideoCtx->thread_count = 4;
@@ -502,6 +502,7 @@ extern int CuvidTestSurfaces();
 extern int init_filters(AVCodecContext * dec_ctx, void *decoder, AVFrame * frame);
 extern int push_filters(AVCodecContext * dec_ctx, void *decoder, AVFrame * frame);
 #endif
+
 #ifdef VAAPI
 void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 {
@@ -511,47 +512,53 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
         int ret;
         AVPacket pkt[1];
         AVFrame *frame;
-
+    
         *pkt = *avpkt;                  // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
         if (ret < 0) {
             Debug(4, "codec: sending video packet failed");
             return;
         } 
-		
-		if (!CuvidTestSurfaces())
-        	usleep(1000);
-		
-        frame = av_frame_alloc();
-        ret = avcodec_receive_frame(video_ctx, frame);
-        if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
-            Debug(4, "codec: receiving video frame failed");
-            av_frame_free(&frame);
-            return;
-        }
-        if (ret >= 0) {
-            if (decoder->filter) {
-                if (decoder->filter == 1) {
-                    if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
-                        Debug(3, "video: Init of VAAPI deint Filter failed\n");
-                        decoder->filter = 0;
-                    } else {
-                        Debug(3, "Init VAAPI deint ok\n");
-                        decoder->filter = 2;
+        
+        if (!CuvidTestSurfaces())
+            usleep(1000);
+        
+        ret = 0;
+        while (ret >= 0) {  
+            frame = av_frame_alloc();
+            ret = avcodec_receive_frame(video_ctx, frame);
+
+            if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
+                Debug(4, "codec: receiving video frame failed");
+                av_frame_free(&frame);
+                return;
+            }
+            if (ret >= 0) {
+                if (decoder->filter) {
+                    if (decoder->filter == 1) {
+                        if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
+                            Debug(3, "video: Init of VAAPI deint Filter failed\n");
+                            decoder->filter = 0;
+                        } else {
+                            Debug(3, "Init VAAPI deint ok\n");
+                            decoder->filter = 2;
+                        }
+                    }
+                    if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {    // broken ZDF sends Interlaced flag
+                        push_filters(video_ctx, decoder->HwDecoder, frame);
+                        continue;
                     }
                 }
-                if (frame->interlaced_frame && decoder->filter == 2 && (frame->height != 720)) {    // broken ZDF sends Interlaced flag
-                    ret = push_filters(video_ctx, decoder->HwDecoder, frame);
-                    return;
-                }
+                VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
+            } else {
+                av_frame_free(&frame);
+                return;
             }
-            VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
-        } else {
-            av_frame_free(&frame);
-        }
+        }   
     }
 }
 #endif
+
 #ifdef CUVID
 
 void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
@@ -582,7 +589,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
     if (!CuvidTestSurfaces())
         usleep(1000);
 
-    // printf("send packet to decode %s\n",consumed?"ok":"Full");
+//     printf("send packet to decode %s %04x\n",consumed?"ok":"Full",ret1);
 
     if ((ret1 == AVERROR(EAGAIN) || ret1 == AVERROR_EOF || ret1 >= 0) && CuvidTestSurfaces()) {
         ret = 0;
@@ -594,7 +601,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
             } else {
                 got_frame = 0;
             }
-            // printf("got %s packet from decoder\n",got_frame?"1":"no");
+ //            printf("got %s packet from decoder\n",got_frame?"1":"no");
             if (got_frame) {            // frame completed
 #ifdef YADIF
                 if (decoder->filter) {
