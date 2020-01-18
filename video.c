@@ -2553,7 +2553,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
 		decoder->fds[index*Planes+n] = fd;
 #endif
     }
-	decoder->fds[index*Planes+n] = desc.objects[0].fd;
+	decoder->fds[index*Planes] = desc.objects[0].fd;
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
