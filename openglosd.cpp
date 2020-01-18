@@ -1377,7 +1377,10 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 }
 
 bool cOglCmdStoreImage::Execute(void) {
-
+#ifdef USE_DRM
+	GlxDrawopengl();  // here we need the Shared Context for upload
+	GlxCheck();
+#endif
     glGenTextures(1, &imageRef->texture);
     glBindTexture(GL_TEXTURE_2D, imageRef->texture);
     glTexImage2D(
@@ -1396,7 +1399,10 @@ bool cOglCmdStoreImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-
+#ifdef USE_DRM
+	GlxInitopengl();  // Reset Context
+	GlxCheck();
+#endif
     return true;
 }
 
