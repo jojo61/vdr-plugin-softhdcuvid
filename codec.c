@@ -334,8 +334,8 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
         decoder->VideoCtx->thread_count = 0;
         //   decoder->VideoCtx->thread_type |= FF_THREAD_SLICE;
     }
-    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
-        Fatal(_("VAAPI Refcounts invalid\n"));
+//    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
+//        Fatal(_("VAAPI Refcounts invalid\n"));
     decoder->VideoCtx->thread_safe_callbacks = 0;
             
 #endif
