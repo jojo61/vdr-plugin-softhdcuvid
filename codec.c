@@ -313,8 +313,8 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
-        decoder->VideoCtx->thread_count = 0;
-    }
+//        decoder->VideoCtx->thread_count = 0;
+   }
 
     if (video_codec->capabilities & AV_CODEC_CAP_TRUNCATED) {
         Debug(3, "codec: supports truncated packets");
@@ -326,12 +326,12 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     }
     if (video_codec->capabilities & AV_CODEC_CAP_FRAME_THREADS) {
         Debug(3, "codec: supports frame threads");
-        decoder->VideoCtx->thread_count = 0;
+//        decoder->VideoCtx->thread_count = 0;
         //   decoder->VideoCtx->thread_type |= FF_THREAD_FRAME;
     }
     if (video_codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
         Debug(3, "codec: supports slice threads");
-        decoder->VideoCtx->thread_count = 0;
+//        decoder->VideoCtx->thread_count = 0;
         //   decoder->VideoCtx->thread_type |= FF_THREAD_SLICE;
     }
 //    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
