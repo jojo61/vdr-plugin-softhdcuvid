@@ -536,6 +536,7 @@ EGLContext OSDcontext;
 static GLuint OsdGlTextures[2];         ///< gl texture for OSD
 static int OsdIndex = 0;                ///< index into OsdGlTextures
 
+
 //----------------------------------------------------------------------------
 //  Common Functions
 //----------------------------------------------------------------------------
@@ -1406,7 +1407,7 @@ typedef struct _cuvid_decoder_
     AVFilterContext *buffersrc_ctx;
     AVFilterGraph *filter_graph;
 #endif
-
+	AVBufferRef *cached_hw_frames_ctx;
     int LastAVDiff;                     ///< last audio - video difference
     int SyncCounter;                    ///< counter to sync frames
     int StartCounter;                   ///< counter for video start
@@ -2553,7 +2554,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
 		decoder->fds[index*Planes+n] = fd;
 #endif
     }
-	decoder->fds[index*Planes] = desc.objects[0].fd;
+	decoder->fds[index*Planes+n] = desc.objects[0].fd;
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
@@ -2744,9 +2745,69 @@ int init_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
 
     return ret;
 }
-
 #endif
 
+
+static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fmt,AVCodecContext * video_ctx)
+{
+    
+    AVBufferRef *new_frames_ctx = NULL;
+
+    if (!hw_device_ctx) {
+        Debug(3, "Missing device context.\n");
+        goto error;
+    }
+
+    if (avcodec_get_hw_frames_parameters(video_ctx,
+                                hw_device_ctx, hw_fmt, &new_frames_ctx) < 0)
+    {
+        Debug(3, "Hardware decoding of this stream is unsupported?\n");
+        goto error;
+    }
+
+    AVHWFramesContext *new_fctx = (void *)new_frames_ctx->data;
+
+    // We might be able to reuse a previously allocated frame pool.
+    if (decoder->cached_hw_frames_ctx) {
+        AVHWFramesContext *old_fctx = (void *)decoder->cached_hw_frames_ctx->data;
+		Debug(3,"CMP %d:%d %d:%d %d:%d %d:%d %d:%d\,",new_fctx->format, old_fctx->format,
+		  new_fctx->sw_format,old_fctx->sw_format ,
+		  new_fctx->width, old_fctx->width ,
+		  new_fctx->height, old_fctx->height ,
+		  new_fctx->initial_pool_size, old_fctx->initial_pool_size);
+        if (new_fctx->format            != old_fctx->format ||
+            new_fctx->sw_format         != old_fctx->sw_format ||
+            new_fctx->width             != old_fctx->width ||
+            new_fctx->height            != old_fctx->height ||
+            new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
+	Debug(3,"delete old cache");
+            av_buffer_unref(&decoder->cached_hw_frames_ctx);
+		}
+    }
+
+    if (!decoder->cached_hw_frames_ctx) {
+        if (av_hwframe_ctx_init(new_frames_ctx) < 0) {
+            Debug(3, "Failed to allocate hw frames.\n");
+            goto error;
+        }
+
+        decoder->cached_hw_frames_ctx = new_frames_ctx;
+        new_frames_ctx = NULL;
+    }
+
+    video_ctx->hw_frames_ctx = av_buffer_ref(decoder->cached_hw_frames_ctx);
+    if (!video_ctx->hw_frames_ctx)
+        goto error;
+
+    av_buffer_unref(&new_frames_ctx);
+    return 0;
+
+error:
+	Debug(3,"Error with hwframes\n");
+    av_buffer_unref(&new_frames_ctx);
+    av_buffer_unref(&decoder->cached_hw_frames_ctx);
+    return -1;
+}
 ///
 /// Callback to negotiate the PixelFormat.
 ///
@@ -2798,9 +2859,14 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
     if (*fmt_idx != PIXEL_FORMAT) {
         Fatal(_("video: no valid profile found\n"));
     }
+	
     decoder->newchannel = 1;
-    if (ist->GetFormatDone)
+#ifdef VAAPI
+	init_generic_hwaccel(decoder, PIXEL_FORMAT,video_ctx);
+#endif
+    if (ist->GetFormatDone) {
         return PIXEL_FORMAT;
+	}
 
     ist->GetFormatDone = 1;
 
@@ -3277,7 +3343,9 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
         av_frame_free(&frame);
         return;
     }
+	
 
+	
     // update aspect ratio changes
     if (decoder->InputWidth && decoder->InputHeight && av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
         Debug(3, "video/cuvid: aspect ratio changed\n");
