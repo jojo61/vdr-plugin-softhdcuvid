@@ -2751,7 +2751,7 @@ int init_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
 }
 #endif
 
-
+#ifdef VAAPI
 static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fmt,AVCodecContext * video_ctx)
 {
     
@@ -2814,6 +2814,7 @@ error:
     av_buffer_unref(&decoder->cached_hw_frames_ctx);
     return -1;
 }
+#endif
 ///
 /// Callback to negotiate the PixelFormat.
 ///
