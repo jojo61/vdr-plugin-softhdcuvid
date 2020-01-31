@@ -2412,7 +2412,11 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 
     Debug(3, "video: create %d Textures Format %s w %d h %d \n", anz, PixFmt == AV_PIX_FMT_NV12 ? "NV12" : "P010",
         size_x, size_y);
-
+	
+#ifdef USE_DRM
+	//set_video_mode(size_x,size_y);    // switch Mode here (highly experimental)	
+#endif
+	
 #ifdef CUVID
     glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
     GlxCheck();
@@ -2780,9 +2784,11 @@ static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fm
             new_fctx->width             != old_fctx->width ||
             new_fctx->height            != old_fctx->height ||
             new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
-	Debug(3,"delete old cache");
-            av_buffer_unref(&decoder->cached_hw_frames_ctx);
-		}
+              Debug(3,"delete old cache");
+              if (decoder->filter_graph)
+                 avfilter_graph_free(&decoder->filter_graph);
+              av_buffer_unref(&decoder->cached_hw_frames_ctx);
+        }
     }
 
     if (!decoder->cached_hw_frames_ctx) {

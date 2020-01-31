@@ -310,7 +310,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     deint = 2;
 #endif
 #if defined VAAPI && !defined RASPI
-    decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
+    // decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
 //        decoder->VideoCtx->thread_count = 0;
@@ -516,7 +516,6 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
         *pkt = *avpkt;                  // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
         if (ret < 0) {
-            Debug(4, "codec: sending video packet failed");
             return;
         } 
         
@@ -524,7 +523,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
             usleep(1000);
         
         ret = 0;
-        while (ret >= 0) {  
+        while (ret >= 0 && CuvidTestSurfaces()) {  
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame);
 

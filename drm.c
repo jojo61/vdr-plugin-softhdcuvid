@@ -183,6 +183,38 @@ static int SetPropertyRequest(drmModeAtomicReqPtr ModeReq, int fd_drm,
     return drmModeAtomicAddProperty(ModeReq, objectID, id, value);
 }
 
+static void CuvidSetVideoMode(void);
+void set_video_mode(int width, int height)
+{
+	drmModeConnector *connector;
+	drmModeModeInfo *mode;
+	int ii;
+	if (height != 1080 && height != 2160)
+		return;
+	connector = drmModeGetConnector(render->fd_drm, render->connector_id);
+	for (ii = 0; ii < connector->count_modes; ii++) {
+		mode = &connector->modes[ii];              
+		printf("Mode %d %dx%d Rate %d\n",ii,mode->hdisplay,mode->vdisplay,mode->vrefresh);
+		if (width == mode->hdisplay && 
+				height == mode->vdisplay && 
+				mode->vrefresh == DRMRefresh &&
+				render->mode.hdisplay != width && 
+		        render->mode.vdisplay != height &&
+				!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
+			memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
+			VideoWindowWidth = mode->hdisplay;
+            VideoWindowHeight = mode->vdisplay;
+			eglDestroySurface (eglDisplay, eglSurface);
+			EglCheck();
+    		gbm_surface_destroy (gbm.surface);
+			InitBo(render->bpp);
+			CuvidSetVideoMode();
+			Debug(3,"Set new mode %d:%d\n",mode->hdisplay,mode->vdisplay);
+			break;
+		}            
+	}
+}
+
 static int FindDevice(VideoRender * render)
 {
     drmVersion *version;
