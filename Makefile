@@ -9,23 +9,23 @@
 
 
 ### Configuration (edit this for your needs)
-#  comment out if not needed
+#  config as  needed
 
 # what kind of decoder do we make - 
 # if VAAPI is enabled the pluginname is softhdvaapi
 # if CUVID is enabled the pluginname is softhdcuvid
 # if DRM   is enabled the pluginname is softhddrm
-#VAAPI=1
-CUVID=1
+VAAPI ?= 0
+CUVID ?= 1
 
 # if you enable DRM then the plugin will only run without X server
 # only valid for VAAPI 
 # does not work with libplacebo
-#DRM=1
+DRM= ?= 0
 
 
 # use libplacebo - available for both decoders but not for DRM  
-#LIBPLACEBO=1
+LIBPLACEBO ?= 0
 
 # use YADIF deint - only available with cuvid
 #YADIF=1
