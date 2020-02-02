@@ -2153,6 +2153,10 @@ void cSoftHdMenu::Create(void)
     int dropped;
     int counter;
     float frametime;
+	int width,height;
+	int color;
+	int eotf;
+	char *colorstr, *eotfstr;
 
     current = Current();                // get current menu item index
     Clear();                            // clear the menu
@@ -2187,10 +2191,30 @@ void cSoftHdMenu::Create(void)
 #endif
     Add(new cOsdItem(NULL, osUnknown, false));
     Add(new cOsdItem(NULL, osUnknown, false));
-    GetStats(&missed, &duped, &dropped, &counter, &frametime);
+    GetStats(&missed, &duped, &dropped, &counter, &frametime, &width, &height, &color,&eotf);
+	switch (color) {
+        case AVCOL_SPC_RGB:
+            colorstr = strdup("BT 601");
+            eotfstr = strdup("BT 1886");
+            break;
+        case AVCOL_SPC_BT709:
+        case AVCOL_SPC_UNSPECIFIED:    //  comes with UHD
+            colorstr = strdup("BT 709");
+            eotfstr = strdup("BT 1886");
+            break;
+        case AVCOL_SPC_BT2020_NCL:
+            colorstr = strdup("BT 2020");
+            eotfstr = strdup("HDR-HLG");
+            break;
+        default:                       // fallback
+            colorstr = strdup("Fallback BT 709");
+            eotfstr = strdup("BT 1886");
+            break;
+    }
     Add(new cOsdItem(cString::sprintf(tr(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed, duped, dropped,
                 counter), osUnknown, false));
-    Add(new cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
+	Add(new cOsdItem(cString::sprintf(tr(" Video %dx%d Color: %s Gamma: %s"), width, height, colorstr, eotfstr), osUnknown, false));	
+ //   Add(new cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
     SetCurrent(Get(current));           // restore selected menu entry
     Display();                          // display build menu
 }

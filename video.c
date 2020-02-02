@@ -297,7 +297,7 @@ typedef struct _video_module_
     void (*const ResetStart)(const VideoHwDecoder *);
     void (*const SetTrickSpeed)(const VideoHwDecoder *, int);
     uint8_t *(*const GrabOutput)(int *, int *, int *, int);
-    void (*const GetStats)(VideoHwDecoder *, int *, int *, int *, int *, float *);
+    void (*const GetStats)(VideoHwDecoder *, int *, int *, int *, int *, float *, int *, int *, int *, int *);
     void (*const SetBackground)(uint32_t);
     void (*const SetVideoMode)(void);
 
@@ -4254,13 +4254,17 @@ static void CuvidSetTrickSpeed(CuvidDecoder * decoder, int speed)
 /// @param[out] dropped dropped frames
 /// @param[out] count   number of decoded frames
 ///
-void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime)
+void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height, int *color, int * eotf)
 {
     *missed = decoder->FramesMissed;
     *duped = decoder->FramesDuped;
     *dropped = decoder->FramesDropped;
     *counter = decoder->FrameCounter;
     *frametime = decoder->Frameproc;
+    *width = decoder->InputWidth;
+    *height = decoder->InputHeight;
+    *color = decoder->ColorSpace;
+    *eotf = 0;
 }
 
 ///
@@ -4651,7 +4655,7 @@ static const VideoModule CuvidModule = {
     .SetTrickSpeed = (void (*const)(const VideoHwDecoder *, int))CuvidSetTrickSpeed,
     .GrabOutput = CuvidGrabOutputSurface,
     .GetStats = (void (*const)(VideoHwDecoder *, int *, int *, int *,
-            int *, float *))CuvidGetStats,
+            int *, float *, int *, int *, int * , int *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
     .SetVideoMode = CuvidSetVideoMode,
 
@@ -4819,7 +4823,7 @@ static const VideoModule NoopModule = {
     .SetTrickSpeed =(void (*const)(const VideoHwDecoder *, int))NoopSetTrickSpeed,
     .GrabOutput = NoopGrabOutputSurface,
     .GetStats = (void (*const)(VideoHwDecoder *, int *, int *, int *,
-            int *, float *))NoopGetStats,
+            int *, float *, int *, int *, int * , int *))NoopGetStats,
 #endif
     .SetBackground = NoopSetBackground,
     .SetVideoMode = NoopVoid,
@@ -5846,9 +5850,9 @@ uint8_t *VideoGrabService(int *size, int *width, int *height)
 /// @param[out] dropped dropped frames
 /// @param[out] count   number of decoded frames
 ///
-void VideoGetStats(VideoHwDecoder * hw_decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime)
+void VideoGetStats(VideoHwDecoder * hw_decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height, int *color, int *eotf)
 {
-    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter, frametime);
+    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter, frametime, width, height , color, eotf);
 }
 
 ///

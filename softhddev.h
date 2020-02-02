@@ -96,7 +96,7 @@ extern "C"
     extern void Resume(void);
 
     /// Get decoder statistics
-    extern void GetStats(int *, int *, int *, int *, float *);
+    extern void GetStats(int *, int *, int *, int *, float *, int *, int *, int *, int *);
     /// C plugin scale video
     extern void ScaleVideo(int, int, int, int);
 
