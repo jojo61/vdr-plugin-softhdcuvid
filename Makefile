@@ -21,7 +21,7 @@ CUVID ?= 1
 # if you enable DRM then the plugin will only run without X server
 # only valid for VAAPI 
 # does not work with libplacebo
-DRM= ?= 0
+DRM ?= 0
 
 
 # use libplacebo - available for both decoders but not for DRM  
