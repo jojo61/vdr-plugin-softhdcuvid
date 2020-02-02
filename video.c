@@ -2792,6 +2792,7 @@ static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fm
     }
 
     if (!decoder->cached_hw_frames_ctx) {
+        new_fctx->initial_pool_size = 17;
         if (av_hwframe_ctx_init(new_frames_ctx) < 0) {
             Debug(3, "Failed to allocate hw frames.\n");
             goto error;
