@@ -1263,6 +1263,7 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
 #ifdef USE_DRM
+	pthread_mutex_lock(&OSDMutex);
 	GlxDrawopengl();  // here we need the Shared Context for upload
 	GlxCheck();
 #endif
@@ -1287,6 +1288,7 @@ bool cOglCmdDrawImage::Execute(void) {
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
+	pthread_mutex_unlock(&OSDMutex);
 #endif
 
     GLfloat x1 = x;          //left
@@ -1378,6 +1380,7 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 
 bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
+	pthread_mutex_lock(&OSDMutex);
 	GlxDrawopengl();  // here we need the Shared Context for upload
 	GlxCheck();
 #endif
@@ -1402,6 +1405,7 @@ bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
+	pthread_mutex_lock(&OSDMutex);
 #endif
     return true;
 }

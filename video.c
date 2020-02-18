@@ -2421,6 +2421,9 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
     GlxCheck();
 #else
+#ifdef USE_DRM
+    pthread_mutex_lock(&OSDMutex);
+#endif   
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
 #endif
 
@@ -2467,6 +2470,9 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     GlxCheck();
 #ifdef VAAPI
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#ifdef USE_DRM
+    pthread_mutex_unlock(&OSDMutex);
+#endif
 #endif
 }
 
@@ -4015,6 +4021,9 @@ static void CuvidDisplayFrame(void)
             memcpy(&target.color, &pl_color_space_monitor, sizeof(struct pl_color_space));
             break;
     }
+#ifdef GAMMA
+    target.color.transfer = PL_COLOR_TRC_LINEAR;
+#endif
 #endif
     //
     //  Render videos into output
@@ -4288,6 +4297,11 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
     int err = 0;
     static uint64_t last_time;
 
+#ifdef GAMMA
+    Get_Gamma();
+#endif
+    
+    
     // video_clock = CuvidGetClock(decoder);
     video_clock = decoder->PTS - (90 * 20 * 1); // 1 Frame in Output
     filled = atomic_read(&decoder->SurfacesFilled);
@@ -4325,7 +4339,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
     if (!VideoSoftStartSync && decoder->StartCounter < VideoSoftStartFrames && video_clock != (int64_t) AV_NOPTS_VALUE
         && (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock > audio_clock + VideoAudioDelay + 120 * 90)) {
         Debug(4, "video: initial slow down video, frame %d\n", decoder->StartCounter);
-        goto out;
+        goto skip_sync;
     }
 
     if (decoder->SyncCounter && decoder->SyncCounter--) {
@@ -5186,7 +5200,7 @@ void InitPlacebo()
     char xcbext[] = { "VK_KHR_xcb_surface" };
     char surfext[] = { "VK_KHR_surface" };
 
-    Debug(3, "Init Placebo\n");
+    Debug(3, "Init Placebo mit API %d\n",PL_API_VER);
 
     p = calloc(1, sizeof(struct priv));
     if (!p)
@@ -5282,7 +5296,7 @@ void delete_decode() {
 static void *VideoDisplayHandlerThread(void *dummy)
 {
 
-    prctl(PR_SET_NAME, "video decode", 0, 0, 0);
+    prctl(PR_SET_NAME, "video decoder", 0, 0, 0);
     sleep(2);
 	pthread_cleanup_push(delete_decode, NULL);
     for (;;) {
@@ -5299,6 +5313,11 @@ static void *VideoDisplayHandlerThread(void *dummy)
 
 void exit_display()
 {
+    
+#ifdef GAMMA
+    Exit_Gamma();
+#endif
+    
 #ifdef PLACEBO
     Debug(3, "delete placebo\n");
     if (p == NULL)
@@ -5347,6 +5366,11 @@ static void *VideoHandlerThread(void *dummy)
     
     prctl(PR_SET_NAME, "video display", 0, 0, 0);
 
+#ifdef GAMMA
+    Init_Gamma();
+    Set_Gamma(2.2,6500);
+#endif
+    
 #ifdef PLACEBO
     InitPlacebo();
 #else
