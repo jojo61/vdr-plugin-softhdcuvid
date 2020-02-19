@@ -1285,6 +1285,7 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
+	glFlush();
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
@@ -1402,6 +1403,7 @@ bool cOglCmdStoreImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
+	glFlush();
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
@@ -1997,7 +1999,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 
     if (posd)
         free(posd);
-    posd = MALLOC(unsigned char, osdWidth * osdHeight * 4);
+    posd = (unsigned char *)calloc( osdWidth * osdHeight * 4, 1 );
 
     // create output framebuffer
 
