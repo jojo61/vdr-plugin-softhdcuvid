@@ -1482,6 +1482,10 @@ void cOglThread::DoCmd(cOglCmd* cmd) {
 }
 
 int cOglThread::StoreImage(const cImage &image) {
+	
+	if (!maxCacheSize) {
+		return 0;
+	}
 
     if (image.Width() > maxTextureSize || image.Height() > maxTextureSize) {
         esyslog("[softhddev] cannot store image of %dpx x %dpx "
