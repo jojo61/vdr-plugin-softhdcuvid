@@ -248,6 +248,14 @@ extern int VideoRaiseWindow(void);
 #ifdef USE_OPENGLOSD
 extern void ActivateOsd(GLuint, int, int, int, int);
 #endif
+
+#ifdef GAMMA
+extern void Init_Gamma();
+extern void Exit_Gamma();
+extern void Set_Gamma(float, int);
+extern void Get_Gamma();
+#endif
+
 #if 0
 long int gettid()
 {

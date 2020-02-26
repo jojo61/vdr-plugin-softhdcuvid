@@ -110,7 +110,7 @@ class cOglGlyph:public cListObject
         uint prevSym;
         GLfloat kerning;
     };
-    uint charCode;
+    FT_ULong charCode;
     int bearingLeft;
     int bearingTop;
     int width;
@@ -122,9 +122,9 @@ class cOglGlyph:public cListObject
     void LoadTexture(FT_BitmapGlyph ftGlyph);
 
   public:
-    cOglGlyph(uint charCode, FT_BitmapGlyph ftGlyph);
+    cOglGlyph(FT_ULong charCode, FT_BitmapGlyph ftGlyph);
     virtual ~ cOglGlyph();
-    uint CharCode(void)
+    FT_ULong CharCode(void)
     {
         return charCode;
     }
@@ -190,7 +190,7 @@ class cOglFont:public cListObject
     {
         return height;
     };
-    cOglGlyph *Glyph(uint charCode) const;
+    cOglGlyph *Glyph(FT_ULong charCode) const;
     int Kerning(cOglGlyph * glyph, uint prevSym) const;
 };
 

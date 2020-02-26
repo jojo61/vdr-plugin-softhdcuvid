@@ -270,7 +270,7 @@ bool cShader::CheckCompileErrors(GLuint object, bool program) {
 /****************************************************************************************
 * cOglGlyph
 ****************************************************************************************/
-cOglGlyph::cOglGlyph(uint charCode, FT_BitmapGlyph ftGlyph) {
+cOglGlyph::cOglGlyph(FT_ULong charCode, FT_BitmapGlyph ftGlyph) {
     this->charCode = charCode;
     bearingLeft = ftGlyph->left;
     bearingTop = ftGlyph->top;
@@ -389,7 +389,7 @@ void cOglFont::Cleanup(void) {
         esyslog("failed to deinitialize FreeType library!");
 }
 
-cOglGlyph* cOglFont::Glyph(uint charCode) const {
+cOglGlyph* cOglFont::Glyph(FT_ULong charCode) const {
     // Non-breaking space:
     if (charCode == 0xA0)
         charCode = 0x20;
