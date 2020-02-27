@@ -1173,6 +1173,7 @@ cOglCmdDrawText::cOglCmdDrawText( cOglFb *fb, GLint x, GLint y, unsigned int *sy
     this->colorText = colorText;
     this->fontSize = fontSize;
     this->symbols = symbols;
+	this->fontName = name;
 }
 
 cOglCmdDrawText::~cOglCmdDrawText(void) {
