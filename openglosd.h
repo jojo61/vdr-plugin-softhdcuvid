@@ -103,11 +103,11 @@ class cOglGlyph:public cListObject
     struct tKerning
     {
       public:
-        tKerning(uint prevSym, GLfloat kerning = 0.0f) {
+        tKerning(FT_ULong prevSym, GLfloat kerning = 0.0f) {
             this->prevSym = prevSym;
             this->kerning = kerning;
         }
-        uint prevSym;
+        FT_ULong prevSym;
         GLfloat kerning;
     };
     FT_ULong charCode;
@@ -148,8 +148,8 @@ class cOglGlyph:public cListObject
     {
         return height;
     }
-    int GetKerningCache(uint prevSym);
-    void SetKerningCache(uint prevSym, int kerning);
+    int GetKerningCache(FT_ULong prevSym);
+    void SetKerningCache(FT_ULong prevSym, int kerning);
     void BindTexture(void);
 };
 
@@ -191,7 +191,7 @@ class cOglFont:public cListObject
         return height;
     };
     cOglGlyph *Glyph(FT_ULong charCode) const;
-    int Kerning(cOglGlyph * glyph, uint prevSym) const;
+    int Kerning(cOglGlyph * glyph, FT_ULong prevSym) const;
 };
 
 /****************************************************************************************

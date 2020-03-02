@@ -284,7 +284,7 @@ cOglGlyph::~cOglGlyph(void) {
 
 }
 
-int cOglGlyph::GetKerningCache(uint prevSym) {
+int cOglGlyph::GetKerningCache(FT_ULong prevSym) {
     for (int i = kerningCache.Size(); --i > 0; ) {
         if (kerningCache[i].prevSym == prevSym)
             return kerningCache[i].kerning;
@@ -292,7 +292,7 @@ int cOglGlyph::GetKerningCache(uint prevSym) {
     return KERNING_UNKNOWN;
 }
 
-void cOglGlyph::SetKerningCache(uint prevSym, int kerning) {
+void cOglGlyph::SetKerningCache(FT_ULong prevSym, int kerning) {
     kerningCache.Append(tKerning(prevSym, kerning));
 }
 
@@ -452,7 +452,7 @@ cOglGlyph* cOglFont::Glyph(FT_ULong charCode) const {
     return Glyph;
 }
 
-int cOglFont::Kerning(cOglGlyph *glyph, uint prevSym) const {
+int cOglFont::Kerning(cOglGlyph *glyph, FT_ULong prevSym) const {
     int kerning = 0;
     if (glyph && prevSym) {
         kerning = glyph->GetKerningCache(prevSym);
@@ -826,7 +826,7 @@ cOglCmdCopyBufferToOutputFb::cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputF
 extern  unsigned char *posd;
 
 bool cOglCmdCopyBufferToOutputFb::Execute(void) {
-    int i;
+    
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
     oFb->BindWrite();
@@ -1195,15 +1195,15 @@ bool cOglCmdDrawText::Execute(void) {
     int xGlyph = x;
     int fontHeight = f->Height();
     int bottom = f->Bottom();
-    uint sym = 0;
-    uint prevSym = 0;
+    FT_ULong sym = 0;
+    FT_ULong prevSym = 0;
     int kerning = 0;
 
     for (int i = 0; symbols[i]; i++) {
         sym = symbols[i];
         cOglGlyph *g = f->Glyph(sym);
         if (!g) {
-            esyslog("[softhddev]ERROR: could not load glyph %x", sym);
+            esyslog("[softhddev]ERROR: could not load glyph %lx", sym);
         }
 
         if ( limitX && xGlyph + g->AdvanceX() > limitX )  {
