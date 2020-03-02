@@ -2497,7 +2497,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 
 void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame, int image_width, int image_height)
 {
-    int n, i;
+    int n;
     VAStatus status;
 
     uint64_t first_time;
@@ -2505,14 +2505,14 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
     VADRMPRIMESurfaceDescriptor desc;
 
     status =
-        vaExportSurfaceHandle(decoder->VaDisplay, (unsigned int)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
         VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
 
     if (status != VA_STATUS_SUCCESS) {
         printf("Fehler beim export VAAPI Handle\n");
         return;
     }
-    vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
+    vaSyncSurface(decoder->VaDisplay, (VASurfaceID)frame->data[3]);
 #endif
 #ifdef RASPI
 	AVDRMFrameDescriptor desc;
@@ -2568,7 +2568,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
-    return 0;
+    return;
 
   esh_failed:
     Debug(3, "Failure in generateVAAPIImage\n");
@@ -2615,13 +2615,13 @@ static unsigned CuvidGetVideoSurface(CuvidDecoder * decoder, const AVCodecContex
 }
 
 #if defined (VAAPI) || defined (YADIF)
-static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, const AVFrame * frame);
+static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, AVFrame * frame);
 
 
 int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * frame)
 {
     
-    int ret, i = 0;
+    int ret;
     AVFrame *filt_frame = av_frame_alloc();
 
     /* push the decoded frame into the filtergraph */
@@ -3672,8 +3672,9 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     memcpy(&render_params, &pl_render_default_params, sizeof(render_params));
 
     switch (decoder->ColorSpace) {
-        case AVCOL_SPC_RGB:
+        case AVCOL_SPC_RGB:    // BT 601 is reportet as RGB 
             img->repr.sys = PL_COLOR_SYSTEM_BT_601;
+            img->repr.levels = PL_COLOR_LEVELS_TV;
             img->color.primaries = PL_COLOR_PRIM_BT_601_625;
             img->color.transfer = PL_COLOR_TRC_BT_1886;
             img->color.light = PL_COLOR_LIGHT_DISPLAY;
@@ -3682,6 +3683,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         case AVCOL_SPC_BT709:
         case AVCOL_SPC_UNSPECIFIED:    //  comes with UHD
             img->repr.sys = PL_COLOR_SYSTEM_BT_709;
+            img->repr.levels = PL_COLOR_LEVELS_TV;
             memcpy(&img->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
             // img->color.primaries = PL_COLOR_PRIM_BT_709;
             // img->color.transfer = PL_COLOR_TRC_BT_1886;
@@ -3692,6 +3694,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 
         case AVCOL_SPC_BT2020_NCL:
             img->repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
+            img->repr.levels = PL_COLOR_LEVELS_TV;
             memcpy(&img->repr, &pl_color_repr_uhdtv, sizeof(struct pl_color_repr));
             memcpy(&img->color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
             deband.grain = 0.0f;        // no grain in HDR
@@ -3707,6 +3710,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 
         default:                       // fallback
             img->repr.sys = PL_COLOR_SYSTEM_BT_709;
+            img->repr.levels = PL_COLOR_LEVELS_TV;
             memcpy(&img->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
             // img->color.primaries = PL_COLOR_PRIM_BT_709;
             // img->color.transfer = PL_COLOR_TRC_BT_1886;
@@ -3997,6 +4001,7 @@ static void CuvidDisplayFrame(void)
     else
         target.repr.levels = PL_COLOR_LEVELS_TV;
     target.repr.alpha = PL_ALPHA_UNKNOWN;
+ 
     // target.repr.bits.sample_depth = 16;
     // target.repr.bits.color_depth = 16;
     // target.repr.bits.bit_shift =0;
@@ -4477,7 +4482,7 @@ static void CuvidSyncDisplayFrame(void)
 /// @param video_ctx    ffmpeg video codec context
 /// @param frame    frame to display
 ///
-static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, const AVFrame * frame)
+static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, AVFrame * frame)
 {
 #if 0
     // FIXME: temp debug
@@ -5368,7 +5373,7 @@ static void *VideoHandlerThread(void *dummy)
 
 #ifdef GAMMA
     Init_Gamma();
-    Set_Gamma(2.2,6500);
+    Set_Gamma(2.4,6500);
 #endif
     
 #ifdef PLACEBO
