@@ -3459,11 +3459,11 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
         return true;
     }
     if (!strcasecmp(name, "AudioPassthrough")) {
-        int i;
+        int ii;
 
-        i = atoi(value);
-        AudioPassthroughState = i > 0;
-        ConfigAudioPassthrough = abs(i);
+        ii = atoi(value);
+        AudioPassthroughState = ii > 0;
+        ConfigAudioPassthrough = abs(ii);
         if (AudioPassthroughState) {
             CodecSetAudioPassthrough(ConfigAudioPassthrough);
         } else {
