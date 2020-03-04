@@ -75,9 +75,6 @@
 #endif
 #include <pthread.h>
 
-#ifdef MAIN_H
-#include MAIN_H
-#endif
 #include "iatomic.h"
 #include "misc.h"
 #include "video.h"
