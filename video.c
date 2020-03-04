@@ -392,7 +392,7 @@ static char VideoSurfaceModesChanged;   ///< flag surface modes changed
 static const char VideoTransparentOsd = 1;
 
 static uint32_t VideoBackground;        ///< video background color
-static char VideoStudioLevels;          ///< flag use studio levels
+char VideoStudioLevels;          ///< flag use studio levels
 
 /// Default deinterlace mode.
 static VideoDeinterlaceModes VideoDeinterlace[VideoResolutionMax];
@@ -3841,7 +3841,7 @@ void make_osd_overlay(int x, int y, int width, int height)
 {
     const struct pl_fmt *fmt;
     struct pl_overlay *pl;
-    const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    
 
     int offset = VideoWindowHeight - (VideoWindowHeight - height - y) - (VideoWindowHeight - y);
 
@@ -4994,6 +4994,10 @@ void VideoOsdInit(void)
         OsdWidth = VideoWindowWidth;
         OsdHeight = VideoWindowHeight;
     }
+
+    if (posd)
+        free(posd);
+    posd = (unsigned char *)calloc( OsdWidth * OsdHeight * 4, 1 );
     VideoOsdClear();
 }
 
@@ -6627,6 +6631,10 @@ void VideoSetCutLeftRight(int pixels[VideoResolutionMax])
 void VideoSetStudioLevels(int onoff)
 {
     VideoStudioLevels = onoff;
+#ifdef GAMMA
+    Set_Gamma(2.4,6500);
+#endif
+    
 }
 
 ///

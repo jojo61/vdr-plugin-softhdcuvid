@@ -2002,10 +2002,11 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 
     dsyslog("[softhddev]cOglOsd osdLeft %d osdTop %d screenWidth %d screenHeight %d", Left, Top, osdWidth, osdHeight);
 
+#if 0
     if (posd)
         free(posd);
     posd = (unsigned char *)calloc( osdWidth * osdHeight * 4, 1 );
-
+#endif
     // create output framebuffer
 
     if (!oFb) {
@@ -2019,11 +2020,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
 cOglOsd::~cOglOsd() {
     OsdClose();
     SetActive(false);
-#if 0
-    if (posd)
-        free(posd);
-    posd = 0;
-#endif
+
     oglThread->DoCmd(new cOglCmdDeleteFb(bFb));
 }
 
