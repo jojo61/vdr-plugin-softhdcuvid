@@ -252,7 +252,6 @@ endif
 _CFLAGS += $(shell pkg-config --cflags  x11 x11-xcb xcb xcb-icccm)
 LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
 
-_CFLAGS += -I/usr/local/cuda/include 
 _CFLAGS += -I./opengl -I./
 
 LIBS += -L/usr/lib64
@@ -263,7 +262,7 @@ LIBS += -lplacebo
 endif
 
 ifeq ($(CUVID),1)
-LIBS +=  -lcuda  -L/usr/local/cuda/targets/x86_64-linux/lib -lcudart -lnvcuvid  
+LIBS +=  -lcuda  -lnvcuvid  
 endif
 
 LIBS += -lGLEW -lGLU  -ldl -lglut 

@@ -132,11 +132,6 @@ typedef enum
 
 #ifdef USE_GLX
 #include <GL/glew.h>
-// #include <GL/gl.h>        // For GL_COLOR_BUFFER_BIT
-// #include <GL/glext.h>     // For GL_COLOR_BUFFER_BIT
-// #include <GL/glxew.h>
-// #include <GL/glx.h>
-// only for gluErrorString
 #include <GL/glu.h>
 #include <GL/glut.h>
 #include <GL/freeglut_ext.h>
@@ -146,11 +141,8 @@ typedef enum
 #include <libavutil/pixdesc.h>
 
 #ifdef CUVID
-// #include <GL/gl.h>        // For GL_COLOR_BUFFER_BIT
-// #include <GL/glext.h>     // For GL_COLOR_BUFFER_BIT
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <cudaGL.h>
+#include <ffnvcodec/dynlink_cuda.h>
+#include <ffnvcodec/dynlink_loader.h>
 #include <libavutil/hwcontext_cuda.h>
 #include "drvapi_error_string.h"
 #define __DEVICE_TYPES_H__
@@ -1422,6 +1414,7 @@ typedef struct _cuvid_decoder_
 
 static CuvidDecoder *CuvidDecoders[2];  ///< open decoder streams
 static int CuvidDecoderN;               ///< number of decoder streams
+static CudaFunctions *cu;
 
 #ifdef PLACEBO
 typedef struct priv
@@ -1514,8 +1507,7 @@ int CuvidMessage(int level, const char *format, ...)
 static inline void __checkCudaErrors(CUresult err, const char *file, const int line)
 {
     if (CUDA_SUCCESS != err) {
-        CuvidMessage(2, "checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, line %i.\n", err,
-            getCudaDrvErrorString(err), file, line);
+        CuvidMessage(2, "checkCudaErrors() Driver API error = %04d >%s< from file <%s>, line %i.\n", err, getCudaDrvErrorString(err),  file, line);
         exit(EXIT_FAILURE);
     }
 }
@@ -1592,7 +1584,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
             }
 #else
 #ifdef CUVID
-            checkCudaErrors(cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
+            checkCudaErrors(cu->cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
 #endif
 #ifdef VAAPI
 			if (decoder->images[i*Planes+j]) {
@@ -2209,7 +2201,7 @@ void generateCUDAImage(CuvidDecoder * decoder, int index, const AVFrame * frame,
             .WidthInBytes = image_width * bytes,
             .Height = n == 0 ? image_height : image_height / 2,
         };
-        checkCudaErrors(cuMemcpy2D(&cpy));
+        checkCudaErrors(cu->cuMemcpy2D(&cpy));
     }
 }
 
@@ -2294,7 +2286,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                 .size = decoder->pl_images[i].planes[n].texture->shared_mem.size,   // image_width * image_height * bytes,
                 .flags = 0,
             };
-            checkCudaErrors(cuImportExternalMemory(&decoder->ebuf[i * 2 + n].mem, &ext_desc));  // Import Memory segment
+            checkCudaErrors(cu->cuImportExternalMemory(&decoder->ebuf[i * 2 + n].mem, &ext_desc));  // Import Memory segment
             CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC tex_desc = {
                 .offset = decoder->pl_images[i].planes[n].texture->shared_mem.offset,
                 .arrayDesc = {
@@ -2307,9 +2299,9 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                     },
                 .numLevels = 1,
             };
-            checkCudaErrors(cuExternalMemoryGetMappedMipmappedArray(&decoder->ebuf[i * 2 + n].mma,
+            checkCudaErrors(cu->cuExternalMemoryGetMappedMipmappedArray(&decoder->ebuf[i * 2 + n].mma,
                     decoder->ebuf[i * 2 + n].mem, &tex_desc));
-            checkCudaErrors(cuMipmappedArrayGetLevel(&decoder->cu_array[i][n], decoder->ebuf[i * 2 + n].mma, 0));
+            checkCudaErrors(cu->cuMipmappedArrayGetLevel(&decoder->cu_array[i][n], decoder->ebuf[i * 2 + n].mma, 0));
 #endif
         }
         // make image
@@ -2457,12 +2449,12 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
             SDK_CHECK_ERROR_GL();
             // register this texture with CUDA
 #ifdef CUVID
-            checkCudaErrors(cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i * Planes + n],
+            checkCudaErrors(cu->cuGraphicsGLRegisterImage(&decoder->cu_res[i][n], decoder->gl_textures[i * Planes + n],
                     GL_TEXTURE_2D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
-            checkCudaErrors(cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
-            checkCudaErrors(cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n], 0,
+            checkCudaErrors(cu->cuGraphicsMapResources(1, &decoder->cu_res[i][n], 0));
+            checkCudaErrors(cu->cuGraphicsSubResourceGetMappedArray(&decoder->cu_array[i][n], decoder->cu_res[i][n], 0,
                     0));
-            checkCudaErrors(cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
+            checkCudaErrors(cu->cuGraphicsUnmapResources(1, &decoder->cu_res[i][n], 0));
 #endif
         }
     }
@@ -3093,7 +3085,7 @@ int get_RGB(CuvidDecoder * decoder)
     glDeleteFramebuffers(1, &fb);
     glDeleteTextures(1, &texture);
 
-#else
+#else  // Placebo
     faktorx = (float)width / (float)VideoWindowWidth;
     faktory = (float)height / (float)VideoWindowHeight;
     fmt = pl_find_named_fmt(p->gpu, "bgra8");
@@ -3479,7 +3471,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
-    unsigned int version;
+    unsigned int version,ret;
 
     Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n", (long int)syscall(186));
     // turn NULL;
@@ -3488,16 +3480,23 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
         Debug(3, "schon passiert\n");
         return NULL;
     }
+    
+    if (!cu) {
+        ret = cuda_load_functions(&cu, NULL);
+        if (ret < 0) {
+            Error(_("Could not dynamically load CUDA\n"));
+            return 0;
+        }
+    }
+    checkCudaErrors(cu->cuInit(0));
 
-    checkCudaErrors(cuInit(0));
-
-    checkCudaErrors(cuCtxCreate(&decoder->cuda_ctx, (unsigned int)CU_CTX_SCHED_BLOCKING_SYNC, (CUdevice) 0));
+    checkCudaErrors(cu->cuCtxCreate(&decoder->cuda_ctx, (unsigned int)CU_CTX_SCHED_BLOCKING_SYNC, (CUdevice) 0));
 
     if (decoder->cuda_ctx == NULL)
         Fatal(_("Kein Cuda device gefunden"));
 
-    cuCtxGetApiVersion(decoder->cuda_ctx, &version);
-    Debug(3, "***********CUDA API Version %d\n", version);
+//    cu->cuCtxGetApiVersion(decoder->cuda_ctx, &version);
+//    Debug(3, "***********CUDA API Version %d\n", version);
 #endif
     return NULL;
 

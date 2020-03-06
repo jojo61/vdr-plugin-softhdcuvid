@@ -17,8 +17,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef	__cuda_cuda_h__                 // check to see if CUDA_H is included above
-
 // Error Code string definitions here
 typedef struct
 {
@@ -452,7 +450,5 @@ static inline const char *getCudaDrvErrorString(CUresult error_id)
     else
         return (const char *)"CUDA_ERROR not found!";
 }
-
-#endif // __cuda_cuda_h__
 
 #endif
