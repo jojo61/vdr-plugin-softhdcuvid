@@ -23,8 +23,8 @@ $Id: 5267da021a68b4a727b479417334bfbe67bbba14 $
 
 A software and GPU emulated UHD output device plugin for VDR.
 
-    o Video decoder CPU / VDPAU
-    o Video output opengl
+    o Video decoder CUVID or VAAPI
+    o Video output opengl or DRM
     o Audio FFMpeg / Alsa / Analog
     o Audio FFMpeg / Alsa / Digital
     o Audio FFMpeg / OSS / Analog
@@ -32,9 +32,10 @@ A software and GPU emulated UHD output device plugin for VDR.
     o Software volume, compression, normalize and channel resample
     o VDR ScaleVideo API
     o CUDA deinterlacer
-    o Autocrop
     o Suspend / Dettach
-    o PIP (Picture-in-Picture) (not working yet)
+    o Support for ambilight
+    o Support for Screencopy
+    o PIP (Picture-in-Picture) (only for CUVID)
 
 
 To compile you must have the 'requires' installed.
@@ -47,34 +48,21 @@ Current Status NVIDIA:
 The CUDA driver supports HEVC with 8 Bit and 10 Bit up to UHD resolution. Opengl is able to output also 10 Bit, but NVIDIA does not support to output 10 Bit via HDMI.
 Only via DisplayPort you can get 10 Bit output to a compatible screen. This is a restriction from NVIDIA.
 
-Current Status with VAAPI
-You need libplacebo.
-It is still beta and I tested it with Intel VAAPI. If you have problmes with the shaders then copy the drirc file in your home directory as .drirc
-AMD VAAPI is broken by AMD and will not work currently. The vaapi_deinterlace is broken and the amdgpu driver is instable. I have not testet with amdgpupro
+Current Status with VAAPI:
+I tested it with Intel VAAPI. If you have problmes with the shaders then copy the drirc file in your home directory as .drirc
+AMD VAAPI is broken by AMD and will not work currently. 
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0
 The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10
 
-Unfortunatly older FFMEGs has a bug with deinterlacing cuda frames. Best to get the latest FFMPEG Version.
-
-Otherwise  you have to patch the file in libavcodec/cuviddec.c
-Somewhere near line 860 and 1066 depending on your release:
-old:
-     ctx->frame_queue = av_fifo_alloc(ctx->nb_surfaces * sizeof(CuvidParsedFrame));
-
-new:
-     ctx->frame_queue = av_fifo_alloc((ctx->nb_surfaces + 2 ) * sizeof(CuvidParsedFrame));
-
 This Version supports building with libplacebo. https://github.com/haasn/libplacebo
 You have to enable it in the Makefile and install libplacebo yourself.
-At the moment this is Work in progress.
+
 It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
 
-In the settings you can enable a correction for Colorblindness. First you have to decide what kind of colorblindness to use. And then the faktor of correction. If the faktor is negativ than the selected type of colorblindness is simulated. If the faktor is positiv then the colors are enhanced to try to correct the deficiency.
+I recommend to use libplacebo. It has much better scaler and does colorconversion for HDR the correct way.
 
-Also you can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
-
-If your FFMEG supports it then you can enable YADIF in the Makefile and select btween the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer.
+If your FFMEG supports it then you can enable YADIF in the Makefile and select between the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer.
 
 Good luck
 jojo61
@@ -82,7 +70,17 @@ jojo61
 Quickstart:
 -----------
 
-Just type make and use.
+You have to adapt the Makefile. There are 3 possible Version that you can build:
+
+    softhdcuvid
+    This is for NVIDA cards and uses cuvid as decoder. It uses xcb for output and needs a X Server to run. 
+    
+    softhdvaapi
+    This is for INTEL cards and uses Vaapi as decoder. It uses xcb for output and needs a X Server to run.
+    
+    softhddrm
+    This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and 
+    runs without X Server. There are several commandline options to select the resolution and refresh rate.
 
 Install:
 --------
@@ -98,6 +96,23 @@ Install:
 
 	You have to start vdr with -P 'softhdcuvid -d :0.0  ..<more option>.. '
 
+Beginners Guide for libplacebo:
+-------------------------------
+    When using libplacebo you will find several config options. 
+    
+    First of all you need to set the right scaler for each resolution:
+    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary. Unfortunatly on INTEL not all scalers may work or crash.
+    
+    You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
+    
+    Then you should set the Monitor Colorspace to "sRGB". This guarantees you the best colors on your screen.
+    At the moment all calculations internaly are done in RGB space and all cards output also RGB. 
+    
+    If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed in rare cases.
+    
+    All other settings can be in their default state.
+    
+    
 
 Setup:	environment
 ------
@@ -356,25 +371,7 @@ Running:
 
 Known Bugs:
 -----------
-	SD Stream not working very well
-	RESUME starts wirh black screen (channelswitch needed)
-
-Requires:
----------
-	media-video/vdr (version >=1.7.xx)
-		Video Disk Recorder - turns a pc into a powerful set top box
-		for DVB.
-		http://www.tvdr.de/
-
-	media-video/ffmpeg (version >=0.7)
-		Complete solution to record, convert and stream audio and
-		video. Includes libavcodec and libswresample.
-		http://ffmpeg.org
-	media-libs/alsa-lib
-		Advanced Linux Sound Architecture Library
-		http://www.alsa-project.org
-    or
-	kernel support for oss/oss4 or alsa oss emulation
+	SD Streams not working very well on vaapi
 
 
-Optional:
+
