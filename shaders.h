@@ -361,10 +361,14 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
 		GLSL("// color conversion         \n");
 		GLSL("color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;  \n");
 		GLSL("color.a = 1.0;              \n");		
-#ifdef GAMMA
-		GLSL("// delinearize gamma                     \n");
-		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // delinearize gamma
+
+		GLSL("// linearize gamma                     \n");
+		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // linearize gamma
 		GLSL("color.rgb = pow(color.rgb, vec3(2.4));   \n");
+#ifndef GAMMA	
+		GLSL("// delinearize gamma to sRGB               \n");
+		GLSL("color.rgb = max(color.rgb, 0.0);         \n");
+		GLSL("color.rgb = mix(color.rgb * vec3(12.92), vec3(1.055) * pow(color.rgb, vec3(1.0/2.4)) - vec3(0.055), bvec3(lessThanEqual(vec3(0.0031308), color.rgb))); \n");
 #endif
 		GLSL("// color mapping            \n");
 		GLSL("out_color = color;          \n");
