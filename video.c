@@ -1414,7 +1414,10 @@ typedef struct _cuvid_decoder_
 
 static CuvidDecoder *CuvidDecoders[2];  ///< open decoder streams
 static int CuvidDecoderN;               ///< number of decoder streams
+
+#ifdef CUVID
 static CudaFunctions *cu;
+#endif
 
 #ifdef PLACEBO
 typedef struct priv
