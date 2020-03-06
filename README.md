@@ -101,14 +101,20 @@ Beginners Guide for libplacebo:
     When using libplacebo you will find several config options. 
     
     First of all you need to set the right scaler for each resolution:
-    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary. Unfortunatly on INTEL not all scalers may work or crash.
+    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them 
+    for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary. 
+    Unfortunatly on INTEL not all scalers may work or crash.
     
-    You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test is activ.
+    You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will 
+    see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the 
+    Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test 
+    is activ.
     
     Then you should set the Monitor Colorspace to "sRGB". This guarantees you the best colors on your screen.
     At the moment all calculations internaly are done in RGB space and all cards output also RGB. 
     
-    If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed in rare cases.
+    If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed 
+    in rare cases.
     
     All other settings can be in their default state.
     
