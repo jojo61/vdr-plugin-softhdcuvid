@@ -303,7 +303,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
 	GLSL("%s\n",gl_version);
 	GLSL("precision mediump float;    \n");
 	GLSL("layout(location = 0) out vec4 out_color;\n");
-	GLSL("in vec2 texcoord0;\         \n");
+	GLSL("in vec2 texcoord0;          \n");
 	GLSL("in vec2 texcoord1;          \n");
 	if (Planes == 3)
 		GLSL("in vec2 texcoord2;      \n");
