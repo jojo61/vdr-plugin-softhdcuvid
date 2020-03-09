@@ -35,6 +35,11 @@ LIBPLACEBO ?= 1
 CONFIG :=  #-DDEBUG 		# remove # to enable debug output
 
 
+#--------------------- no more config needed past this point--------------------------------
+
+# sanitize selections --------
+ifneq "$(MAKECMDGOALS)" "clean"
+
 ifeq ($(VAAPI),0)
 ifeq ($(CUVID),0)
 ifeq ($(DRM),0)
@@ -45,12 +50,24 @@ endif
 endif
 
 
+ifeq ($(CUVID),1)
+ifeq ($(DRM),1)
+$(error Missmatch in Plugin selection)
+exit 1;
+endif
+endif
 
 
+ifeq ($(CUVID),1)
+ifeq ($(VAAPI),1)
+$(error Missmatch in Plugin selection)
+exit 1;
+endif
+endif
 
+endif
+#--------------------------
 
-
-#--------------------- no more config needed past this point--------------------------------
 PLUGIN = softhdcuvid
 
 # support OPENGLOSD always needed
@@ -262,7 +279,6 @@ LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
 _CFLAGS += -I./opengl -I./
 
 LIBS += -L/usr/lib64
-LIBS += -L/usr/local/cuda/lib64
 
 ifeq ($(LIBPLACEBO),1)
 LIBS += -lplacebo 
