@@ -16,7 +16,7 @@
 # if CUVID is enabled the pluginname is softhdcuvid
 # if DRM   is enabled the pluginname is softhddrm
 VAAPI ?= 0
-CUVID ?= 1
+CUVID ?= 0
 
 # if you enable DRM then the plugin will only run without X server
 # only valid for VAAPI 
@@ -25,7 +25,7 @@ DRM ?= 0
 
 
 # use libplacebo - available for both decoders but not for DRM  
-LIBPLACEBO ?= 0
+LIBPLACEBO ?= 1
 
 # use YADIF deint - only available with cuvid
 #YADIF=1
@@ -35,6 +35,14 @@ LIBPLACEBO ?= 0
 CONFIG :=  #-DDEBUG 		# remove # to enable debug output
 
 
+ifeq ($(VAAPI),0)
+ifeq ($(CUVID),0)
+ifeq ($(DRM),0)
+$(error Please define a plugin in the Makefile)
+exit 1;
+endif
+endif
+endif
 
 
 
@@ -119,7 +127,33 @@ APIVERSION = $(call PKGCFG,apiversion)
 
 
 
-### Parse softhddevice config
+### Parse config
+ifeq ($(VAAPI),1)
+CONFIG += -DVAAPI 
+#LIBPLACEBO=1
+PLUGIN = softhdvaapi
+LIBS += -lEGL  
+endif
+
+
+ifeq ($(DRM),1)
+PLUGIN = softhddrm
+CONFIG += -DUSE_DRM -DVAAPI
+LIBPLACEBO=0
+_CFLAGS += $(shell pkg-config --cflags libdrm)
+LIBS += -lgbm -ldrm
+LIBS += -lEGL  
+endif
+
+ifeq ($(CUVID),1)
+CONFIG += -DUSE_PIP			# PIP support
+CONFIG += -DCUVID			# enable CUVID decoder
+LIBS += -lEGL -lGL 
+ifeq ($(YADIF),1)
+CONFIG += -DYADIF			# Yadif only with CUVID
+endif
+endif
+
 
 ifeq ($(ALSA),1)
 CONFIG += -DUSE_ALSA
@@ -148,36 +182,9 @@ _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
 endif
 
-ifeq ($(VAAPI),1)
-CONFIG += -DVAAPI 
-#LIBPLACEBO=1
-PLUGIN = softhdvaapi
-LIBS += -lEGL  
-endif
-
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
 endif
-
-ifeq ($(DRM),1)
-PLUGIN = softhddrm
-CONFIG += -DUSE_DRM -DVAAPI
-_CFLAGS += $(shell pkg-config --cflags libdrm)
-LIBS += -lgbm -ldrm
-LIBS += -lEGL  
-endif
-
-
-ifeq ($(CUVID),1)
-CONFIG += -DUSE_PIP			# PIP support
-CONFIG += -DCUVID			# enable CUVID decoder
-LIBS += -lEGL -lGL 
-ifeq ($(YADIF),1)
-CONFIG += -DYADIF			# Yadif only with CUVID
-endif
-endif
-
-
 
 
 ARCHIVE = $(PLUGIN)-$(VERSION)
