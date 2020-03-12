@@ -645,7 +645,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size, int is_st
                 q = pesdx->Buffer + pesdx->Skip;
                 n = pesdx->Index - pesdx->Skip;
                 while (n >= 5) {
-                    int r;
+                    int r=0;
                     unsigned codec_id = AV_CODEC_ID_NONE;
 
                     // 4 bytes 0xFFExxxxx Mpeg audio
@@ -655,8 +655,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size, int is_st
                     // 7/9 bytes 0xFFFxxxxxxxxxxx ADTS audio
                     // PCM audio can't be found
                     // FIXME: simple+faster detection, if codec already known
-                    r = 0;
-                    if (!r && FastMpegCheck(q)) {
+                    if (FastMpegCheck(q)) {
                         r = MpegCheck(q, n);
                         codec_id = AV_CODEC_ID_MP2;
                     }

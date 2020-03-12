@@ -392,6 +392,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             break;
         case AVCOL_TRC_SMPTE2084:                               // 16
             eotf = EOTF_ST2084;
+			break;
         default:
             eotf = EOTF_TRADITIONAL_GAMMA_SDR;
             break;

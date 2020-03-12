@@ -1133,7 +1133,7 @@ void cMenuSetupSoft::Create(void)
     static char *scalingtest[100];
 
     if (scalers == 0) {
-        scalingtest[0] = "Off";
+        scalingtest[0] = (char *) "Off";
         for (scalers = 0; pl_named_filters[scalers].filter != NULL; scalers++) {
             scaling[scalers] = (char *)pl_named_filters[scalers].name;
             scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
