@@ -2492,7 +2492,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 
 void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame, int image_width, int image_height)
 {
-    int n;
+    
     VAStatus status;
 
     uint64_t first_time;
@@ -2559,7 +2559,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
 		decoder->fds[index*Planes+n] = fd;
 #endif
     }
-	decoder->fds[index*Planes+n] = desc.objects[0].fd;
+	decoder->fds[index*Planes] = desc.objects[0].fd;
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
@@ -4029,7 +4029,7 @@ static void CuvidDisplayFrame(void)
             break;
     }
 #ifdef GAMMA
-    target.color.transfer = PL_COLOR_TRC_LINEAR;
+//    target.color.transfer = PL_COLOR_TRC_LINEAR;
 #endif
 #endif
     //
@@ -4999,7 +4999,7 @@ void VideoOsdInit(void)
 
     if (posd)
         free(posd);
-    posd = (unsigned char *)calloc( OsdWidth * OsdHeight * 4, 1 );
+    posd = (unsigned char *)calloc( (OsdWidth+1) * (OsdHeight+1) * 4, 1 );
     VideoOsdClear();
 }
 
@@ -5379,7 +5379,7 @@ static void *VideoHandlerThread(void *dummy)
 
 #ifdef GAMMA
     Init_Gamma();
-    Set_Gamma(2.4,6500);
+    Set_Gamma(0.0,6500);
 #endif
     
 #ifdef PLACEBO
