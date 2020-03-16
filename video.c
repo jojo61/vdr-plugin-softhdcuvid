@@ -2520,7 +2520,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
 
     for (int n = 0; n < Planes; n++) {
         int attribs[20] = { EGL_NONE };
-        int num_attribs = 0;
+        uint num_attribs = 0;
 		int fd;
 #if defined (VAAPI) && !defined (RASPI)
 		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
