@@ -331,6 +331,7 @@ void cOglGlyph::LoadTexture(FT_BitmapGlyph ftGlyph) {
 extern "C" void GlxInitopengl();
 extern "C" void GlxDrawopengl();
 extern "C" void GlxDestroy();
+extern "C" void makejpg(uint8_t *data, int width, int height);
 /****************************************************************************************
 * cOglFont
 ****************************************************************************************/
@@ -475,6 +476,7 @@ cOglFb::cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHei
     initiated = false;
     fb = 0;
     texture = 0;
+
     this->width = width;
     this->height = height;
     this->viewPortWidth = viewPortWidth;
@@ -495,8 +497,7 @@ cOglFb::~cOglFb(void) {
 
 bool cOglFb::Init(void) {
     initiated = true;
-
-    glGenTextures(1, &texture);
+	glGenTextures(1, &texture);  
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -770,6 +771,7 @@ cOglCmdRenderFbToBufferFb::cOglCmdRenderFbToBufferFb(cOglFb *fb, cOglFb *buffer,
     this->drawPortX = (GLfloat)drawPortX;
     this->drawPortY = (GLfloat)drawPortY;
     this->transparency = transparency;
+
 }
 
 bool cOglCmdRenderFbToBufferFb::Execute(void) {
@@ -780,15 +782,15 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
     GLfloat texY1 = drawPortY / (GLfloat)fb->Height();
     GLfloat texX2 = texX1 + 1.0f;
     GLfloat texY2 = texY1 + 1.0f;
-
+	
     if (fb->Scrollable()) {
         GLfloat pageHeight = (GLfloat)fb->ViewportHeight() / (GLfloat)fb->Height();
         texX1 = abs(drawPortX) / (GLfloat)fb->Width();
         texY1 = 1.0f - pageHeight - abs(drawPortY) / (GLfloat)fb->Height();
-        texX2 = texX1 + (GLfloat)fb->ViewportWidth() / (GLfloat)fb->Width();
+//        texX2 = texX1 + (GLfloat)fb->ViewportWidth() / (GLfloat)fb->Width();
+        x2 = x + fb->Width();
         texY2 = texY1 + pageHeight;
     }
-
     GLfloat quadVertices[] = {
         // Pos    // TexCoords
         x ,  y ,  texX1, texY2,          //left top
@@ -805,9 +807,11 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
     VertexBuffers[vbTexture]->SetShaderProjectionMatrix(buffer->Width(), buffer->Height());
 
     buffer->Bind();
+
     if (!fb->BindTexture())
         return false;
-    VertexBuffers[vbTexture]->Bind();
+	
+    VertexBuffers[vbTexture]->Bind();	
     VertexBuffers[vbTexture]->SetVertexData(quadVertices);
     VertexBuffers[vbTexture]->DrawArrays();
     VertexBuffers[vbTexture]->Unbind();
@@ -829,14 +833,13 @@ bool cOglCmdCopyBufferToOutputFb::Execute(void) {
     
     pthread_mutex_lock(&OSDMutex);
     fb->BindRead();
-    oFb->BindWrite();
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     if (posd)
         glReadPixels(0, 0 ,fb->Width(), fb->Height(),GL_RGBA,GL_UNSIGNED_BYTE,posd);
     glFlush();    
-    oFb->Unbind();
+
     pthread_mutex_unlock(&OSDMutex);
     ActivateOsd(oFb->texture,x, y, fb->Width() ,fb->Height());
     return true;
@@ -1237,7 +1240,6 @@ bool cOglCmdDrawText::Execute(void) {
         if ( xGlyph > fb->Width() - 1 )
             break;
     }
-
     glBindTexture(GL_TEXTURE_2D, 0);
     VertexBuffers[vbText]->Unbind();
     fb->Unbind();
@@ -1264,7 +1266,7 @@ cOglCmdDrawImage::~cOglCmdDrawImage(void) {
 bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
 #ifdef USE_DRM
-	pthread_mutex_lock(&OSDMutex);
+//	pthread_mutex_lock(&OSDMutex);
 	GlxDrawopengl();  // here we need the Shared Context for upload
 	GlxCheck();
 #endif
@@ -1290,7 +1292,7 @@ bool cOglCmdDrawImage::Execute(void) {
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
-	pthread_mutex_unlock(&OSDMutex);
+//	pthread_mutex_unlock(&OSDMutex);
 #endif
 
     GLfloat x1 = x;          //left
@@ -1382,7 +1384,7 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) {
 
 bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
-	pthread_mutex_lock(&OSDMutex);
+//	pthread_mutex_lock(&OSDMutex);
 	GlxDrawopengl();  // here we need the Shared Context for upload
 	GlxCheck();
 #endif
@@ -1408,7 +1410,7 @@ bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
 	GlxInitopengl();  // Reset Context
 	GlxCheck();
-	pthread_mutex_lock(&OSDMutex);
+//	pthread_mutex_lock(&OSDMutex);
 #endif
     return true;
 }
@@ -1826,7 +1828,6 @@ void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) {
     memcpy(argb, Image.Data(), sizeof(tColor) * Image.Width() * Image.Height());
 
     oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Image.Width(), Image.Height(), Point.X(), Point.Y()));
-
     SetDirty();
     MarkDrawPortDirty(cRect(Point, cSize(Image.Width(), Image.Height())).Intersected(DrawPort().Size()));
 }
@@ -1834,6 +1835,7 @@ void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) {
 void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
     if (!oglThread->Active())
         return;
+
     if (ImageHandle < 0 && oglThread->GetImageRef(ImageHandle)) {
             sOglImage *img = oglThread->GetImageRef(ImageHandle);
             oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y()));
@@ -1874,6 +1876,7 @@ void cOglPixmap::DrawBitmap(const cPoint &Point, const cBitmap &Bitmap, tColor C
                         (index == 0 ? ColorBg : index == 1 ? ColorFg :
                                 Bitmap.Color(index)) : Bitmap.Color(index));
         }
+	
     oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Bitmap.Width(), Bitmap.Height(), Point.X(), Point.Y(), Overlay));
     SetDirty();
     MarkDrawPortDirty(cRect(Point, cSize(Bitmap.Width(), Bitmap.Height())).Intersected(DrawPort().Size()));
@@ -1892,7 +1895,6 @@ void cOglPixmap::DrawText(const cPoint &Point, const char *s, tColor ColorFg, tC
         Utf8ToArray(s, symbols, len + 1);
     else
         symbols[0] = 0;
-
     int x = Point.X();
     int y = Point.Y();
     int w = Font->Width(s);
@@ -1995,7 +1997,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
     int osdWidth = 0;
     int osdHeight = 0;
 
-    pthread_mutex_lock(&OSDMutex);
+//    pthread_mutex_lock(&OSDMutex);
     VideoGetOsdSize(&osdWidth, &osdHeight);
     // osdWidth = 1920;
     // osdHeight = 1080;
@@ -2014,7 +2016,7 @@ cOglOsd::cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglT
         oglThread->DoCmd(new cOglCmdInitOutputFb(oFb));
     }
 
-    pthread_mutex_unlock(&OSDMutex);
+//    pthread_mutex_unlock(&OSDMutex);
 }
 
 cOglOsd::~cOglOsd() {
@@ -2080,6 +2082,7 @@ void cOglOsd::DestroyPixmap(cPixmap *Pixmap) {
         return;
     if (!Pixmap)
         return;
+
     LOCK_PIXMAPS;
     int start = 1;
     if (isSubtitleOsd)
@@ -2121,7 +2124,7 @@ void cOglOsd::Flush(void) {
                     oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(),
                                                                     bFb,
                                                                     oglPixmaps[i]->ViewPort().X(),
-                                                                    (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0,
+                                                                    (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0,													
                                                                     oglPixmaps[i]->Alpha(),
                                                                     oglPixmaps[i]->DrawPort().X(),
                                                                     oglPixmaps[i]->DrawPort().Y()));
@@ -2142,3 +2145,4 @@ void cOglOsd::DrawScaledBitmap(int x, int y, const cBitmap &Bitmap, double Facto
     int yNew = y - oglPixmaps[0]->ViewPort().Y();
     oglPixmaps[0]->DrawBitmap(cPoint(x, yNew), Bitmap);
 }
+

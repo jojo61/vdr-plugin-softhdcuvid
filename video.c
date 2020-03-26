@@ -2492,7 +2492,6 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 
 void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame, int image_width, int image_height)
 {
-    
     VAStatus status;
 
     uint64_t first_time;
@@ -3036,7 +3035,7 @@ int get_RGB(CuvidDecoder * decoder)
         if (OsdShown == 1) {
             if (OSDtexture)
                 glDeleteTextures(1, &OSDtexture);
-            pthread_mutex_lock(&OSDMutex);
+//            pthread_mutex_lock(&OSDMutex);
             glGenTextures(1, &OSDtexture);
             glBindTexture(GL_TEXTURE_2D, OSDtexture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, OSDxsize, OSDysize, 0, GL_RGBA, GL_UNSIGNED_BYTE, posd);
@@ -3044,7 +3043,7 @@ int get_RGB(CuvidDecoder * decoder)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            pthread_mutex_unlock(&OSDMutex);
+//            pthread_mutex_unlock(&OSDMutex);
             OsdShown = 2;
         }
 
@@ -4370,10 +4369,10 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
         }
 #endif
         if (abs(diff) > 5000 * 90) {    // more than 5s
-            err = CuvidMessage(2, "video: audio/video difference too big\n");
+            err = CuvidMessage(2, "video: audio/video difference too big %d\n",diff/90);
             // decoder->SyncCounter = 1;
             // usleep(10);
-            // goto out;
+ //           goto out;
         } else if (diff > 100 * 90) {
             // FIXME: this quicker sync step, did not work with new code!
             err = CuvidMessage(4, "video: slow down video, duping frame %d\n", diff / 90);
@@ -6958,4 +6957,51 @@ void GlxDestroy() {
 }
 
 #endif
+  
+#if 0    // for debug only
+#include <sys/stat.h>   
+extern uint8_t *CreateJpeg(uint8_t *, int *, int, int, int);
 
+void makejpg(uint8_t *data, int width, int height) {
+	static int count=0;
+	int i,n=0,gpu=0;;
+	char buf[32],FileName[32];
+	uint8_t *rgb;
+    uint8_t *jpg_image;
+	int size,size1;
+	
+    if (data == NULL) {
+        data = malloc(width*height*4);
+        gpu=1;
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, data);
+    }
+	
+//	n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", width, height);
+	sprintf(FileName,"/tmp/test%d.jpg",count++);
+	
+	rgb = malloc(width * height * 3 + n);
+	if (!rgb) {
+		printf("Unable to get RGB Memory \n");
+		return;
+	}
+//	memcpy(rgb, buf, n);        // header
+    size = width * height * 4;
+    
+	for (i = 0; i < size / 4; ++i) {   // convert bgra -> rgb
+		rgb[n + i * 3 + 0] = data[i * 4 + 2];
+		rgb[n + i * 3 + 1] = data[i * 4 + 1];
+		rgb[n + i * 3 + 2] = data[i * 4 + 0];
+	}
+
+    if (gpu)
+        free(data);
+	
+    jpg_image = CreateJpeg(rgb, &size1, 90, width, height);
+	int fd = open(FileName, O_WRONLY | O_CREAT | O_NOFOLLOW | O_TRUNC, DEFFILEMODE);
+	write(fd,jpg_image,size1);
+	close(fd);
+	free(rgb);
+}
+#endif
