@@ -787,8 +787,8 @@ bool cOglCmdRenderFbToBufferFb::Execute(void) {
         GLfloat pageHeight = (GLfloat)fb->ViewportHeight() / (GLfloat)fb->Height();
         texX1 = abs(drawPortX) / (GLfloat)fb->Width();
         texY1 = 1.0f - pageHeight - abs(drawPortY) / (GLfloat)fb->Height();
-//        texX2 = texX1 + (GLfloat)fb->ViewportWidth() / (GLfloat)fb->Width();
-        x2 = x + fb->Width();
+        texX2 = texX1 + (GLfloat)fb->ViewportWidth() / (GLfloat)fb->Width();
+//        x2 = x + fb->Width();
         texY2 = texY1 + pageHeight;
     }
     GLfloat quadVertices[] = {
