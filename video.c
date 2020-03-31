@@ -329,7 +329,7 @@ typedef struct
 #define CODEC_SURFACES_MAX 12           //
 
 #define VIDEO_SURFACES_MAX  6           ///< video output surfaces for queue
-// #define OUTPUT_SURFACES_MAX   4   ///< output surfaces for flip page
+
 #if defined VAAPI && !defined RASPI
 #define PIXEL_FORMAT AV_PIX_FMT_VAAPI
 #define SWAP_BUFFER_SIZE     3
@@ -527,7 +527,6 @@ EGLContext OSDcontext;
 
 static GLuint OsdGlTextures[2];         ///< gl texture for OSD
 static int OsdIndex = 0;                ///< index into OsdGlTextures
-
 
 //----------------------------------------------------------------------------
 //  Common Functions
@@ -1605,7 +1604,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
     pl_renderer_destroy(&p->renderer);
     p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
-    glDeleteTextures(CODEC_SURFACES_MAX * 2, (GLuint *) & decoder->gl_textures);
+    glDeleteTextures(CODEC_SURFACES_MAX * 2, (GLuint *) &decoder->gl_textures);
     GlxCheck();
 
     if (CuvidDecoderN == 1) {           // only wenn last decoder closes
@@ -2490,7 +2489,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                desc.layers[n].pitch[plane]); \
     } while (0)
 
-void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame, int image_width, int image_height)
+void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame * frame, int image_width, int image_height)
 {
     VAStatus status;
 
@@ -2499,14 +2498,14 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
     VADRMPRIMESurfaceDescriptor desc;
 
     status =
-        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
         VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
 
     if (status != VA_STATUS_SUCCESS) {
         printf("Fehler beim export VAAPI Handle\n");
         return;
     }
-    vaSyncSurface(decoder->VaDisplay, (VASurfaceID)frame->data[3]);
+    vaSyncSurface(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3]);
 #endif
 #ifdef RASPI
 	AVDRMFrameDescriptor desc;
@@ -2868,7 +2867,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
         Fatal(_("video: no valid profile found\n"));
     }
 	
-    decoder->newchannel = 1;
+//    decoder->newchannel = 1;
 #ifdef VAAPI
 	init_generic_hwaccel(decoder, PIXEL_FORMAT,video_ctx);
 #endif
@@ -2877,7 +2876,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
 	}
 
     ist->GetFormatDone = 1;
-
+    
     Debug(3, "video: create decoder 16bit?=%d %dx%d old  %d %d\n", bitformat16, video_ctx->width, video_ctx->height,
         decoder->InputWidth, decoder->InputHeight);
 
@@ -2893,13 +2892,14 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
             ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
 
-        // if ((video_ctx->width  != decoder->InputWidth
-        // || video_ctx->height != decoder->InputHeight) && decoder->TrickSpeed == 0) {
+         if ((video_ctx->width  != decoder->InputWidth
+         || video_ctx->height != decoder->InputHeight) && decoder->TrickSpeed == 0) {
 
-        if (decoder->TrickSpeed == 0) {
+ //       if (decoder->TrickSpeed == 0) {
 #ifdef PLACEBO
             VideoThreadLock();
 #endif
+            decoder->newchannel = 1;
             CuvidCleanup(decoder);
             decoder->InputAspect = video_ctx->sample_aspect_ratio;
             decoder->InputWidth = video_ctx->width;
@@ -2910,7 +2910,6 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
 #ifdef PLACEBO
             VideoThreadUnlock();
             // dont show first frame
-            decoder->newchannel = 1;
 #endif
 #ifdef YADIF
             if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
@@ -2925,6 +2924,14 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
                 Fatal(_("codec: can't set option deint to video codec!\n"));
             }
 #endif
+        } else { 
+            decoder->SyncCounter = 0;
+            decoder->FrameCounter = 0;
+            decoder->FramesDisplayed = 0;
+            decoder->StartCounter = 0;
+            decoder->Closing = 0;
+            decoder->PTS = AV_NOPTS_VALUE;
+            VideoDeltaPTS = 0;
         }
 
         CuvidMessage(2, "GetFormat Init ok %dx%d\n", video_ctx->width, video_ctx->height);
@@ -3351,9 +3358,11 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
         av_frame_free(&frame);
         return;
     }
-	
-
-	
+ 
+    if (!decoder->Closing) {
+        VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
+    }
+ 
     // update aspect ratio changes
     if (decoder->InputWidth && decoder->InputHeight && av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
         Debug(3, "video/cuvid: aspect ratio changed\n");
@@ -3406,11 +3415,6 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
             av_frame_free(&frame);
             return;
         }
-#if 0
-        if (!decoder->Closing) {
-            VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
-        }
-#endif
 
 #if defined (VAAPI) && defined (PLACEBO)
         if (p->has_dma_buf) {           // Vulkan supports DMA_BUF no copy required
@@ -3621,15 +3625,16 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     ycropf = (float)decoder->CropY / (float)decoder->InputHeight;
 
     current = decoder->SurfacesRb[decoder->SurfaceRead];
+    
+#ifdef USE_DRM    
     if (!decoder->Closing) {
     	frame = decoder->frames[current];
-        VideoSetPts(&decoder->PTS, decoder->Interlaced, 0, frame);
-#ifdef USE_DRM  
     	AVFrameSideData *sd1 = av_frame_get_side_data (frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
     	AVFrameSideData *sd2 = av_frame_get_side_data (frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
     	set_hdr_metadata(frame->color_primaries,frame->color_trc,sd1,sd2);
-#endif
     }
+#endif
+    
 	
 	// Render Progressive frame
 #ifndef PLACEBO
@@ -3798,12 +3803,13 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         colors.contrast = 0.0f;
         if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
             Debug(3, "Failed rendering frame!\n");
-        }
+        }        
         return;
     }
 
     decoder->newchannel = 0;
-
+    
+    
     if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Debug(3, "Failed rendering frame!\n");
     }
@@ -4221,7 +4227,7 @@ static int64_t CuvidGetClock(const CuvidDecoder * decoder)
         return decoder->PTS - 20 * 90 * (2 * atomic_read(&decoder->SurfacesFilled) - decoder->SurfaceField - 2 + 2);
     }
     // + 2 in driver queue
-    return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled) + SWAP_BUFFER_SIZE - 1); // +2
+    return decoder->PTS - 20 * 90 * (atomic_read(&decoder->SurfacesFilled) + SWAP_BUFFER_SIZE + 1); // +2
 }
 
 ///
@@ -4301,15 +4307,15 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
     int64_t audio_clock;
     int64_t video_clock;
     int err = 0;
-    static uint64_t last_time;
+    static int speedup=3;
 
 #ifdef GAMMA
     Get_Gamma();
 #endif
     
     
-    // video_clock = CuvidGetClock(decoder);
-    video_clock = decoder->PTS - (90 * 20 * 1); // 1 Frame in Output
+    video_clock = CuvidGetClock(decoder);
+ 
     filled = atomic_read(&decoder->SurfacesFilled);
 
     if (!decoder->SyncOnAudio) {
@@ -4318,7 +4324,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
         goto skip_sync;
     }
     audio_clock = AudioGetClock();
-    // printf("Diff %d %ld %ld   filled %d \n",(video_clock - audio_clock - VideoAudioDelay)/90,video_clock,audio_clock,filled);
+//     printf("Diff %d %#012" PRIx64 "  %#012" PRIx64"   filled %d \n",(video_clock - audio_clock - VideoAudioDelay)/90,video_clock,audio_clock,filled);
     // 60Hz: repeat every 5th field
     if (Video60HzMode && !(decoder->FramesDisplayed % 6)) {
         if (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock == (int64_t) AV_NOPTS_VALUE) {
@@ -4357,12 +4363,9 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
         int diff;
 
         diff = video_clock - audio_clock - VideoAudioDelay;
-        diff = (decoder->LastAVDiff + diff) / 2;
+//        diff = (decoder->LastAVDiff + diff) / 2;
         decoder->LastAVDiff = diff;
 
-        // if (CuvidDecoderN) {
-        // CuvidDecoders[0]->Frameproc = (float)(diff / 90);
-        // }
 #if 0
         if (abs(diff / 90) > 0) {
             printf("      Diff %d filled %d          \n", diff / 90, filled);
@@ -4372,28 +4375,36 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
             err = CuvidMessage(2, "video: audio/video difference too big %d\n",diff/90);
             // decoder->SyncCounter = 1;
             // usleep(10);
- //           goto out;
+            goto skip_sync;
+
         } else if (diff > 100 * 90) {
             // FIXME: this quicker sync step, did not work with new code!
             err = CuvidMessage(4, "video: slow down video, duping frame %d\n", diff / 90);
             ++decoder->FramesDuped;
-            decoder->SyncCounter = 1;
+            if (speedup && --speedup)
+                decoder->SyncCounter = 1;
+            else    
+                decoder->SyncCounter = 0;   
             goto out;
-        } else if (diff > 55 * 90) {
+
+        } else if (diff > 25 * 90) {
             err = CuvidMessage(3, "video: slow down video, duping frame %d \n", diff / 90);
             ++decoder->FramesDuped;
             decoder->SyncCounter = 1;
             goto out;
-        } else if ((diff < -35 * 90)) {
+        } else if ((diff < -100 * 90)) {
             if (filled > 2) {
                 err = CuvidMessage(3, "video: speed up video, droping frame %d\n", diff / 90);
                 ++decoder->FramesDropped;
                 CuvidAdvanceDecoderFrame(decoder);
-            } else if ((diff < -65 * 90)) { // give it some time to get frames to drop
+            } else if ((diff < -100 * 90)) { // give it some time to get frames to drop
                 Debug(3, "Delay Audio %d ms\n", abs(diff / 90));
                 AudioDelayms(abs(diff / 90));
             }
             decoder->SyncCounter = 1;
+        }
+        else {
+            speedup = 3;
         }
 #if defined(DEBUG) || defined(AV_INFO)
         if (!decoder->SyncCounter && decoder->StartCounter < 1000) {
@@ -4572,15 +4583,12 @@ static void CuvidDisplayHandlerThread(void)
         //
         filled = atomic_read(&decoder->SurfacesFilled);
         //if (filled <= 1 +  2 * decoder->Interlaced) {
-        if (filled < 4) {
+        if (filled < 5) {
             // FIXME: hot polling
             // fetch+decode or reopen
             allfull = 0;
             err = VideoDecodeInput(decoder->Stream);
         } else {
-
-            usleep(1000);
-
             err = VideoPollInput(decoder->Stream);
         }
         // decoder can be invalid here
@@ -4593,25 +4601,17 @@ static void CuvidDisplayHandlerThread(void)
                     decoder->Closing = -1;
                 }
             }
-
-            usleep(1000);
-
+            usleep(10 * 1000);
             continue;
         }
         decoded = 1;
     }
-
-
-
+    
     if (!decoded) {                     // nothing decoded, sleep
         // FIXME: sleep on wakeup
         usleep(1 * 1000);
     }
-
-
     usleep(1000);
-
-
     // all decoder buffers are full
     // and display is not preempted
     // speed up filling display queue, wait on display queue empty
