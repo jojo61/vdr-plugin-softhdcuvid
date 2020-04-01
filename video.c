@@ -4347,13 +4347,14 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
         decoder->TrickCounter = decoder->TrickSpeed;
         goto skip_sync;
     }
+#if 0
     // at start of new video stream, soft or hard sync video to audio
     if (!VideoSoftStartSync && decoder->StartCounter < VideoSoftStartFrames && video_clock != (int64_t) AV_NOPTS_VALUE
         && (audio_clock == (int64_t) AV_NOPTS_VALUE || video_clock > audio_clock + VideoAudioDelay + 120 * 90)) {
         Debug(4, "video: initial slow down video, frame %d\n", decoder->StartCounter);
         goto skip_sync;
     }
-
+#endif
     if (decoder->SyncCounter && decoder->SyncCounter--) {
         goto skip_sync;
     }
@@ -4378,10 +4379,10 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
             goto skip_sync;
 
         } else if (diff > 100 * 90) {
-            // FIXME: this quicker sync step, did not work with new code!
+            
             err = CuvidMessage(4, "video: slow down video, duping frame %d\n", diff / 90);
             ++decoder->FramesDuped;
-            if (speedup && --speedup)
+            if ((speedup && --speedup) || VideoSoftStartSync)
                 decoder->SyncCounter = 1;
             else    
                 decoder->SyncCounter = 0;   
@@ -4404,7 +4405,7 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
             decoder->SyncCounter = 1;
         }
         else {
-            speedup = 3;
+            speedup = 2;
         }
 #if defined(DEBUG) || defined(AV_INFO)
         if (!decoder->SyncCounter && decoder->StartCounter < 1000) {
