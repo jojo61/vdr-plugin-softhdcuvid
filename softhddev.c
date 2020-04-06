@@ -1326,6 +1326,7 @@ static VideoStream MyVideoStream[1];    ///< normal video stream
 
 #ifdef USE_PIP
 static VideoStream PipVideoStream[1];   ///< pip video stream
+static int PiPActive = 0, mwx, mwy, mww, mwh;          ///< main window frame for PiP
 #endif
 
 #ifdef DEBUG
@@ -3395,6 +3396,10 @@ void GetStats(int *missed, int *duped, int *dropped, int *counter, float *framet
 */
 void ScaleVideo(int x, int y, int width, int height)
 {
+    if (PiPActive && !(x & y & width & height)) {
+        Info("[softhddev]%s: fullscreen with PiP active.\n", __FUNCTION__);
+        x = mwx; y = mwy; width = mww; height = mwh;
+    }
     if (MyVideoStream->HwDecoder) {
         VideoSetOutputPosition(MyVideoStream->HwDecoder, x, y, width, height);
     }
@@ -3453,6 +3458,8 @@ void PipStart(int x, int y, int width, int height, int pip_x, int pip_y, int pip
         VideoStreamOpen(PipVideoStream);
     }
     PipSetPosition(x, y, width, height, pip_x, pip_y, pip_width, pip_height);
+    mwx = x; mwy = y; mww = width; mwh = height;
+    PiPActive = 1;
 }
 
 /**
@@ -3466,6 +3473,8 @@ void PipStop(void)
         return;
     }
 
+    PiPActive = 0;
+    mwx = 0; mwy = 0; mww = 0; mwh = 0;
     ScaleVideo(0, 0, 0, 0);
 
     PipVideoStream->Close = 1;
