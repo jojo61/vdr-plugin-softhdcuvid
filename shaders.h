@@ -11,7 +11,6 @@ const char *gl_version = "#version 300 es ";
 #endif
 #endif
 
-
 /* Color conversion matrix: RGB = m * YUV + c
  * m is in row-major matrix, with m[row][col], e.g.:
  *     [ a11 a12 a13 ]     float m[3][3] = { { a11, a12, a13 },
@@ -71,16 +70,11 @@ float cms_matrix[3][3] = { {1.660497, -0.124547, -0.018154},
 };
 
 // Common constants for SMPTE ST.2084 (PQ)
-static const float PQ_M1 = 2610./4096 * 1./4,
-                   PQ_M2 = 2523./4096 * 128,
-                   PQ_C1 = 3424./4096,
-                   PQ_C2 = 2413./4096 * 32,
-                   PQ_C3 = 2392./4096 * 32;
+static const float PQ_M1 = 2610. / 4096 * 1. / 4, PQ_M2 = 2523. / 4096 * 128, PQ_C1 = 3424. / 4096, PQ_C2 =
+    2413. / 4096 * 32, PQ_C3 = 2392. / 4096 * 32;
 
 // Common constants for ARIB STD-B67 (HLG)
-static const float HLG_A = 0.17883277,
-                   HLG_B = 0.28466892,
-                   HLG_C = 0.55991073;
+static const float HLG_A = 0.17883277, HLG_B = 0.28466892, HLG_C = 0.55991073;
 
 struct gl_vao_entry
 {
@@ -124,48 +118,55 @@ static const struct gl_vao_entry vertex_vao[] = {
 char sh[SHADER_LENGTH];
 char shv[SHADER_LENGTH];
 
-GL_init() {
-	sh[0] = 0;
+GL_init()
+{
+    sh[0] = 0;
 }
-GLV_init() {
-	shv[0] = 0;
+
+GLV_init()
+{
+    shv[0] = 0;
 }
-pl_shader_append(const char *fmt, ...) {
-	char temp[1000];
-	va_list ap;
-	
+
+pl_shader_append(const char *fmt, ...)
+{
+    char temp[1000];
+    va_list ap;
+
     va_start(ap, fmt);
-	vsprintf(temp,fmt,ap);
-	va_end(ap);
-	
-	if (strlen(sh) + strlen(temp) > SHADER_LENGTH)
-		Fatal(_("Shaderlenght fault\n"));
-	strcat(sh,temp);
+    vsprintf(temp, fmt, ap);
+    va_end(ap);
+
+    if (strlen(sh) + strlen(temp) > SHADER_LENGTH)
+        Fatal(_("Shaderlenght fault\n"));
+    strcat(sh, temp);
 
 }
 
-pl_shader_append_v(const char *fmt, ...) {
-	char temp[1000];
-	va_list ap;
-	
+pl_shader_append_v(const char *fmt, ...)
+{
+    char temp[1000];
+    va_list ap;
+
     va_start(ap, fmt);
-	vsprintf(temp,fmt,ap);
-	va_end(ap);
-	
-	if (strlen(shv) + strlen(temp) > SHADER_LENGTH)
-		Fatal(_("Shaderlenght fault\n"));
-	strcat(shv,temp);
+    vsprintf(temp, fmt, ap);
+    va_end(ap);
+
+    if (strlen(shv) + strlen(temp) > SHADER_LENGTH)
+        Fatal(_("Shaderlenght fault\n"));
+    strcat(shv, temp);
 
 }
+
 static void compile_attach_shader(GLuint program, GLenum type, const char *source)
 {
     GLuint shader;
-    GLint status=1234, log_length;
+    GLint status = 1234, log_length;
     char log[4000];
     GLsizei len;
 
     shader = glCreateShader(type);
-    glShaderSource(shader, 1, (const GLchar **)&source, NULL); // &buffer, NULL);
+    glShaderSource(shader, 1, (const GLchar **)&source, NULL);  // &buffer, NULL);
     glCompileShader(shader);
     status = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -198,42 +199,42 @@ static GLuint sc_generate_osd(GLuint gl_prog)
     Debug(3, "vor create osd\n");
     gl_prog = glCreateProgram();
 
-	GL_init();
-	GLSL("%s\n",gl_version);
-	GLSL("in vec2 vertex_position;\n");
-	GLSL("in vec2 vertex_texcoord0;\n");
-	GLSL("out vec2 texcoord0;\n");
-	GLSL("void main() {\n");
-	GLSL("gl_Position = vec4(vertex_position, 1.0, 1.0);\n");
-	GLSL("texcoord0 = vertex_texcoord0;\n");
-	GLSL("}\n");
-		
+    GL_init();
+    GLSL("%s\n", gl_version);
+    GLSL("in vec2 vertex_position;\n");
+    GLSL("in vec2 vertex_texcoord0;\n");
+    GLSL("out vec2 texcoord0;\n");
+    GLSL("void main() {\n");
+    GLSL("gl_Position = vec4(vertex_position, 1.0, 1.0);\n");
+    GLSL("texcoord0 = vertex_texcoord0;\n");
+    GLSL("}\n");
+
     Debug(3, "vor compile vertex osd\n");
-    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, sh); // vertex_osd);
-	GL_init();	
-	GLSL("%s\n",gl_version);
-	GLSL("#define texture1D texture\n");
-	GLSL("precision mediump float; \n");
-	GLSL("layout(location = 0) out vec4 out_color;\n");
-	GLSL("in vec2 texcoord0;\n");
-	GLSL("uniform sampler2D texture0;\n");
-	GLSL("void main() {\n");
-	GLSL("vec4 color; \n");
-	GLSL("color = vec4(texture(texture0, texcoord0));\n");
+    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, sh);   // vertex_osd);
+    GL_init();
+    GLSL("%s\n", gl_version);
+    GLSL("#define texture1D texture\n");
+    GLSL("precision mediump float; \n");
+    GLSL("layout(location = 0) out vec4 out_color;\n");
+    GLSL("in vec2 texcoord0;\n");
+    GLSL("uniform sampler2D texture0;\n");
+    GLSL("void main() {\n");
+    GLSL("vec4 color; \n");
+    GLSL("color = vec4(texture(texture0, texcoord0));\n");
 #ifdef GAMMA
-		GLSL("// delinearize gamma                     \n");
-		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // delinearize gamma
-		GLSL("color.rgb = pow(color.rgb, vec3(2.4));   \n");
+    GLSL("// delinearize gamma                     \n");
+    GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // delinearize gamma
+    GLSL("color.rgb = pow(color.rgb, vec3(2.4));   \n");
 #endif
-	GLSL("out_color = color;\n");
-	GLSL("}\n");
+    GLSL("out_color = color;\n");
+    GLSL("}\n");
     Debug(3, "vor compile fragment osd \n");
     compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, sh); //fragment_osd);
     glBindAttribLocation(gl_prog, 0, "vertex_position");
     glBindAttribLocation(gl_prog, 1, "vertex_texcoord0");
 
     link_shader(gl_prog);
-	
+
     return gl_prog;
 }
 
@@ -245,34 +246,33 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
     GLint cmsLoc;
     float *m, *c, *cms;
     char *frag;
-	
-	GL_init();
-	GLSL("%s\n",gl_version);
-	GLSL("in vec2 vertex_position;      \n");
-	GLSL("in vec2 vertex_texcoord0;     \n");
-	GLSL("out vec2 texcoord0;           \n");
-	GLSL("in vec2 vertex_texcoord1;     \n");
-	GLSL("out vec2 texcoord1;           \n");
-	if (Planes == 3) {
-		GLSL("in vec2 vertex_texcoord2; \n");
-		GLSL("out vec2 texcoord2;       \n");	
-	}
-	GLSL("void main() {                 \n");
-	GLSL("gl_Position = vec4(vertex_position, 1.0, 1.0);\n");
-	GLSL("texcoord0 = vertex_texcoord0; \n");
-	GLSL("texcoord1 = vertex_texcoord1; \n");
-	if (Planes == 3) {
-		GLSL("texcoord2 = vertex_texcoord1; \n");  // texcoord1 ist hier richtig
-	}
-	GLSL("}                             \n");
-	
+
+    GL_init();
+    GLSL("%s\n", gl_version);
+    GLSL("in vec2 vertex_position;      \n");
+    GLSL("in vec2 vertex_texcoord0;     \n");
+    GLSL("out vec2 texcoord0;           \n");
+    GLSL("in vec2 vertex_texcoord1;     \n");
+    GLSL("out vec2 texcoord1;           \n");
+    if (Planes == 3) {
+        GLSL("in vec2 vertex_texcoord2; \n");
+        GLSL("out vec2 texcoord2;       \n");
+    }
+    GLSL("void main() {                 \n");
+    GLSL("gl_Position = vec4(vertex_position, 1.0, 1.0);\n");
+    GLSL("texcoord0 = vertex_texcoord0; \n");
+    GLSL("texcoord1 = vertex_texcoord1; \n");
+    if (Planes == 3) {
+        GLSL("texcoord2 = vertex_texcoord1; \n");   // texcoord1 ist hier richtig
+    }
+    GLSL("}                             \n");
+
     Debug(3, "vor create\n");
     gl_prog = glCreateProgram();
     Debug(3, "vor compile vertex\n");
-//	printf("%s",sh);
-    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, sh ); 
-	
-	
+//  printf("%s",sh);
+    compile_attach_shader(gl_prog, GL_VERTEX_SHADER, sh);
+
     switch (colorspace) {
         case AVCOL_SPC_RGB:
             m = &yuv_bt601.m[0][0];
@@ -297,86 +297,85 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
             Debug(3, "default BT709 Colorspace used  %d\n", colorspace);
             break;
     }
-	
-	GL_init();
-	
-	GLSL("%s\n",gl_version);
-	GLSL("precision mediump float;    \n");
-	GLSL("layout(location = 0) out vec4 out_color;\n");
-	GLSL("in vec2 texcoord0;          \n");
-	GLSL("in vec2 texcoord1;          \n");
-	if (Planes == 3)
-		GLSL("in vec2 texcoord2;      \n");
-	GLSL("uniform mat3 colormatrix;   \n");
-	GLSL("uniform vec3 colormatrix_c; \n");
-	if (colorspace == AVCOL_SPC_BT2020_NCL)
-		GLSL("uniform mat3 cms_matrix;\n");
-	GLSL("uniform sampler2D texture0; \n");
-	GLSL("uniform sampler2D texture1; \n");
-	if (Planes == 3)
-		GLSL("uniform sampler2D texture2; \n");
-	GLSL("void main() {               \n");
-	GLSL("vec4 color;                 \n");
-	
-	if (colorspace == AVCOL_SPC_BT2020_NCL) {
-		GLSL("color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;     \n");
-		if (Planes == 3) {
-			GLSL("color.g = 1.003906 * vec4(texture(texture1, texcoord1)).r;  \n");
-			GLSL("color.b = 1.003906 * vec4(texture(texture2, texcoord2)).r;  \n");
-		} else {
-			GLSL("color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;\n");
-		}
-		GLSL("// color conversion\n");
-		GLSL("color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;     \n");
-		GLSL("color.a = 1.0;                             \n");
 
-		GLSL("// pl_shader_linearize                     \n");
+    GL_init();
+
+    GLSL("%s\n", gl_version);
+    GLSL("precision mediump float;    \n");
+    GLSL("layout(location = 0) out vec4 out_color;\n");
+    GLSL("in vec2 texcoord0;          \n");
+    GLSL("in vec2 texcoord1;          \n");
+    if (Planes == 3)
+        GLSL("in vec2 texcoord2;      \n");
+    GLSL("uniform mat3 colormatrix;   \n");
+    GLSL("uniform vec3 colormatrix_c; \n");
+    if (colorspace == AVCOL_SPC_BT2020_NCL)
+        GLSL("uniform mat3 cms_matrix;\n");
+    GLSL("uniform sampler2D texture0; \n");
+    GLSL("uniform sampler2D texture1; \n");
+    if (Planes == 3)
+        GLSL("uniform sampler2D texture2; \n");
+    GLSL("void main() {               \n");
+    GLSL("vec4 color;                 \n");
+
+    if (colorspace == AVCOL_SPC_BT2020_NCL) {
+        GLSL("color.r = 1.003906 * vec4(texture(texture0, texcoord0)).r;     \n");
+        if (Planes == 3) {
+            GLSL("color.g = 1.003906 * vec4(texture(texture1, texcoord1)).r;  \n");
+            GLSL("color.b = 1.003906 * vec4(texture(texture2, texcoord2)).r;  \n");
+        } else {
+            GLSL("color.gb = 1.003906 * vec4(texture(texture1, texcoord1)).rg;\n");
+        }
+        GLSL("// color conversion\n");
+        GLSL("color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;     \n");
+        GLSL("color.a = 1.0;                             \n");
+
+        GLSL("// pl_shader_linearize                     \n");
         GLSL("color.rgb = max(color.rgb, 0.0);           \n");
-//		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
-//		GLSL("color.rgb = pow(color.rgb, vec3(2.4));     \n");
-//		GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(%f)) * vec3(1.0/%f)) + vec3(%f),bvec3(lessThan(vec3(0.5), color.rgb)));\n",HLG_C, HLG_A, HLG_B);
-		GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(0.55991073)) * vec3(1.0/0.17883277)) + vec3(0.28466892), bvec3(lessThan(vec3(0.5), color.rgb)));\n");
-		GLSL("// color mapping                           \n");
-		GLSL("color.rgb = cms_matrix * color.rgb;        \n");
-#ifndef GAMMA	
-		GLSL("// pl_shader_delinearize                   \n");
-		GLSL("color.rgb = max(color.rgb, 0.0);           \n");
-//		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
-//		GLSL("color.rgb = pow(color.rgb, vec3(1.0/2.4)); \n");
-		GLSL("color.rgb = mix(vec3(0.5) * sqrt(color.rgb), vec3(0.17883277) * log(color.rgb - vec3(0.28466892)) + vec3(0.55991073), bvec3(lessThan(vec3(1.0), color.rgb))); \n");
+//      GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
+//      GLSL("color.rgb = pow(color.rgb, vec3(2.4));     \n");
+//      GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(%f)) * vec3(1.0/%f)) + vec3(%f),bvec3(lessThan(vec3(0.5), color.rgb)));\n",HLG_C, HLG_A, HLG_B);
+        GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(0.55991073)) * vec3(1.0/0.17883277)) + vec3(0.28466892), bvec3(lessThan(vec3(0.5), color.rgb)));\n");
+        GLSL("// color mapping                           \n");
+        GLSL("color.rgb = cms_matrix * color.rgb;        \n");
+#ifndef GAMMA
+        GLSL("// pl_shader_delinearize                   \n");
+        GLSL("color.rgb = max(color.rgb, 0.0);           \n");
+//      GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
+//      GLSL("color.rgb = pow(color.rgb, vec3(1.0/2.4)); \n");
+        GLSL("color.rgb = mix(vec3(0.5) * sqrt(color.rgb), vec3(0.17883277) * log(color.rgb - vec3(0.28466892)) + vec3(0.55991073), bvec3(lessThan(vec3(1.0), color.rgb))); \n");
 
 #endif
-		GLSL("out_color = color;                         \n");
-		GLSL("} \n");		
-	}
-	else {		
+        GLSL("out_color = color;                         \n");
+        GLSL("} \n");
+    } else {
 
-		GLSL("color.r =  1.000000 * vec4(texture(texture0, texcoord0)).r;  \n");
-		if (Planes == 3) {
-			GLSL("color.g = 1.000000 * vec4(texture(texture1, texcoord1)).r;\n");
-			GLSL("color.b = 1.000000 * vec4(texture(texture2, texcoord2)).r;\n");
-		} else {
-			GLSL("color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg; \n");
-		}
-		GLSL("// color conversion         \n");
-		GLSL("color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;  \n");
-		GLSL("color.a = 1.0;              \n");		
+        GLSL("color.r =  1.000000 * vec4(texture(texture0, texcoord0)).r;  \n");
+        if (Planes == 3) {
+            GLSL("color.g = 1.000000 * vec4(texture(texture1, texcoord1)).r;\n");
+            GLSL("color.b = 1.000000 * vec4(texture(texture2, texcoord2)).r;\n");
+        } else {
+            GLSL("color.gb = 1.000000 * vec4(texture(texture1, texcoord1)).rg; \n");
+        }
+        GLSL("// color conversion         \n");
+        GLSL("color.rgb = mat3(colormatrix) * color.rgb  + colormatrix_c;  \n");
+        GLSL("color.a = 1.0;              \n");
 
-		GLSL("// linearize gamma                     \n");
-		GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // linearize gamma
-		GLSL("color.rgb = pow(color.rgb, vec3(2.4));   \n");
-#ifndef GAMMA	
-		GLSL("// delinearize gamma to sRGB               \n");
-		GLSL("color.rgb = max(color.rgb, 0.0);         \n");
-		GLSL("color.rgb = mix(color.rgb * vec3(12.92), vec3(1.055) * pow(color.rgb, vec3(1.0/2.4)) - vec3(0.055), bvec3(lessThanEqual(vec3(0.0031308), color.rgb))); \n");
+        GLSL("// linearize gamma                     \n");
+        GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);  \n");    // linearize gamma
+        GLSL("color.rgb = pow(color.rgb, vec3(2.4));   \n");
+#ifndef GAMMA
+        GLSL("// delinearize gamma to sRGB               \n");
+        GLSL("color.rgb = max(color.rgb, 0.0);         \n");
+        GLSL("color.rgb = mix(color.rgb * vec3(12.92), vec3(1.055) * pow(color.rgb, vec3(1.0/2.4)) - vec3(0.055), bvec3(lessThanEqual(vec3(0.0031308), color.rgb))); \n");
 #endif
-		GLSL("// color mapping            \n");
-		GLSL("out_color = color;          \n");
-		GLSL("} \n");
-	}
+        GLSL("// color mapping            \n");
+        GLSL("out_color = color;          \n");
+        GLSL("} \n");
+    }
 //printf(">%s<",sh);
     Debug(3, "vor compile fragment\n");
-    compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, sh); 
+    compile_attach_shader(gl_prog, GL_FRAGMENT_SHADER, sh);
     glBindAttribLocation(gl_prog, 0, "vertex_position");
 
     for (n = 0; n < 6; n++) {

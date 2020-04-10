@@ -384,7 +384,7 @@ static char VideoSurfaceModesChanged;   ///< flag surface modes changed
 static const char VideoTransparentOsd = 1;
 
 static uint32_t VideoBackground;        ///< video background color
-char VideoStudioLevels;          ///< flag use studio levels
+char VideoStudioLevels;                 ///< flag use studio levels
 
 /// Default deinterlace mode.
 static VideoDeinterlaceModes VideoDeinterlace[VideoResolutionMax];
@@ -495,7 +495,6 @@ static int GlxVSyncEnabled = 1;         ///< enable/disable v-sync
 static GLXContext glxSharedContext;     ///< shared gl context
 static GLXContext glxContext;           ///< our gl context
 
-
 static GLXContext glxThreadContext;     ///< our gl context for the thread
 
 static XVisualInfo *GlxVisualInfo;      ///< our gl visual
@@ -503,7 +502,7 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, GLXContex
 GLXContext OSDcontext;
 #else
 static EGLContext eglSharedContext;     ///< shared gl context
-static EGLContext eglOSDContext = NULL;     ///< our gl context for the thread
+static EGLContext eglOSDContext = NULL; ///< our gl context for the thread
 static EGLContext eglContext;           ///< our gl context
 static EGLConfig eglConfig;
 static EGLDisplay eglDisplay;
@@ -542,7 +541,6 @@ static int X11HaveDPMS(xcb_connection_t *);
 static void X11DPMSReenable(xcb_connection_t *);
 static void X11DPMSDisable(xcb_connection_t *);
 #endif
-
 
 char *eglErrorString(EGLint error)
 {
@@ -685,7 +683,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
         input_aspect_ratio.num = 1;
         input_aspect_ratio.den = 1;
         Debug(3, "video: aspect defaults to %d:%d\n", input_aspect_ratio.num, input_aspect_ratio.den);
-        
+
     }
 
     av_reduce(&input_aspect_ratio.num, &input_aspect_ratio.den, input_width * input_aspect_ratio.num,
@@ -697,10 +695,10 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
         input_aspect_ratio.den = 1;
     }
 #ifdef USE_DRM
-	get_drm_aspect(&display_aspect_ratio.num,&display_aspect_ratio.den);
+    get_drm_aspect(&display_aspect_ratio.num, &display_aspect_ratio.den);
 #else
-	Debug(3,"mmHeight %d mm Width %d VideoHeight %d VideoWidth %d\n",VideoScreen->height_in_millimeters,VideoScreen->width_in_millimeters,
-		  VideoScreen->height_in_pixels,VideoScreen->width_in_pixels);
+    Debug(3, "mmHeight %d mm Width %d VideoHeight %d VideoWidth %d\n", VideoScreen->height_in_millimeters,
+        VideoScreen->width_in_millimeters, VideoScreen->height_in_pixels, VideoScreen->width_in_pixels);
     display_aspect_ratio.num = VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
     display_aspect_ratio.den = VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
 #endif
@@ -873,9 +871,6 @@ static PFNGLXSWAPINTERVALSGIPROC GlxSwapIntervalSGI;
     }\
 }
 
-
-
-
 ///
 /// GLX check if a GLX extension is supported.
 ///
@@ -974,11 +969,10 @@ static void EglInit(void)
 
     XVisualInfo *vi = NULL;
 
-    
 #ifdef PLACEBO
     return;
 #endif
-    
+
     // The desired 30-bit color visual
     int attributeList10[] = {
         GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -1013,7 +1007,7 @@ static void EglInit(void)
     if (!glXQueryVersion(XlibDisplay, &major, &minor)) {
         Fatal(_("video/glx: no GLX support\n"));
     }
-    Debug(3,"video/glx: glx version %d.%d\n", major, minor);
+    Debug(3, "video/glx: glx version %d.%d\n", major, minor);
 
     //
     //  check which extension are supported
@@ -1152,25 +1146,26 @@ static void EglInit(void)
 {
     int redSize, greenSize, blueSize, alphaSize;
     static int glewdone = 0;
-    
+
 #ifdef PLACEBO
     return;
 #endif
     EGLContext context;
 
     // create egl context
-    setenv("MESA_GL_VERSION_OVERRIDE","3.3",0);
-	setenv("V3D_DOUBLE_BUFFER","1",0);
+    setenv("MESA_GL_VERSION_OVERRIDE", "3.3", 0);
+    setenv("V3D_DOUBLE_BUFFER", "1", 0);
     make_egl();
-	
-	if (!glewdone) {
+
+    if (!glewdone) {
         GLenum err = glewInit();
-		glewdone = 1;
-		if (err != GLEW_OK) {
-			Debug(3, "Error: %s\n", glewGetErrorString(err));
-		}
-	}
-	
+
+        glewdone = 1;
+        if (err != GLEW_OK) {
+            Debug(3, "Error: %s\n", glewGetErrorString(err));
+        }
+    }
+
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_BLUE_SIZE, &blueSize);
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_RED_SIZE, &redSize);
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_GREEN_SIZE, &greenSize);
@@ -1237,16 +1232,16 @@ static void EglExit(void)
     if (eglContext) {
         eglDestroyContext(eglDisplay, eglContext);
         EglCheck();
-		eglContext = NULL;
+        eglContext = NULL;
     }
 
     eglTerminate(eglDisplay);
 #endif
-	
+
 #ifdef USE_DRM
-    	drm_clean_up();
-#endif	
-	
+    drm_clean_up();
+#endif
+
 #endif
 }
 
@@ -1398,7 +1393,7 @@ typedef struct _cuvid_decoder_
     AVFilterContext *buffersrc_ctx;
     AVFilterGraph *filter_graph;
 #endif
-	AVBufferRef *cached_hw_frames_ctx;
+    AVBufferRef *cached_hw_frames_ctx;
     int LastAVDiff;                     ///< last audio - video difference
     int SyncCounter;                    ///< counter to sync frames
     int StartCounter;                   ///< counter for video start
@@ -1509,7 +1504,8 @@ int CuvidMessage(int level, const char *format, ...)
 static inline void __checkCudaErrors(CUresult err, const char *file, const int line)
 {
     if (CUDA_SUCCESS != err) {
-        CuvidMessage(2, "checkCudaErrors() Driver API error = %04d >%s< from file <%s>, line %i.\n", err, getCudaDrvErrorString(err),  file, line);
+        CuvidMessage(2, "checkCudaErrors() Driver API error = %04d >%s< from file <%s>, line %i.\n", err,
+            getCudaDrvErrorString(err), file, line);
         exit(EXIT_FAILURE);
     }
 }
@@ -1589,13 +1585,13 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
             checkCudaErrors(cu->cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
 #endif
 #ifdef VAAPI
-			if (decoder->images[i*Planes+j]) {
-                DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i*Planes+j]);
-				if (decoder->fds[i*Planes+j])
-					close(decoder->fds[i*Planes+j]);
-			}
-			decoder->fds[i*Planes+j] = 0;
-            decoder->images[i*Planes+j] = 0;
+            if (decoder->images[i * Planes + j]) {
+                DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i * Planes + j]);
+                if (decoder->fds[i * Planes + j])
+                    close(decoder->fds[i * Planes + j]);
+            }
+            decoder->fds[i * Planes + j] = 0;
+            decoder->images[i * Planes + j] = 0;
 #endif
 #endif
         }
@@ -1604,7 +1600,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
     pl_renderer_destroy(&p->renderer);
     p->renderer = pl_renderer_create(p->ctx, p->gpu);
 #else
-    glDeleteTextures(CODEC_SURFACES_MAX * 2, (GLuint *) &decoder->gl_textures);
+    glDeleteTextures(CODEC_SURFACES_MAX * 2, (GLuint *) & decoder->gl_textures);
     GlxCheck();
 
     if (CuvidDecoderN == 1) {           // only wenn last decoder closes
@@ -1687,25 +1683,25 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
         }
     }
 #else
-#ifdef VAAPI 
-		if (decoder->images[surface*Planes]) {
-			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes]);	 
-			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes+1]);
+#ifdef VAAPI
+    if (decoder->images[surface * Planes]) {
+        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes]);
+        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes + 1]);
 #ifdef RASPI
-			DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface*Planes+2]);
+        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes + 2]);
 #endif
-			if (decoder->fds[surface*Planes]) {
-				close(decoder->fds[surface*Planes]);
-//				close(decoder->fds[surface*Planes+1]);
+        if (decoder->fds[surface * Planes]) {
+            close(decoder->fds[surface * Planes]);
+//              close(decoder->fds[surface*Planes+1]);
 #ifdef RASPI
-				close(decoder->fds[surface*Planes+2]);
+            close(decoder->fds[surface * Planes + 2]);
 #endif
-			}
-		}	
-		decoder->fds[surface*Planes] = 0;
-		decoder->fds[surface*Planes+1] = 0;
-		decoder->images[surface*Planes] = 0;
-		decoder->images[surface*Planes+1] = 0;		
+        }
+    }
+    decoder->fds[surface * Planes] = 0;
+    decoder->fds[surface * Planes + 1] = 0;
+    decoder->images[surface * Planes] = 0;
+    decoder->images[surface * Planes + 1] = 0;
 #endif
 #endif
     for (i = 0; i < decoder->SurfaceUsedN; ++i) {
@@ -1735,9 +1731,10 @@ static void CuvidPrintFrames(const CuvidDecoder * decoder)
 
 int CuvidTestSurfaces()
 {
-    int i=0;
+    int i = 0;
+
     if (CuvidDecoders[0] != NULL) {
-        if (i = atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX-1)
+        if (i = atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX - 1)
             return i;
         return 0;
     } else
@@ -1779,13 +1776,13 @@ const int mpgl_preferred_gl_versions[] = {
     0
 };
 
-static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * out_context, EGLConfig * out_config, int *bpp)
+static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * out_context, EGLConfig * out_config,
+    int *bpp)
 {
 
     EGLenum api;
     EGLint rend, *attribs;
     const char *name;
-    
 
     switch (es_version) {
         case 0:
@@ -1831,7 +1828,8 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
         EGL_RENDERABLE_TYPE, rend,
         EGL_NONE
     };
-    EGLint num_configs=0;
+    EGLint num_configs = 0;
+
 #ifndef RASPI
     attribs = attributes10;
     *bpp = 10;
@@ -1842,9 +1840,9 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
         if (!eglChooseConfig(display, attributes8, NULL, 0, &num_configs)) {    // try 8 Bit
             num_configs = 0;
         }
-    } else 
+    } else
 #endif
-	if (num_configs == 0) {
+    if (num_configs == 0) {
         EglCheck();
         Debug(3, " 10 Bit egl Failed\n");
         attribs = attributes8;
@@ -1909,6 +1907,7 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
 make_egl()
 {
     int bpp;
+
     CreateImageKHR = (void *)eglGetProcAddress("eglCreateImageKHR");
     DestroyImageKHR = (void *)eglGetProcAddress("eglDestroyImageKHR");
     EGLImageTargetTexture2DOES = (void *)eglGetProcAddress("glEGLImageTargetTexture2DOES");
@@ -1917,7 +1916,7 @@ make_egl()
     eglWaitSyncKHR = (void *)eglGetProcAddress("eglWaitSyncKHR");
     eglClientWaitSyncKHR = (void *)eglGetProcAddress("eglClientWaitSyncKHR");
     eglDupNativeFenceFDANDROID = (void *)eglGetProcAddress("eglDupNativeFenceFDANDROID");
-    
+
     if (!CreateImageKHR || !DestroyImageKHR || !EGLImageTargetTexture2DOES || !eglCreateSyncKHR)
         Fatal(_("Can't get EGL Extentions\n"));
 #ifndef USE_DRM
@@ -1933,7 +1932,7 @@ make_egl()
     int vID, n;
 
     eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
-    Debug(3, "chose visual 0x%x bpp %d\n", vID,bpp);
+    Debug(3, "chose visual 0x%x bpp %d\n", vID, bpp);
 #ifdef USE_DRM
     InitBo(bpp);
 #else
@@ -1976,7 +1975,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
         Fatal("codec: can't allocate HW video codec context err %04x", i);
     }
 #endif
-#if defined (VAAPI) && !defined (RASPI) 
+#if defined (VAAPI) && !defined (RASPI)
     // if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, ":0.0" , NULL, 0)) != 0 ) {
     if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, "/dev/dri/renderD128", NULL, 0)) != 0) {
         Fatal("codec: can't allocate HW video codec context err %04x", i);
@@ -1990,7 +1989,7 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream * stream)
         Error(_("video/cuvid: out of memory\n"));
         return NULL;
     }
-#if defined (VAAPI) && !defined (RASPI) 
+#if defined (VAAPI) && !defined (RASPI)
     VaDisplay = TO_VAAPI_DEVICE_CTX(HwDeviceContext)->display;
     decoder->VaDisplay = VaDisplay;
 #endif
@@ -2085,12 +2084,12 @@ static void CuvidDelHwDecoder(CuvidDecoder * decoder)
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
     EglCheck();
 #endif
-#endif 
+#endif
 #if defined PLACEBO || defined VAAPI
     if (decoder->SurfaceFreeN || decoder->SurfaceUsedN) {
         CuvidDestroySurfaces(decoder);
     }
-#endif   
+#endif
     if (decoder == CuvidDecoders[0])
         VideoThreadUnlock();
 
@@ -2263,7 +2262,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
             // make planes for image
             pl = &decoder->pl_images[i].planes[n];
             pl->components = n == 0 ? 1 : 2;
-            pl->shift_x = 0.0f; 
+            pl->shift_x = 0.0f;
             pl->shift_y = 0.0f;
             if (n == 0) {
                 pl->component_mapping[0] = PL_CHANNEL_Y;
@@ -2271,7 +2270,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                 pl->component_mapping[2] = -1;
                 pl->component_mapping[3] = -1;
             } else {
-                pl->shift_x = -0.5f;  // PL_CHROMA_LEFT
+                pl->shift_x = -0.5f;    // PL_CHROMA_LEFT
                 pl->component_mapping[0] = PL_CHANNEL_U;
                 pl->component_mapping[1] = PL_CHANNEL_V;
                 pl->component_mapping[2] = -1;
@@ -2406,18 +2405,18 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 
     Debug(3, "video: create %d Textures Format %s w %d h %d \n", anz, PixFmt == AV_PIX_FMT_NV12 ? "NV12" : "P010",
         size_x, size_y);
-	
+
 #ifdef USE_DRM
-	//set_video_mode(size_x,size_y);    // switch Mode here (highly experimental)	
+    //set_video_mode(size_x,size_y);    // switch Mode here (highly experimental)
 #endif
-	
+
 #ifdef CUVID
     glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
     GlxCheck();
 #else
 #ifdef USE_DRM
     pthread_mutex_lock(&OSDMutex);
-#endif   
+#endif
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
 #endif
 
@@ -2428,7 +2427,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     GlxCheck();
 
     for (i = 0; i < anz; i++) {
-        for (n = 0; n < Planes; n++) {       // number of planes
+        for (n = 0; n < Planes; n++) {  // number of planes
 
             glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[i * Planes + n]);
             GlxCheck();
@@ -2438,15 +2437,19 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifdef RASPI
-			if (PixFmt == AV_PIX_FMT_NV12)
-			   glTexImage2D(GL_TEXTURE_2D, 0,GL_R8 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, GL_RED , GL_UNSIGNED_BYTE , NULL);
-			else
-			   glTexImage2D(GL_TEXTURE_2D, 0,GL_R16,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, GL_RED , GL_UNSIGNED_SHORT, NULL);
+            if (PixFmt == AV_PIX_FMT_NV12)
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, n == 0 ? size_x : size_x / 2, n == 0 ? size_y : size_y / 2, 0,
+                    GL_RED, GL_UNSIGNED_BYTE, NULL);
+            else
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R16, n == 0 ? size_x : size_x / 2, n == 0 ? size_y : size_y / 2, 0,
+                    GL_RED, GL_UNSIGNED_SHORT, NULL);
 #else
-			if (PixFmt == AV_PIX_FMT_NV12)
-			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R8 :GL_RG8  ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_BYTE , NULL);
-			else
-			   glTexImage2D(GL_TEXTURE_2D, 0,n==0?GL_R16:GL_RG16 ,n==0?size_x:size_x/2, n==0?size_y:size_y/2, 0, n==0?GL_RED:GL_RG , GL_UNSIGNED_SHORT, NULL);
+            if (PixFmt == AV_PIX_FMT_NV12)
+                glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R8 : GL_RG8, n == 0 ? size_x : size_x / 2,
+                    n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_BYTE, NULL);
+            else
+                glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R16 : GL_RG16, n == 0 ? size_x : size_x / 2,
+                    n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_SHORT, NULL);
 #endif
             SDK_CHECK_ERROR_GL();
             // register this texture with CUDA
@@ -2489,28 +2492,32 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                desc.layers[n].pitch[plane]); \
     } while (0)
 
-void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame * frame, int image_width, int image_height)
+void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame * frame, int image_width,
+    int image_height)
 {
     VAStatus status;
 
     uint64_t first_time;
+
 #if defined  (VAAPI) && !defined (RASPI)
     VADRMPRIMESurfaceDescriptor desc;
 
     status =
-        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
-        VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
+        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3],
+        VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS,
+        &desc);
 
     if (status != VA_STATUS_SUCCESS) {
         printf("Fehler beim export VAAPI Handle\n");
         return;
     }
-    vaSyncSurface(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3]);
+    vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3]);
 #endif
 #ifdef RASPI
-	AVDRMFrameDescriptor desc;
-	memcpy(&desc,frame->data[0],sizeof(desc));
-    
+    AVDRMFrameDescriptor desc;
+
+    memcpy(&desc, frame->data[0], sizeof(desc));
+
 #endif
 
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
@@ -2519,45 +2526,46 @@ void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame
     for (int n = 0; n < Planes; n++) {
         int attribs[20] = { EGL_NONE };
         uint num_attribs = 0;
-		int fd;
+        int fd;
+
 #if defined (VAAPI) && !defined (RASPI)
-		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
-		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
-		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
-		ADD_PLANE_ATTRIBS(0);
+        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
+        ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
+        ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
+        ADD_PLANE_ATTRIBS(0);
 #endif
 #ifdef RASPI
-		ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8);
-		ADD_ATTRIB(EGL_WIDTH,  n==0?image_width:image_width/2);
-		ADD_ATTRIB(EGL_HEIGHT, n==0?image_height:image_height/2);
-		if (n==0) {
-			fd = dup(desc.objects[0].fd);
-			ADD_ATTRIB( EGL_DMA_BUF_PLANE0_FD_EXT,fd);
-			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_OFFSET_EXT,desc.layers[0].planes[n].offset);
-			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_PITCH_EXT,desc.layers[0].planes[n].pitch);
-		} else {
-			fd = dup(desc.objects[0].fd);
-			ADD_ATTRIB( EGL_DMA_BUF_PLANE0_FD_EXT,fd);
-			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_OFFSET_EXT,desc.layers[0].planes[n].offset);
-			ADD_ATTRIB(	EGL_DMA_BUF_PLANE0_PITCH_EXT,desc.layers[0].planes[n].pitch);
-		}
-//		Debug(3,"n %d fd %d nb_planes %d nb_layers %d plane %d offeset %d offset2 %d pitch %d \n",n, fd,
-//			  desc.layers[0].nb_planes,desc.nb_layers,n,desc.layers[0].planes[n].offset,desc.layers[0].planes[n+1].offset,desc.layers[0].planes[n].pitch);
+        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8);
+        ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
+        ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
+        if (n == 0) {
+            fd = dup(desc.objects[0].fd);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, fd);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, desc.layers[0].planes[n].offset);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, desc.layers[0].planes[n].pitch);
+        } else {
+            fd = dup(desc.objects[0].fd);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, fd);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, desc.layers[0].planes[n].offset);
+            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, desc.layers[0].planes[n].pitch);
+        }
+//      Debug(3,"n %d fd %d nb_planes %d nb_layers %d plane %d offeset %d offset2 %d pitch %d \n",n, fd,
+//            desc.layers[0].nb_planes,desc.nb_layers,n,desc.layers[0].planes[n].offset,desc.layers[0].planes[n+1].offset,desc.layers[0].planes[n].pitch);
 #endif
 
         decoder->images[index * Planes + n] =
             CreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
-  
+
         if (!decoder->images[index * Planes + n])
             goto esh_failed;
 
         glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index * Planes + n]);
         EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * Planes + n]);
 #ifdef RASPI
-		decoder->fds[index*Planes+n] = fd;
+        decoder->fds[index * Planes + n] = fd;
 #endif
     }
-	decoder->fds[index*Planes] = desc.objects[0].fd;
+    decoder->fds[index * Planes] = desc.objects[0].fd;
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
@@ -2610,10 +2618,9 @@ static unsigned CuvidGetVideoSurface(CuvidDecoder * decoder, const AVCodecContex
 #if defined (VAAPI) || defined (YADIF)
 static void CuvidSyncRenderFrame(CuvidDecoder * decoder, const AVCodecContext * video_ctx, AVFrame * frame);
 
-
 int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * frame)
 {
-    
+
     int ret;
     AVFrame *filt_frame = av_frame_alloc();
 
@@ -2622,12 +2629,12 @@ int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
         av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
     }
 
-//     printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
+    //     printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
     /* pull filtered frames from the filtergraph */
-    while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0 ) {
+    while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
         filt_frame->pts /= 2;
         decoder->Interlaced = 0;
- //        printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
+        //        printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
         CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
         filt_frame = av_frame_alloc();  // get new frame
 
@@ -2751,9 +2758,9 @@ int init_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
 #endif
 
 #ifdef VAAPI
-static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fmt,AVCodecContext * video_ctx)
+static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fmt, AVCodecContext * video_ctx)
 {
-    
+
     AVBufferRef *new_frames_ctx = NULL;
 
     if (!hw_device_ctx) {
@@ -2761,9 +2768,7 @@ static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fm
         goto error;
     }
 
-    if (avcodec_get_hw_frames_parameters(video_ctx,
-                                hw_device_ctx, hw_fmt, &new_frames_ctx) < 0)
-    {
+    if (avcodec_get_hw_frames_parameters(video_ctx, hw_device_ctx, hw_fmt, &new_frames_ctx) < 0) {
         Debug(3, "Hardware decoding of this stream is unsupported?\n");
         goto error;
     }
@@ -2773,20 +2778,17 @@ static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fm
     // We might be able to reuse a previously allocated frame pool.
     if (decoder->cached_hw_frames_ctx) {
         AVHWFramesContext *old_fctx = (void *)decoder->cached_hw_frames_ctx->data;
-		Debug(3,"CMP %d:%d %d:%d %d:%d %d:%d %d:%d\,",new_fctx->format, old_fctx->format,
-		  new_fctx->sw_format,old_fctx->sw_format ,
-		  new_fctx->width, old_fctx->width ,
-		  new_fctx->height, old_fctx->height ,
-		  new_fctx->initial_pool_size, old_fctx->initial_pool_size);
-        if (new_fctx->format            != old_fctx->format ||
-            new_fctx->sw_format         != old_fctx->sw_format ||
-            new_fctx->width             != old_fctx->width ||
-            new_fctx->height            != old_fctx->height ||
-            new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
-              Debug(3,"delete old cache");
-              if (decoder->filter_graph)
-                 avfilter_graph_free(&decoder->filter_graph);
-              av_buffer_unref(&decoder->cached_hw_frames_ctx);
+
+        Debug(3, "CMP %d:%d %d:%d %d:%d %d:%d %d:%d\,", new_fctx->format, old_fctx->format, new_fctx->sw_format,
+            old_fctx->sw_format, new_fctx->width, old_fctx->width, new_fctx->height, old_fctx->height,
+            new_fctx->initial_pool_size, old_fctx->initial_pool_size);
+        if (new_fctx->format != old_fctx->format || new_fctx->sw_format != old_fctx->sw_format
+            || new_fctx->width != old_fctx->width || new_fctx->height != old_fctx->height
+            || new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
+            Debug(3, "delete old cache");
+            if (decoder->filter_graph)
+                avfilter_graph_free(&decoder->filter_graph);
+            av_buffer_unref(&decoder->cached_hw_frames_ctx);
         }
     }
 
@@ -2808,8 +2810,8 @@ static int init_generic_hwaccel(CuvidDecoder * decoder, enum AVPixelFormat hw_fm
     av_buffer_unref(&new_frames_ctx);
     return 0;
 
-error:
-	Debug(3,"Error with hwframes\n");
+  error:
+    Debug(3, "Error with hwframes\n");
     av_buffer_unref(&new_frames_ctx);
     av_buffer_unref(&decoder->cached_hw_frames_ctx);
     return -1;
@@ -2866,17 +2868,17 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
     if (*fmt_idx != PIXEL_FORMAT) {
         Fatal(_("video: no valid profile found\n"));
     }
-	
-//    decoder->newchannel = 1;
+
+    //    decoder->newchannel = 1;
 #ifdef VAAPI
-	init_generic_hwaccel(decoder, PIXEL_FORMAT,video_ctx);
+    init_generic_hwaccel(decoder, PIXEL_FORMAT, video_ctx);
 #endif
     if (ist->GetFormatDone) {
         return PIXEL_FORMAT;
-	}
+    }
 
     ist->GetFormatDone = 1;
-    
+
     Debug(3, "video: create decoder 16bit?=%d %dx%d old  %d %d\n", bitformat16, video_ctx->width, video_ctx->height,
         decoder->InputWidth, decoder->InputHeight);
 
@@ -2892,10 +2894,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
             ist->hwaccel_output_format = AV_PIX_FMT_NV12;
         }
 
-         if ((video_ctx->width  != decoder->InputWidth
-         || video_ctx->height != decoder->InputHeight) && decoder->TrickSpeed == 0) {
+        if ((video_ctx->width != decoder->InputWidth || video_ctx->height != decoder->InputHeight)
+            && decoder->TrickSpeed == 0) {
 
- //       if (decoder->TrickSpeed == 0) {
+            //       if (decoder->TrickSpeed == 0) {
 #ifdef PLACEBO
             VideoThreadLock();
 #endif
@@ -2924,7 +2926,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
                 Fatal(_("codec: can't set option deint to video codec!\n"));
             }
 #endif
-        } else { 
+        } else {
             decoder->SyncCounter = 0;
             decoder->FrameCounter = 0;
             decoder->FramesDisplayed = 0;
@@ -2939,10 +2941,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
 #ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
 #else
-        if (VideoDeinterlace[decoder->Resolution]) // need deinterlace
-               ist->filter = 1;                // init deint vaapi
-         else
-               ist->filter = 0;
+        if (VideoDeinterlace[decoder->Resolution])  // need deinterlace
+            ist->filter = 1;            // init deint vaapi
+        else
+            ist->filter = 0;
 
         ist->active_hwaccel_id = HWACCEL_VAAPI;
 #endif
@@ -3018,16 +3020,16 @@ int get_RGB(CuvidDecoder * decoder)
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
 #ifdef RASPI
-	texLoc = glGetUniformLocation(gl_prog, "texture2");
-	glUniform1i(texLoc, 2);
+    texLoc = glGetUniformLocation(gl_prog, "texture2");
+    glUniform1i(texLoc, 2);
 #endif
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);
 #ifdef RASPI
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
 #endif
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
 
@@ -3094,7 +3096,7 @@ int get_RGB(CuvidDecoder * decoder)
     glDeleteFramebuffers(1, &fb);
     glDeleteTextures(1, &texture);
 
-#else  // Placebo
+#else // Placebo
     faktorx = (float)width / (float)VideoWindowWidth;
     faktory = (float)height / (float)VideoWindowHeight;
     fmt = pl_find_named_fmt(p->gpu, "bgra8");
@@ -3358,11 +3360,11 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
         av_frame_free(&frame);
         return;
     }
- 
+
     if (!decoder->Closing) {
         VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
     }
- 
+
     // update aspect ratio changes
     if (decoder->InputWidth && decoder->InputHeight && av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
         Debug(3, "video/cuvid: aspect ratio changed\n");
@@ -3376,28 +3378,29 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
     if (color == AVCOL_SPC_UNSPECIFIED) // if unknown
         color = AVCOL_SPC_BT709;
 #ifdef RASPI
- 	//
-	//	Check image, format, size
-	//
-	if ( // decoder->PixFmt != video_ctx->pix_fmt
-	     video_ctx->width != decoder->InputWidth
-//		|| decoder->ColorSpace != color
-	    || video_ctx->height != decoder->InputHeight) {
-Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->colorspace ,video_ctx->width, decoder->InputWidth,video_ctx->height, decoder->InputHeight);
-		decoder->PixFmt = AV_PIX_FMT_NV12;
-	    decoder->InputWidth = video_ctx->width;
-	    decoder->InputHeight = video_ctx->height;
-	    CuvidCleanup(decoder);
-	    decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
-	    CuvidSetupOutput(decoder);
+    //
+    //  Check image, format, size
+    //
+    if (                                // decoder->PixFmt != video_ctx->pix_fmt
+        video_ctx->width != decoder->InputWidth
+//      || decoder->ColorSpace != color
+        || video_ctx->height != decoder->InputHeight) {
+        Debug(3, "fmt %02d:%02d  width %d:%d hight %d:%d\n", decoder->ColorSpace, frame->colorspace, video_ctx->width,
+            decoder->InputWidth, video_ctx->height, decoder->InputHeight);
+        decoder->PixFmt = AV_PIX_FMT_NV12;
+        decoder->InputWidth = video_ctx->width;
+        decoder->InputHeight = video_ctx->height;
+        CuvidCleanup(decoder);
+        decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
+        CuvidSetupOutput(decoder);
 
-	}
+    }
 #endif
     //
     //  Copy data from frame to image
     //
 #ifdef RASPI
-	if (video_ctx->pix_fmt == 0) { 
+    if (video_ctx->pix_fmt == 0) {
 #else
     if (video_ctx->pix_fmt == PIXEL_FORMAT) {
 #endif
@@ -3465,9 +3468,9 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 
     }
 
-//   Debug(3,"video/cuvid: pixel format %d not supported\n", video_ctx->pix_fmt);
-	 av_frame_free(&frame);
-            return;
+    //   Debug(3,"video/cuvid: pixel format %d not supported\n", video_ctx->pix_fmt);
+    av_frame_free(&frame);
+    return;
 }
 
 ///
@@ -3477,7 +3480,7 @@ Debug(3,"fmt %02d:%02d  width %d:%d hight %d:%d\n",decoder->ColorSpace,frame->co
 ///
 static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
 {
-    unsigned int version,ret;
+    unsigned int version, ret;
 
     Debug(3, "Initializing cuvid hwaccel thread ID:%ld\n", (long int)syscall(186));
     // turn NULL;
@@ -3486,7 +3489,7 @@ static void *CuvidGetHwAccelContext(CuvidDecoder * decoder)
         Debug(3, "schon passiert\n");
         return NULL;
     }
-    
+
     if (!cu) {
         ret = cuda_load_functions(&cu, NULL);
         if (ret < 0) {
@@ -3596,7 +3599,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     GLint texLoc;
     AVFrame *frame;
     AVFrameSideData *FrameSideData = NULL;
-    
+
 #ifdef PLACEBO
     if (level) {
         dst_rect.x0 = decoder->VideoX;  // video window output (clip)
@@ -3625,18 +3628,18 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     ycropf = (float)decoder->CropY / (float)decoder->InputHeight;
 
     current = decoder->SurfacesRb[decoder->SurfaceRead];
-    
-#ifdef USE_DRM    
+
+#ifdef USE_DRM
     if (!decoder->Closing) {
-    	frame = decoder->frames[current];
-    	AVFrameSideData *sd1 = av_frame_get_side_data (frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
-    	AVFrameSideData *sd2 = av_frame_get_side_data (frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
-    	set_hdr_metadata(frame->color_primaries,frame->color_trc,sd1,sd2);
+        frame = decoder->frames[current];
+        AVFrameSideData *sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
+        AVFrameSideData *sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
+
+        set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
     }
 #endif
-    
-	
-	// Render Progressive frame
+
+    // Render Progressive frame
 #ifndef PLACEBO
     y = VideoWindowHeight - decoder->OutputY - decoder->OutputHeight;
     if (y < 0)
@@ -3652,19 +3655,19 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
 #ifdef RASPI
-	texLoc = glGetUniformLocation(gl_prog, "texture2");
-	glUniform1i(texLoc, 2);
+    texLoc = glGetUniformLocation(gl_prog, "texture2");
+    glUniform1i(texLoc, 2);
 #endif
-	
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);	
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);
 #ifdef RASPI
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);	
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
 #endif
-	
+
     render_pass_quad(0, xcropf, ycropf);
 
     glUseProgram(0);
@@ -3673,12 +3676,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 #else
     img = &decoder->pl_images[current];
     pl = &decoder->pl_images[current].planes[1];
-    
+
     memcpy(&deband, &pl_deband_default_params, sizeof(deband));
     memcpy(&render_params, &pl_render_default_params, sizeof(render_params));
 
     switch (decoder->ColorSpace) {
-        case AVCOL_SPC_RGB:    // BT 601 is reportet as RGB 
+        case AVCOL_SPC_RGB:            // BT 601 is reportet as RGB
             img->repr.sys = PL_COLOR_SYSTEM_BT_601;
             img->repr.levels = PL_COLOR_LEVELS_TV;
             img->color.primaries = PL_COLOR_PRIM_BT_601_625;
@@ -3803,13 +3806,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         colors.contrast = 0.0f;
         if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
             Debug(3, "Failed rendering frame!\n");
-        }        
+        }
         return;
     }
 
     decoder->newchannel = 0;
-    
-    
+
     if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Debug(3, "Failed rendering frame!\n");
     }
@@ -3848,7 +3850,6 @@ void make_osd_overlay(int x, int y, int width, int height)
 {
     const struct pl_fmt *fmt;
     struct pl_overlay *pl;
-    
 
     int offset = VideoWindowHeight - (VideoWindowHeight - height - y) - (VideoWindowHeight - y);
 
@@ -3914,14 +3915,14 @@ static void CuvidDisplayFrame(void)
     float ldiff;
     static int first = 1;
     float turnaround;
-    
+
 #ifdef PLACEBO
     uint64_t diff;
     static float fdiff = 23000.0;
     struct pl_swapchain_frame frame;
     struct pl_render_target target;
     bool ok;
-    
+
     VkImage Image;
     const struct pl_fmt *fmt;
     const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -3942,7 +3943,7 @@ static void CuvidDisplayFrame(void)
 #endif
     glClear(GL_COLOR_BUFFER_BIT);
 
-#else  // PLACEBO
+#else // PLACEBO
 
     if (CuvidDecoderN) {
         ldiff = (float)(GetusTicks() - round_time) / 1000000.0;
@@ -4008,7 +4009,7 @@ static void CuvidDisplayFrame(void)
     else
         target.repr.levels = PL_COLOR_LEVELS_TV;
     target.repr.alpha = PL_ALPHA_UNKNOWN;
- 
+
     // target.repr.bits.sample_depth = 16;
     // target.repr.bits.color_depth = 16;
     // target.repr.bits.bit_shift =0;
@@ -4168,14 +4169,14 @@ static void CuvidDisplayFrame(void)
 
 #endif
     VideoThreadUnlock();
-#else  // not PLACEBO
+#else // not PLACEBO
 #ifdef CUVID
     glXGetVideoSyncSGI(&Count);         // get current frame
     glXSwapBuffers(XlibDisplay, VideoWindow);
     glXMakeCurrent(XlibDisplay, None, NULL);
 #else
-#ifndef USE_DRM	
-    eglSwapBuffers(eglDisplay, eglSurface);	
+#ifndef USE_DRM
+    eglSwapBuffers(eglDisplay, eglSurface);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 #else
     drm_swap_buffers();
@@ -4275,7 +4276,8 @@ static void CuvidSetTrickSpeed(CuvidDecoder * decoder, int speed)
 /// @param[out] dropped dropped frames
 /// @param[out] count   number of decoded frames
 ///
-void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height, int *color, int * eotf)
+void CuvidGetStats(CuvidDecoder * decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime,
+    int *width, int *height, int *color, int *eotf)
 {
     *missed = decoder->FramesMissed;
     *duped = decoder->FramesDuped;
@@ -4307,15 +4309,14 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
     int64_t audio_clock;
     int64_t video_clock;
     int err = 0;
-    static int speedup=3;
+    static int speedup = 3;
 
 #ifdef GAMMA
     Get_Gamma();
 #endif
-    
-    
+
     video_clock = CuvidGetClock(decoder);
- 
+
     filled = atomic_read(&decoder->SurfacesFilled);
 
     if (!decoder->SyncOnAudio) {
@@ -4373,19 +4374,19 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
         }
 #endif
         if (abs(diff) > 5000 * 90) {    // more than 5s
-            err = CuvidMessage(2, "video: audio/video difference too big %d\n",diff/90);
+            err = CuvidMessage(2, "video: audio/video difference too big %d\n", diff / 90);
             // decoder->SyncCounter = 1;
             // usleep(10);
             goto skip_sync;
 
         } else if (diff > 100 * 90) {
-            
+
             err = CuvidMessage(4, "video: slow down video, duping frame %d\n", diff / 90);
             ++decoder->FramesDuped;
             if ((speedup && --speedup) || VideoSoftStartSync)
                 decoder->SyncCounter = 1;
-            else    
-                decoder->SyncCounter = 0;   
+            else
+                decoder->SyncCounter = 0;
             goto out;
 
         } else if (diff > 25 * 90) {
@@ -4398,13 +4399,12 @@ static void CuvidSyncDecoder(CuvidDecoder * decoder)
                 err = CuvidMessage(3, "video: speed up video, droping frame %d\n", diff / 90);
                 ++decoder->FramesDropped;
                 CuvidAdvanceDecoderFrame(decoder);
-            } else if ((diff < -100 * 90)) { // give it some time to get frames to drop
+            } else if ((diff < -100 * 90)) {    // give it some time to get frames to drop
                 Debug(3, "Delay Audio %d ms\n", abs(diff / 90));
                 AudioDelayms(abs(diff / 90));
             }
             decoder->SyncCounter = 1;
-        }
-        else {
+        } else {
             speedup = 2;
         }
 #if defined(DEBUG) || defined(AV_INFO)
@@ -4575,7 +4575,6 @@ static void CuvidDisplayHandlerThread(void)
     allfull = 1;
     decoded = 0;
 
-
     for (i = 0; i < CuvidDecoderN; ++i) {
 
         decoder = CuvidDecoders[i];
@@ -4607,7 +4606,7 @@ static void CuvidDisplayHandlerThread(void)
         }
         decoded = 1;
     }
-    
+
     if (!decoded) {                     // nothing decoded, sleep
         // FIXME: sleep on wakeup
         usleep(1 * 1000);
@@ -4669,14 +4668,14 @@ static const VideoModule CuvidModule = {
     .RenderFrame = (void (*const) (VideoHwDecoder *,
             const AVCodecContext *, const AVFrame *))CuvidSyncRenderFrame,
     .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))CuvidGetHwAccelContext,
-    .SetClock = (void (*const)(VideoHwDecoder *, int64_t))CuvidSetClock,
-    .GetClock = (int64_t(*const)(const VideoHwDecoder *))CuvidGetClock,
-    .SetClosing = (void (*const)(const VideoHwDecoder *))CuvidSetClosing,
-    .ResetStart = (void (*const)(const VideoHwDecoder *))CuvidResetStart,
-    .SetTrickSpeed = (void (*const)(const VideoHwDecoder *, int))CuvidSetTrickSpeed,
+    .SetClock =(void(*const)(VideoHwDecoder *, int64_t))CuvidSetClock,
+    .GetClock =(int64_t(*const)(const VideoHwDecoder *))CuvidGetClock,
+    .SetClosing =(void(*const)(const VideoHwDecoder *))CuvidSetClosing,
+    .ResetStart =(void(*const)(const VideoHwDecoder *))CuvidResetStart,
+    .SetTrickSpeed =(void(*const)(const VideoHwDecoder *, int))CuvidSetTrickSpeed,
     .GrabOutput = CuvidGrabOutputSurface,
-    .GetStats = (void (*const)(VideoHwDecoder *, int *, int *, int *,
-            int *, float *, int *, int *, int * , int *))CuvidGetStats,
+    .GetStats =(void(*const)(VideoHwDecoder *, int *, int *, int *,
+            int *, float *, int *, int *, int *, int *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
     .SetVideoMode = CuvidSetVideoMode,
 
@@ -4837,14 +4836,14 @@ static const VideoModule NoopModule = {
             const AVCodecContext *, const AVFrame *))NoopSyncRenderFrame,
     .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))
         DummyGetHwAccelContext,
-    .SetClock = (void (*const)(VideoHwDecoder *, int64_t))NoopSetClock,
-    .GetClock = (int64_t(*const)(const VideoHwDecoder *))NoopGetClock,
-    .SetClosing = (void (*const)(const VideoHwDecoder *))NoopSetClosing,
-    .ResetStart = (void (*const)(const VideoHwDecoder *))NoopResetStart,
-    .SetTrickSpeed =(void (*const)(const VideoHwDecoder *, int))NoopSetTrickSpeed,
+    .SetClock =(void(*const)(VideoHwDecoder *, int64_t))NoopSetClock,
+    .GetClock =(int64_t(*const)(const VideoHwDecoder *))NoopGetClock,
+    .SetClosing =(void(*const)(const VideoHwDecoder *))NoopSetClosing,
+    .ResetStart =(void(*const)(const VideoHwDecoder *))NoopResetStart,
+    .SetTrickSpeed = (void(*const)(const VideoHwDecoder *, int))NoopSetTrickSpeed,
     .GrabOutput = NoopGrabOutputSurface,
-    .GetStats = (void (*const)(VideoHwDecoder *, int *, int *, int *,
-            int *, float *, int *, int *, int * , int *))NoopGetStats,
+    .GetStats =(void(*const)(VideoHwDecoder *, int *, int *, int *,
+            int *, float *, int *, int *, int *, int *))NoopGetStats,
 #endif
     .SetBackground = NoopSetBackground,
     .SetVideoMode = NoopVoid,
@@ -4999,7 +4998,7 @@ void VideoOsdInit(void)
 
     if (posd)
         free(posd);
-    posd = (unsigned char *)calloc( (OsdWidth+1) * (OsdHeight+1) * 4, 1 );
+    posd = (unsigned char *)calloc((OsdWidth + 1) * (OsdHeight + 1) * 4, 1);
     VideoOsdClear();
 }
 
@@ -5010,7 +5009,7 @@ void VideoOsdExit(void)
 {
     OsdDirtyWidth = 0;
     OsdDirtyHeight = 0;
-	VideoOsdClear();
+    VideoOsdClear();
 }
 
 //----------------------------------------------------------------------------
@@ -5199,8 +5198,6 @@ void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
     printf("%5s: %s\n", prefix[level], msg);
 }
 
-
-
 void InitPlacebo()
 {
 
@@ -5211,7 +5208,7 @@ void InitPlacebo()
     char xcbext[] = { "VK_KHR_xcb_surface" };
     char surfext[] = { "VK_KHR_surface" };
 
-    Debug(3, "Init Placebo mit API %d\n",PL_API_VER);
+    Debug(3, "Init Placebo mit API %d\n", PL_API_VER);
 
     p = calloc(1, sizeof(struct priv));
     if (!p)
@@ -5299,17 +5296,18 @@ void InitPlacebo()
 ///
 /// Video render thread.
 ///
-	
-void delete_decode() {
-	Debug(3,"decoder thread exit\n");
+
+void delete_decode()
+{
+    Debug(3, "decoder thread exit\n");
 }
-	
+
 static void *VideoDisplayHandlerThread(void *dummy)
 {
 
     prctl(PR_SET_NAME, "video decoder", 0, 0, 0);
     sleep(2);
-	pthread_cleanup_push(delete_decode, NULL);
+    pthread_cleanup_push(delete_decode, NULL);
     for (;;) {
         // fix dead-lock with CuvidExit
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -5318,17 +5316,17 @@ static void *VideoDisplayHandlerThread(void *dummy)
 
         VideoUsedModule->DisplayHandlerThread();
     }
-	pthread_cleanup_pop(NULL);
+    pthread_cleanup_pop(NULL);
     return dummy;
 }
 
 void exit_display()
 {
-    
+
 #ifdef GAMMA
     Exit_Gamma();
 #endif
-    
+
 #ifdef PLACEBO
     Debug(3, "delete placebo\n");
     if (p == NULL)
@@ -5352,45 +5350,45 @@ void exit_display()
     p = NULL;
 #endif
 #ifdef CUVID
-	if (glxThreadContext) {
+    if (glxThreadContext) {
         glXDestroyContext(XlibDisplay, glxThreadContext);
         GlxCheck();
         glxThreadContext = NULL;
     }
 #else
-	if (eglThreadContext) {
+    if (eglThreadContext) {
         eglDestroyContext(eglDisplay, eglThreadContext);
         EglCheck();
-		eglThreadContext = NULL;
+        eglThreadContext = NULL;
     }
 #endif
-	Debug(3,"display thread exit\n");
+    Debug(3, "display thread exit\n");
 
 }
-	
+
 static void *VideoHandlerThread(void *dummy)
 {
     EGLint contextAttrs[] = {
         EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_NONE
     };
-    
+
     prctl(PR_SET_NAME, "video display", 0, 0, 0);
 
 #ifdef GAMMA
     Init_Gamma();
-    Set_Gamma(0.0,6500);
+    Set_Gamma(0.0, 6500);
 #endif
-    
+
 #ifdef PLACEBO
     InitPlacebo();
 #else
-#ifdef CUVID   
+#ifdef CUVID
     if (EglEnabled) {
         glxThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, glxSharedContext, GL_TRUE);
         GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, glxThreadContext);
     }
-#endif  
+#endif
 #ifdef VAAPI
     eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
     if (!eglThreadContext) {
@@ -5401,7 +5399,7 @@ static void *VideoHandlerThread(void *dummy)
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
 #endif
 #endif
-	pthread_cleanup_push(exit_display, NULL);
+    pthread_cleanup_push(exit_display, NULL);
     for (;;) {
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -5416,7 +5414,7 @@ static void *VideoHandlerThread(void *dummy)
     }
 
     pthread_cleanup_pop(NULL);
-	
+
     return dummy;
 }
 
@@ -5438,7 +5436,7 @@ static void VideoThreadInit(void)
     pthread_mutex_init(&OSDMutex, NULL);
     pthread_cond_init(&VideoWakeupCond, NULL);
     pthread_create(&VideoThread, NULL, VideoDisplayHandlerThread, NULL);
- 
+
     pthread_create(&VideoDisplayThread, NULL, VideoHandlerThread, NULL);
 
 }
@@ -5455,20 +5453,20 @@ static void VideoThreadExit(void)
 
         // FIXME: can't cancel locked
         if (pthread_cancel(VideoThread)) {
-            Debug(3,"video: can't queue cancel video display thread\n");
+            Debug(3, "video: can't queue cancel video display thread\n");
         }
-		usleep(200000);             // 200ms
+        usleep(200000);                 // 200ms
         if (pthread_join(VideoThread, &retval) || retval != PTHREAD_CANCELED) {
-            Debug(3,"video: can't cancel video decoder thread\n");
+            Debug(3, "video: can't cancel video decoder thread\n");
         }
-		
+
         if (VideoDisplayThread) {
             if (pthread_cancel(VideoDisplayThread)) {
-                Debug(3,"video: can't queue cancel video display thread\n");
-			}
+                Debug(3, "video: can't queue cancel video display thread\n");
+            }
             usleep(200000);             // 200ms
             if (pthread_join(VideoDisplayThread, &retval) || retval != PTHREAD_CANCELED) {
-                Debug(3,"video: can't cancel video display thread\n");
+                Debug(3, "video: can't cancel video display thread\n");
             }
             VideoDisplayThread = 0;
         }
@@ -5885,9 +5883,10 @@ uint8_t *VideoGrabService(int *size, int *width, int *height)
 /// @param[out] dropped dropped frames
 /// @param[out] count   number of decoded frames
 ///
-void VideoGetStats(VideoHwDecoder * hw_decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height, int *color, int *eotf)
+void VideoGetStats(VideoHwDecoder * hw_decoder, int *missed, int *duped, int *dropped, int *counter, float *frametime,
+    int *width, int *height, int *color, int *eotf)
 {
-    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter, frametime, width, height , color, eotf);
+    VideoUsedModule->GetStats(hw_decoder, missed, duped, dropped, counter, frametime, width, height, color, eotf);
 }
 
 ///
@@ -6162,9 +6161,8 @@ void VideoSetDevice(const char *device)
 {
     VideoDriverName = device;
 }
-	
-	
-void VideoSetConnector( char *c)
+
+void VideoSetConnector(char *c)
 {
     DRMConnector = c;
 }
@@ -6173,7 +6171,7 @@ void VideoSetRefresh(char *r)
 {
     DRMRefresh = atoi(r);
 }
-	
+
 ///
 /// Get video driver name.
 ///
@@ -6519,10 +6517,10 @@ void VideoSetDeinterlace(int mode[VideoResolutionMax])
     VideoDeinterlace[3] = mode[3];      // 1080
     VideoDeinterlace[4] = 1,            //mode[4];  2160p
 #else
-    VideoDeinterlace[0] = 1;      // 576i
+    VideoDeinterlace[0] = 1;            // 576i
     VideoDeinterlace[1] = 0;            //mode[1];  // 720p
-    VideoDeinterlace[2] = 1;      // fake 1080
-    VideoDeinterlace[3] = 1;      // 1080
+    VideoDeinterlace[2] = 1;            // fake 1080
+    VideoDeinterlace[3] = 1;            // 1080
     VideoDeinterlace[4] = 0,            //mode[4];  2160p
 #endif
         VideoSurfaceModesChanged = 1;
@@ -6634,9 +6632,9 @@ void VideoSetStudioLevels(int onoff)
 {
     VideoStudioLevels = onoff;
 #ifdef GAMMA
-    Set_Gamma(2.4,6500);
+    Set_Gamma(2.4, 6500);
 #endif
-    
+
 }
 
 ///
@@ -6736,7 +6734,7 @@ void VideoInit(const char *display_name)
 #ifdef USE_DRM
     VideoInitDrm();
 #else
-    
+
     if (XlibDisplay) {                  // allow multiple calls
         Debug(3, "video: x11 already setup\n");
         return;
@@ -6865,7 +6863,7 @@ void VideoInit(const char *display_name)
 ///
 void VideoExit(void)
 {
-    Debug(3,"Video Exit\n");
+    Debug(3, "Video Exit\n");
 #ifndef USE_DRM
     if (!XlibDisplay) {                 // no init or failed
         return;
@@ -6926,83 +6924,88 @@ void VideoExit(void)
 
 }
 
-#ifdef USE_DRM  
-int GlxInitopengl () {
+#ifdef USE_DRM
+int GlxInitopengl()
+{
     EGLint contextAttrs[] = {
         EGL_CONTEXT_CLIENT_VERSION, 3,
         EGL_NONE
     };
-	while (!eglSharedContext)
-		sleep(1);
+    while (!eglSharedContext)
+        sleep(1);
 
     if (!eglOSDContext) {
         eglOSDContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
         if (!eglOSDContext) {
-                EglCheck();
-                Fatal(_("video/egl: can't create thread egl context\n"));
-                return NULL;
-            }
+            EglCheck();
+            Fatal(_("video/egl: can't create thread egl context\n"));
+            return NULL;
+        }
     }
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglOSDContext);
     return;
 }
-    
-int GlxDrawopengl () {
+
+int GlxDrawopengl()
+{
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     return;
 }
-       
-void GlxDestroy() {
-      eglDestroyContext (eglDisplay, eglOSDContext);
-      eglOSDContext = NULL;
+
+void GlxDestroy()
+{
+    eglDestroyContext(eglDisplay, eglOSDContext);
+    eglOSDContext = NULL;
 }
 
 #endif
-  
-#if 0    // for debug only
-#include <sys/stat.h>   
+
+#if 0                                   // for debug only
+#include <sys/stat.h>
 extern uint8_t *CreateJpeg(uint8_t *, int *, int, int, int);
 
-void makejpg(uint8_t *data, int width, int height) {
-	static int count=0;
-	int i,n=0,gpu=0;;
-	char buf[32],FileName[32];
-	uint8_t *rgb;
+void makejpg(uint8_t * data, int width, int height)
+{
+    static int count = 0;
+    int i, n = 0, gpu = 0;;
+    char buf[32], FileName[32];
+    uint8_t *rgb;
     uint8_t *jpg_image;
-	int size,size1;
-	
+    int size, size1;
+
     if (data == NULL) {
-        data = malloc(width*height*4);
-        gpu=1;
+        data = malloc(width * height * 4);
+        gpu = 1;
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
         glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, data);
     }
-	
-//	n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", width, height);
-	sprintf(FileName,"/tmp/test%d.jpg",count++);
-	
-	rgb = malloc(width * height * 3 + n);
-	if (!rgb) {
-		printf("Unable to get RGB Memory \n");
-		return;
-	}
-//	memcpy(rgb, buf, n);        // header
+
+    //  n = snprintf(buf, sizeof(buf), "P6\n%d\n%d\n255\n", width, height);
+    sprintf(FileName, "/tmp/test%d.jpg", count++);
+
+    rgb = malloc(width * height * 3 + n);
+    if (!rgb) {
+        printf("Unable to get RGB Memory \n");
+        return;
+    }
+//  memcpy(rgb, buf, n);        // header
     size = width * height * 4;
-    
-	for (i = 0; i < size / 4; ++i) {   // convert bgra -> rgb
-		rgb[n + i * 3 + 0] = data[i * 4 + 2];
-		rgb[n + i * 3 + 1] = data[i * 4 + 1];
-		rgb[n + i * 3 + 2] = data[i * 4 + 0];
-	}
+
+    for (i = 0; i < size / 4; ++i) {    // convert bgra -> rgb
+        rgb[n + i * 3 + 0] = data[i * 4 + 2];
+        rgb[n + i * 3 + 1] = data[i * 4 + 1];
+        rgb[n + i * 3 + 2] = data[i * 4 + 0];
+    }
 
     if (gpu)
         free(data);
-	
+
     jpg_image = CreateJpeg(rgb, &size1, 90, width, height);
-	int fd = open(FileName, O_WRONLY | O_CREAT | O_NOFOLLOW | O_TRUNC, DEFFILEMODE);
-	write(fd,jpg_image,size1);
-	close(fd);
-	free(rgb);
+    int fd = open(FileName, O_WRONLY | O_CREAT | O_NOFOLLOW | O_TRUNC, DEFFILEMODE);
+
+    write(fd, jpg_image, size1);
+    close(fd);
+    free(rgb);
 }
 #endif

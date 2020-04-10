@@ -334,11 +334,11 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     int max_lum=4000,min_lum=0050;
     struct AVMasteringDisplayMetadata *md = NULL;
     struct AVContentLightMetadata *ld = NULL;
-	
+
     if (render->hdr_metadata == -1) { // Metadata not supported
 		return;
 	}
-    
+
     // clean up FFMEPG stuff
     if (trc == AVCOL_TRC_BT2020_10)
         trc = AVCOL_TRC_ARIB_STD_B67;
@@ -346,16 +346,16 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
         trc = AVCOL_TRC_BT709;
     if (color == AVCOL_PRI_UNSPECIFIED)
         color = AVCOL_PRI_BT709;
-    
+
     if ((old_color == color && old_trc == trc && !sd1 && !sd2) || !render->hdr_metadata)
         return;  // nothing to do
-    
+
     if (sd1)
         md = sd1->data;
-        
+
     if (sd2)
         ld = sd2->data;
-    
+
     if (md && !memcmp(md,&md_save,sizeof(md_save)))
         if (ld && !memcmp(ld,&ld_save,sizeof(ld_save))) {
             return;
@@ -363,23 +363,23 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     else if (ld && !memcmp(ld,&ld_save,sizeof(ld_save))) {
         return;
     }
-        
+
     if (ld)
         memcpy(&ld_save,ld,sizeof(ld_save));
     if (md)
         memcpy(&md_save,md,sizeof(md_save));
-        
+
     Debug(3,"Update HDR to TRC %d color %d\n",trc,color);
 
     if (trc == AVCOL_TRC_BT2020_10)
         trc = AVCOL_TRC_ARIB_STD_B67;
-    
+
     old_color = color;
     old_trc = trc;
-    
+
     if (render->hdr_blob_id)
         drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
-    
+
     switch(trc) {
         case AVCOL_TRC_BT709:                                   // 1
         case AVCOL_TRC_UNSPECIFIED:                             // 2
@@ -387,7 +387,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             break;
         case AVCOL_TRC_BT2020_10:                               // 14
         case AVCOL_TRC_BT2020_12:
-        case AVCOL_TRC_ARIB_STD_B67:                            // 18 HLG           
+        case AVCOL_TRC_ARIB_STD_B67:                            // 18 HLG
             eotf = EOTF_HLG;
             break;
         case AVCOL_TRC_SMPTE2084:                               // 16
@@ -397,7 +397,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             eotf = EOTF_TRADITIONAL_GAMMA_SDR;
             break;
     }
-            
+
     switch (color) {
         case AVCOL_PRI_BT709:                                   // 1
         case AVCOL_PRI_UNSPECIFIED:                             // 2
@@ -413,7 +413,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             cs = weston_colorspace_lookup("BT.709");
             break;
     }
-    
+
     if (md) {       // we got Metadata
         if (md->has_primaries) {
             Debug(3,"Mastering Display Metadata,\n has_primaries:%d has_luminance:%d \n"
@@ -465,9 +465,9 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
                 MaxCLL,         // Maximum Content Light Level (MaxCLL)
                 MaxFALL,        // Maximum Frame-Average Light Level (MaxFALL)
                 eotf);
-    
 
-    
+
+
     ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &render->hdr_blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed blob create \n");
@@ -479,15 +479,14 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
                       render->hdr_metadata, render->hdr_blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed property set %d\n",ret);
-             
+
         if (render->hdr_blob_id)
             drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
 		render->hdr_blob_id = 0;
         return;
     }
     m_need_modeset = 1;
-        
-    Debug(3,"DRM: HDR metadata: prop set\n");
-           
-}
 
+    Debug(3,"DRM: HDR metadata: prop set\n");
+
+}
