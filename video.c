@@ -253,7 +253,7 @@ typedef enum _video_zoom_modes_
     VideoNormal,                        ///< normal
     VideoStretch,                       ///< stretch to all edges
     VideoCenterCutOut,                  ///< center and cut out
-    VideoAnamorphic,                    ///< anamorphic scaled (unsupported)
+    VideoNone,                          ///< no scaling
 } VideoZoomModes;
 
 ///
@@ -679,44 +679,35 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
     AVRational display_aspect_ratio;
     AVRational tmp_ratio;
 
+    // input not initialized yet, return immediately
     if (!input_aspect_ratio.num || !input_aspect_ratio.den) {
-        input_aspect_ratio.num = 1;
-        input_aspect_ratio.den = 1;
-        Debug(3, "video: aspect defaults to %d:%d\n", input_aspect_ratio.num, input_aspect_ratio.den);
-
-    }
-
-    av_reduce(&input_aspect_ratio.num, &input_aspect_ratio.den, input_width * input_aspect_ratio.num,
-        input_height * input_aspect_ratio.den, 1024 * 1024);
-
-    // InputWidth/Height can be zero = uninitialized
-    if (!input_aspect_ratio.num || !input_aspect_ratio.den) {
-        input_aspect_ratio.num = 1;
-        input_aspect_ratio.den = 1;
+        output_width = video_width;
+        output_height = video_height;
+        return;
     }
 #ifdef USE_DRM
     get_drm_aspect(&display_aspect_ratio.num, &display_aspect_ratio.den);
 #else
-    Debug(3, "mmHeight %d mm Width %d VideoHeight %d VideoWidth %d\n", VideoScreen->height_in_millimeters,
-        VideoScreen->width_in_millimeters, VideoScreen->height_in_pixels, VideoScreen->width_in_pixels);
-    display_aspect_ratio.num = VideoScreen->width_in_pixels * VideoScreen->height_in_millimeters;
-    display_aspect_ratio.den = VideoScreen->height_in_pixels * VideoScreen->width_in_millimeters;
+    display_aspect_ratio.num = VideoScreen->width_in_pixels;
+    display_aspect_ratio.den = VideoScreen->height_in_pixels;
 #endif
-    display_aspect_ratio = av_mul_q(input_aspect_ratio, display_aspect_ratio);
-    Debug(3, "video: aspect %d:%d Resolution %d\n", display_aspect_ratio.num, display_aspect_ratio.den, resolution);
+    av_reduce(&display_aspect_ratio.num, &display_aspect_ratio.den, display_aspect_ratio.num, display_aspect_ratio.den,
+        1024 * 1024);
+
+    Debug(3, "video: input %dx%d (%d:%d)\n", input_width, input_height, input_aspect_ratio.num,
+        input_aspect_ratio.den);
+    Debug(3, "video: display aspect %d:%d Resolution %d\n", display_aspect_ratio.num, display_aspect_ratio.den,
+        resolution);
+    Debug(3, "video: video %+d%+d %dx%d\n", video_x, video_y, video_width, video_height);
 
     *crop_x = VideoCutLeftRight[resolution];
     *crop_y = VideoCutTopBottom[resolution];
     *crop_width = input_width - VideoCutLeftRight[resolution] * 2;
     *crop_height = input_height - VideoCutTopBottom[resolution] * 2;
+    CuvidMessage(2, "video: crop to %+d%+d %dx%d\n", *crop_x, *crop_y, *crop_width, *crop_height);
 
-    // FIXME: store different positions for the ratios
     tmp_ratio.num = 4;
     tmp_ratio.den = 3;
-#ifdef DEBUG
-    Debug(4, "ratio: %d:%d %d:%d\n", input_aspect_ratio.num, input_aspect_ratio.den, display_aspect_ratio.num,
-        display_aspect_ratio.den);
-#endif
     if (!av_cmp_q(input_aspect_ratio, tmp_ratio)) {
         switch (Video4to3ZoomMode) {
             case VideoNormal:
@@ -725,9 +716,8 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
                 goto stretch;
             case VideoCenterCutOut:
                 goto center_cut_out;
-            case VideoAnamorphic:
-                // FIXME: rest should be done by hardware
-                goto stretch;
+            case VideoNone:
+                goto video_none;
         }
     }
     switch (VideoOtherZoomMode) {
@@ -737,28 +727,24 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
             goto stretch;
         case VideoCenterCutOut:
             goto center_cut_out;
-        case VideoAnamorphic:
-            // FIXME: rest should be done by hardware
-            goto stretch;
+        case VideoNone:
+            goto video_none;
     }
 
   normal:
     *output_x = video_x;
     *output_y = video_y;
-    *output_width =
-        (video_height * display_aspect_ratio.num + display_aspect_ratio.den - 1) / display_aspect_ratio.den;
-    *output_height =
-        (video_width * display_aspect_ratio.den + display_aspect_ratio.num - 1) / display_aspect_ratio.num;
+    *output_height = video_height;
+    *output_width = (*crop_width * *output_height * input_aspect_ratio.num) / (input_aspect_ratio.den * *crop_height);
     if (*output_width > video_width) {
         *output_width = video_width;
+        *output_height =
+            (*crop_height * *output_width * input_aspect_ratio.den) / (input_aspect_ratio.num * *crop_width);
         *output_y += (video_height - *output_height) / 2;
-    } else if (*output_height > video_height) {
-        *output_height = video_height;
+    } else if (*output_width < video_width) {
         *output_x += (video_width - *output_width) / 2;
     }
-
-    CuvidMessage(2, "video: normal aspect output %dx%d%+d%+d Video %dx%d\n", *output_width, *output_height, *output_x,
-        *output_y, video_width, video_height);
+    CuvidMessage(2, "video: normal aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
     return;
 
   stretch:
@@ -766,49 +752,34 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
     *output_y = video_y;
     *output_width = video_width;
     *output_height = video_height;
-    Debug(3, "video: stretch output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
+    CuvidMessage(2, "video: stretch output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
     return;
 
   center_cut_out:
     *output_x = video_x;
     *output_y = video_y;
     *output_height = video_height;
-    *output_width = video_width;
-
-    *crop_width = (video_height * display_aspect_ratio.num + display_aspect_ratio.den - 1) / display_aspect_ratio.den;
-    *crop_height = (video_width * display_aspect_ratio.den + display_aspect_ratio.num - 1) / display_aspect_ratio.num;
-
-    // look which side must be cut
-    if (*crop_width > video_width) {
-        int tmp;
-
-        *crop_height = input_height - VideoCutTopBottom[resolution] * 2;
-
-        // adjust scaling
-        tmp = ((*crop_width - video_width) * input_width) / (2 * video_width);
-        // FIXME: round failure?
-        if (tmp > *crop_x) {
-            *crop_x = tmp;
-        }
-        *crop_width = input_width - *crop_x * 2;
-    } else if (*crop_height > video_height) {
-        int tmp;
-
-        *crop_width = input_width - VideoCutLeftRight[resolution] * 2;
-
-        // adjust scaling
-        tmp = ((*crop_height - video_height) * input_height)
-            / (2 * video_height);
-        // FIXME: round failure?
-        if (tmp > *crop_y) {
-            *crop_y = tmp;
-        }
-        *crop_height = input_height - *crop_y * 2;
-    } else {
-        *crop_width = input_width - VideoCutLeftRight[resolution] * 2;
-        *crop_height = input_height - VideoCutTopBottom[resolution] * 2;
+    *output_width = (*crop_width * *output_height * input_aspect_ratio.num) / (input_aspect_ratio.den * *crop_height);
+    if (*output_width > video_width) {
+        // fix height cropping
+        *crop_width = (int)((*crop_width * video_width) / (*output_width * 2.0) + 0.5) * 2;
+        *crop_x = (input_width - *crop_width) / 2;
+        *output_width = video_width;
+    } else if (*output_width < video_width) {
+        // fix width cropping
+        *crop_height = (int)((*crop_height * *output_width) / (video_width * 2.0) + 0.5) * 2;
+        *crop_y = (input_height - *crop_height) / 2;
+        *output_width = video_width;
     }
-    Debug(3, "video: aspect crop %dx%d%+d%+d\n", *crop_width, *crop_height, *crop_x, *crop_y);
+    CuvidMessage(2, "video: aspect crop %dx%d%+d%+d\n", *crop_width, *crop_height, *crop_x, *crop_y);
+    return;
+
+  video_none:
+    *output_height = *crop_height;
+    *output_width = (*crop_width * input_aspect_ratio.num) / input_aspect_ratio.den;    // normalize pixel aspect ratio
+    *output_x = video_x + (video_width - *output_width) / 2;
+    *output_y = video_y + (video_height - *output_height) / 2;
+    CuvidMessage(2, "video: original aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
     return;
 }
 
@@ -2629,12 +2600,12 @@ int push_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
         av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
     }
 
-    //     printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
+    // printf("Interlaced %d tff %d\n",frame->interlaced_frame,frame->top_field_first);
     /* pull filtered frames from the filtergraph */
     while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
         filt_frame->pts /= 2;
         decoder->Interlaced = 0;
-        //        printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
+        // printf("vaapideint video:new  %#012" PRIx64 " old %#012" PRIx64 "\n",filt_frame->pts,frame->pts);
         CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
         filt_frame = av_frame_alloc();  // get new frame
 
@@ -2649,7 +2620,7 @@ int init_filters(AVCodecContext * dec_ctx, CuvidDecoder * decoder, AVFrame * fra
     enum AVPixelFormat format = PIXEL_FORMAT;
 
 #ifdef VAAPI
-    const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";  //
+    const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";
 #endif
 #ifdef YADIF
     const char *filters_descr = "yadif_cuda=1:0:1"; // mode=send_field,parity=tff,deint=interlaced";
@@ -4668,13 +4639,13 @@ static const VideoModule CuvidModule = {
     .RenderFrame = (void (*const) (VideoHwDecoder *,
             const AVCodecContext *, const AVFrame *))CuvidSyncRenderFrame,
     .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))CuvidGetHwAccelContext,
-    .SetClock =(void(*const)(VideoHwDecoder *, int64_t))CuvidSetClock,
-    .GetClock =(int64_t(*const)(const VideoHwDecoder *))CuvidGetClock,
-    .SetClosing =(void(*const)(const VideoHwDecoder *))CuvidSetClosing,
-    .ResetStart =(void(*const)(const VideoHwDecoder *))CuvidResetStart,
-    .SetTrickSpeed =(void(*const)(const VideoHwDecoder *, int))CuvidSetTrickSpeed,
+    .SetClock = (void(*const)(VideoHwDecoder *, int64_t))CuvidSetClock,
+    .GetClock = (int64_t(*const)(const VideoHwDecoder *))CuvidGetClock,
+    .SetClosing = (void(*const)(const VideoHwDecoder *))CuvidSetClosing,
+    .ResetStart = (void(*const)(const VideoHwDecoder *))CuvidResetStart,
+    .SetTrickSpeed = (void(*const)(const VideoHwDecoder *, int))CuvidSetTrickSpeed,
     .GrabOutput = CuvidGrabOutputSurface,
-    .GetStats =(void(*const)(VideoHwDecoder *, int *, int *, int *,
+    .GetStats = (void(*const)(VideoHwDecoder *, int *, int *, int *,
             int *, float *, int *, int *, int *, int *))CuvidGetStats,
     .SetBackground = CuvidSetBackground,
     .SetVideoMode = CuvidSetVideoMode,
@@ -4836,13 +4807,13 @@ static const VideoModule NoopModule = {
             const AVCodecContext *, const AVFrame *))NoopSyncRenderFrame,
     .GetHwAccelContext = (void *(*const)(VideoHwDecoder *))
         DummyGetHwAccelContext,
-    .SetClock =(void(*const)(VideoHwDecoder *, int64_t))NoopSetClock,
-    .GetClock =(int64_t(*const)(const VideoHwDecoder *))NoopGetClock,
-    .SetClosing =(void(*const)(const VideoHwDecoder *))NoopSetClosing,
-    .ResetStart =(void(*const)(const VideoHwDecoder *))NoopResetStart,
+    .SetClock = (void(*const)(VideoHwDecoder *, int64_t))NoopSetClock,
+    .GetClock = (int64_t(*const)(const VideoHwDecoder *))NoopGetClock,
+    .SetClosing = (void(*const)(const VideoHwDecoder *))NoopSetClosing,
+    .ResetStart = (void(*const)(const VideoHwDecoder *))NoopResetStart,
     .SetTrickSpeed = (void(*const)(const VideoHwDecoder *, int))NoopSetTrickSpeed,
     .GrabOutput = NoopGrabOutputSurface,
-    .GetStats =(void(*const)(VideoHwDecoder *, int *, int *, int *,
+    .GetStats = (void(*const)(VideoHwDecoder *, int *, int *, int *,
             int *, float *, int *, int *, int *, int *))NoopGetStats,
 #endif
     .SetBackground = NoopSetBackground,
@@ -6515,15 +6486,15 @@ void VideoSetDeinterlace(int mode[VideoResolutionMax])
     VideoDeinterlace[1] = 1;            //mode[1];  // 720p
     VideoDeinterlace[2] = mode[2];      // fake 1080
     VideoDeinterlace[3] = mode[3];      // 1080
-    VideoDeinterlace[4] = 1,            //mode[4];  2160p
+    VideoDeinterlace[4] = 1;            //mode[4];  2160p
 #else
     VideoDeinterlace[0] = 1;            // 576i
     VideoDeinterlace[1] = 0;            //mode[1];  // 720p
     VideoDeinterlace[2] = 1;            // fake 1080
     VideoDeinterlace[3] = 1;            // 1080
-    VideoDeinterlace[4] = 0,            //mode[4];  2160p
+    VideoDeinterlace[4] = 0;            //mode[4];  2160p
 #endif
-        VideoSurfaceModesChanged = 1;
+    VideoSurfaceModesChanged = 1;
 }
 
 ///

@@ -50,7 +50,7 @@ Only via DisplayPort you can get 10 Bit output to a compatible screen. This is a
 
 Current Status with VAAPI:
 I tested it with Intel VAAPI. If you have problmes with the shaders then copy the drirc file in your home directory as .drirc
-AMD VAAPI is broken by AMD and will not work currently. 
+AMD VAAPI is broken by AMD and will not work currently.
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0
 The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10
@@ -73,13 +73,13 @@ Quickstart:
 You have to adapt the Makefile. There are 3 possible Version that you can build:
 
     softhdcuvid
-    This is for NVIDA cards and uses cuvid as decoder. It uses xcb for output and needs a X Server to run. 
-    
+    This is for NVIDA cards and uses cuvid as decoder. It uses xcb for output and needs a X Server to run.
+
     softhdvaapi
     This is for INTEL cards and uses Vaapi as decoder. It uses xcb for output and needs a X Server to run.
-    
+
     softhddrm
-    This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and 
+    This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
 
 Install:
@@ -98,27 +98,27 @@ Install:
 
 Beginners Guide for libplacebo:
 -------------------------------
-    When using libplacebo you will find several config options. 
-    
+    When using libplacebo you will find several config options.
+
     First of all you need to set the right scaler for each resolution:
-    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them 
-    for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary. 
+    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them
+    for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary.
     Unfortunatly on INTEL not all scalers may work or crash.
-    
-    You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will 
-    see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the 
-    Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test 
+
+    You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will
+    see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the
+    Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test
     is activ.
-    
+
     Then you should set the Monitor Colorspace to "sRGB". This guarantees you the best colors on your screen.
-    At the moment all calculations internaly are done in RGB space and all cards output also RGB. 
-    
-    If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed 
+    At the moment all calculations internaly are done in RGB space and all cards output also RGB.
+
+    If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed
     in rare cases.
-    
+
     All other settings can be in their default state.
-    
-    
+
+
 
 Setup:	environment
 ------
@@ -283,11 +283,13 @@ Setup: /etc/vdr/setup.conf
 	0 pan and scan
 	1 letter box
 	2 center cut-out
+	3 original
 
 	softhddevice.VideoOtherDisplayFormat = 1
 	0 pan and scan
 	1 pillar box
 	2 center cut-out
+	3 original
 
 	softhddevice.pip.X = 79
 	softhddevice.pip.Y = 78
@@ -378,6 +380,3 @@ Running:
 Known Bugs:
 -----------
 	SD Streams not working very well on vaapi
-
-
-

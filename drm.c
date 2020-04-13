@@ -475,9 +475,8 @@ void VideoInitDrm()
 
 void get_drm_aspect(int *num,int *den)
 {
-	Debug(3,"mmHeight %d mmWidth %d  VideoHeight %d VideoWidth %d\n",render->mmHeight,render->mmWidth,VideoWindowHeight,VideoWindowWidth);
-    *num = VideoWindowWidth * render->mmHeight;
-    *den = VideoWindowHeight * render->mmWidth;
+    *num = VideoWindowWidth;
+    *den = VideoWindowHeight;
 }
 
 struct gbm_bo *bo = NULL, *next_bo=NULL;

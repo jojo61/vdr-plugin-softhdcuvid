@@ -1096,10 +1096,10 @@ void cMenuSetupSoft::Create(void)
         "auto", "1920x1080", "1280x720", "custom",
     };
     static const char *const video_display_formats_4_3[] = {
-        "pan&scan", "letterbox", "center cut-out",
+        "pan&scan", "letterbox", "center cut-out", "original"
     };
     static const char *const video_display_formats_16_9[] = {
-        "pan&scan", "pillarbox", "center cut-out",
+        "pan&scan", "pillarbox", "center cut-out", "original"
     };
 #ifdef YADIF
     static const char *const deinterlace[] = {
@@ -1182,9 +1182,9 @@ void cMenuSetupSoft::Create(void)
         Add(new cMenuEditBoolItem(tr("Enable Screensaver(DPMS) at black screen"), &EnableDPMSatBlackScreen,
                 trVDR("no"), trVDR("yes")));
 #endif
-        Add(new cMenuEditStraItem(trVDR("4:3 video display format"), &Video4to3DisplayFormat, 3,
+        Add(new cMenuEditStraItem(trVDR("4:3 video display format"), &Video4to3DisplayFormat, 4,
                 video_display_formats_4_3));
-        Add(new cMenuEditStraItem(trVDR("16:9+other video display format"), &VideoOtherDisplayFormat, 3,
+        Add(new cMenuEditStraItem(trVDR("16:9+other video display format"), &VideoOtherDisplayFormat, 4,
                 video_display_formats_16_9));
 
 #if 0
