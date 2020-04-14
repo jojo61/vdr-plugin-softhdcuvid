@@ -645,7 +645,7 @@ static void PesParse(PesDemux * pesdx, const uint8_t * data, int size, int is_st
                 q = pesdx->Buffer + pesdx->Skip;
                 n = pesdx->Index - pesdx->Skip;
                 while (n >= 5) {
-                    int r=0;
+                    int r = 0;
                     unsigned codec_id = AV_CODEC_ID_NONE;
 
                     // 4 bytes 0xFFExxxxx Mpeg audio
@@ -2871,11 +2871,10 @@ const char *CommandLineHelp(void)
         "  -p device\taudio device for pass-through (hw:0,1 or /dev/dsp1)\n"
         "  -c channel\taudio mixer channel name (fe. PCM)\n" "  -d display\tdisplay of x11 server (fe. :0.0)\n"
         "  -f\t\tstart with fullscreen window (only with window manager)\n"
-        "  -g geometry\tx11 window geometry wxh+x+y\n" 
-		"  -r Refresh\tRefreshrate for DRM (default is 50 Hz)\n"
-		"  -C Connector\tConnector for DRM (default is current Connector)\n"
-		"  -v device\tvideo driver device (cuvid)\n"
-        "  -s\t\tstart in suspended mode\n" "  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
+        "  -g geometry\tx11 window geometry wxh+x+y\n" "  -r Refresh\tRefreshrate for DRM (default is 50 Hz)\n"
+        "  -C Connector\tConnector for DRM (default is current Connector)\n"
+        "  -v device\tvideo driver device (cuvid)\n" "  -s\t\tstart in suspended mode\n"
+        "  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
         "  -X args\tX11 server arguments (f.e. -nocursor)\n" "  -w workaround\tenable/disable workarounds\n"
         "\tno-hw-decoder\t\tdisable hw decoder, use software decoder only\n"
         "\tno-mpeg-hw-decoder\tdisable hw decoder for mpeg only\n"
@@ -2916,10 +2915,10 @@ int ProcessArgs(int argc, char *const argv[])
                 continue;
             case 'C':                  // Connector for DRM
                 VideoSetConnector(optarg);
-                continue;	
-			case 'r':                  // Connector for DRM
+                continue;
+            case 'r':                  // Connector for DRM
                 VideoSetRefresh(optarg);
-                continue;	
+                continue;
             case 'p':                  // pass-through audio device
                 AudioSetPassthroughDevice(optarg);
                 continue;
@@ -3369,19 +3368,21 @@ void Resume(void)
 **  @param[out] dropped dropped frames
 **  @param[out] count   number of decoded frames
 */
-void GetStats(int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height, int *color, int *eotf)
+void GetStats(int *missed, int *duped, int *dropped, int *counter, float *frametime, int *width, int *height,
+    int *color, int *eotf)
 {
     *missed = 0;
     *duped = 0;
     *dropped = 0;
     *counter = 0;
     *frametime = 0.0f;
-	*width = 0;
-	*height = 0;
-	*color = NULL;
-	*eotf = NULL;
+    *width = 0;
+    *height = 0;
+    *color = NULL;
+    *eotf = NULL;
     if (MyVideoStream->HwDecoder) {
-        VideoGetStats(MyVideoStream->HwDecoder, missed, duped, dropped, counter, frametime, width, height, color, eotf);
+        VideoGetStats(MyVideoStream->HwDecoder, missed, duped, dropped, counter, frametime, width, height, color,
+            eotf);
     }
 }
 

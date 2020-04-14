@@ -18,13 +18,13 @@ struct _Drm_Render_
     int fd_drm;
     drmModeModeInfo mode;
     drmModeCrtc *saved_crtc;
-//    drmEventContext ev;   
+//    drmEventContext ev;
     int bpp;
     uint32_t connector_id, crtc_id, video_plane;
     uint32_t hdr_metadata;
     uint32_t mmWidth,mmHeight;   // Size in mm
 	uint32_t hdr_blob_id;
- 
+
 };
 typedef struct _Drm_Render_ VideoRender;
 
@@ -193,12 +193,12 @@ void set_video_mode(int width, int height)
 		return;
 	connector = drmModeGetConnector(render->fd_drm, render->connector_id);
 	for (ii = 0; ii < connector->count_modes; ii++) {
-		mode = &connector->modes[ii];              
+		mode = &connector->modes[ii];
 		printf("Mode %d %dx%d Rate %d\n",ii,mode->hdisplay,mode->vdisplay,mode->vrefresh);
-		if (width == mode->hdisplay && 
-				height == mode->vdisplay && 
+		if (width == mode->hdisplay &&
+				height == mode->vdisplay &&
 				mode->vrefresh == DRMRefresh &&
-				render->mode.hdisplay != width && 
+				render->mode.hdisplay != width &&
 		        render->mode.vdisplay != height &&
 				!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
 			memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
@@ -211,7 +211,7 @@ void set_video_mode(int width, int height)
 			CuvidSetVideoMode();
 			Debug(3,"Set new mode %d:%d\n",mode->hdisplay,mode->vdisplay);
 			break;
-		}            
+		}
 	}
 }
 
@@ -241,10 +241,10 @@ static int FindDevice(VideoRender * render)
         return -errno;
     }
 	drmSetMaster(render->fd_drm);
-    
+
     version = drmGetVersion(render->fd_drm);
     fprintf(stderr, "FindDevice: open /dev/dri/card0:  %s\n",  version->name);
-    
+
     // check capability
     if (drmGetCap(render->fd_drm, DRM_CAP_DUMB_BUFFER, &has_dumb) < 0 || has_dumb == 0)
         fprintf(stderr, "FindDevice: drmGetCap DRM_CAP_DUMB_BUFFER failed or doesn't have dumb buffer\n");
@@ -263,7 +263,7 @@ static int FindDevice(VideoRender * render)
 
     if (drmGetCap(render->fd_drm, DRM_PRIME_CAP_IMPORT, &has_prime) < 0)
         fprintf(stderr, "FindDevice: DRM_PRIME_CAP_IMPORT not available.\n");
-    
+
     if ((resources = drmModeGetResources(render->fd_drm)) == NULL){
         fprintf(stderr, "FindDevice: cannot retrieve DRM resources (%d): %m\n", errno);
         return -errno;
@@ -282,18 +282,18 @@ static int FindDevice(VideoRender * render)
             fprintf(stderr, "FindDevice: cannot retrieve DRM connector (%d): %m\n", errno);
             return -errno;
         }
-        
+
         sprintf(connectorstr,"%s-%u",util_lookup_connector_type_name(connector->connector_type),connector->connector_type_id);
         printf("Connector >%s< is %sconnected\n",connectorstr,connector->connection == DRM_MODE_CONNECTED?"":"not ");
         if (DRMConnector && strcmp(DRMConnector,connectorstr))
             continue;
-        
+
         if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
 			float aspect = (float)connector->mmWidth / (float)connector->mmHeight;
 			if ((aspect > 1.70) && (aspect < 1.85)) {
 				render->mmHeight     = 90;
             	render->mmWidth      = 160;
-			} else {            
+			} else {
             	render->mmHeight     = connector->mmHeight;
             	render->mmWidth      = connector->mmWidth;
 			}
@@ -304,27 +304,27 @@ static int FindDevice(VideoRender * render)
                 return -errno;
             }
             render->crtc_id = encoder->crtc_id;
-            
+
             render->hdr_metadata = GetPropertyID(render->fd_drm, connector->connector_id,
-                            DRM_MODE_OBJECT_CONNECTOR, "HDR_OUTPUT_METADATA");      
+                            DRM_MODE_OBJECT_CONNECTOR, "HDR_OUTPUT_METADATA");
             printf("ID %d of METADATA in Connector %d connected %d\n",render->hdr_metadata,connector->connector_id,connector->connection);
-                
+
             memcpy(&render->mode, &connector->modes[0], sizeof(drmModeModeInfo));  // set fallback
             // search Modes for Connector
             for (ii = 0; ii < connector->count_modes; ii++) {
                 mode = &connector->modes[ii];
-                
+
                 printf("Mode %d %dx%d Rate %d\n",ii,mode->hdisplay,mode->vdisplay,mode->vrefresh);
-                
-                if (VideoWindowWidth && VideoWindowHeight) { // preset by command line 
-                    if (VideoWindowWidth == mode->hdisplay && 
-                            VideoWindowHeight == mode->vdisplay && 
+
+                if (VideoWindowWidth && VideoWindowHeight) { // preset by command line
+                    if (VideoWindowWidth == mode->hdisplay &&
+                            VideoWindowHeight == mode->vdisplay &&
                             mode->vrefresh == DRMRefresh &&
                             !(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
                         memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
                         break;
                     }
-                } 
+                }
                 else {
                     if (!(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
                         memcpy(&render->mode, mode, sizeof(drmModeModeInfo));
@@ -335,7 +335,7 @@ static int FindDevice(VideoRender * render)
                 }
             }
             found = 1;
-            i = resources->count_connectors;   // uuuuhh 
+            i = resources->count_connectors;   // uuuuhh
         }
         VideoWindowWidth = render->mode.hdisplay;
         VideoWindowHeight = render->mode.vdisplay;
@@ -348,7 +348,7 @@ static int FindDevice(VideoRender * render)
         printf("Requested Connector not found or not connected\n");
         return -1;
     }
-    
+
     // find first plane
     if ((plane_res = drmModeGetPlaneResources(render->fd_drm)) == NULL)
         fprintf(stderr, "FindDevice: cannot retrieve PlaneResources (%d): %m\n", errno);
@@ -366,7 +366,7 @@ static int FindDevice(VideoRender * render)
 
         uint64_t type = GetPropertyValue(render->fd_drm, plane_res->planes[j],
                             DRM_MODE_OBJECT_PLANE, "type");
-        uint64_t zpos = 0;  
+        uint64_t zpos = 0;
 
 #ifdef DRM_DEBUG // If more then 2 crtcs this must rewriten!!!
         printf("[FindDevice] Plane id %i crtc_id %i possible_crtcs %i possible CRTC %i type %s\n",
@@ -384,7 +384,7 @@ static int FindDevice(VideoRender * render)
                     case DRM_FORMAT_ARGB8888:
 #else
 					case DRM_FORMAT_XRGB2101010:
-#endif	
+#endif
                         if (!render->video_plane) {
                             render->video_plane = plane->plane_id;
                         }
@@ -419,25 +419,25 @@ static int FindDevice(VideoRender * render)
 void VideoInitDrm()
 {
     int i;
-    
-	
+
+
     if (!(render = calloc(1, sizeof(*render)))) {
         Fatal(_("video/DRM: out of memory\n"));
         return;
     }
-    
+
     if (FindDevice(render)){
         Fatal(_( "VideoInit: FindDevice() failed\n"));
     }
-	
+
     gbm.dev = gbm_create_device (render->fd_drm);
     assert (gbm.dev != NULL);
-    
+
     PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
     get_platform_display =
         (void *) eglGetProcAddress("eglGetPlatformDisplay");
     assert(get_platform_display != NULL);
-    
+
     eglDisplay = get_platform_display(EGL_PLATFORM_GBM_KHR, gbm.dev, NULL);
 
     assert (eglDisplay != NULL);
@@ -462,22 +462,21 @@ void VideoInitDrm()
                         DRM_MODE_OBJECT_CONNECTOR, "CRTC_ID", render->crtc_id);
     SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
                         DRM_MODE_OBJECT_CRTC, "ACTIVE", 1);
-   
+
     if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
         fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
-    
+
     if (drmModeDestroyPropertyBlob(render->fd_drm, modeID) != 0)
         fprintf(stderr, "cannot destroy property blob (%d): %m\n", errno);
-    
+
     drmModeAtomicFree(ModeReq);
 
 }
 
 void get_drm_aspect(int *num,int *den)
 {
-	Debug(3,"mmHeight %d mmWidth %d  VideoHeight %d VideoWidth %d\n",render->mmHeight,render->mmWidth,VideoWindowHeight,VideoWindowWidth);
-    *num = VideoWindowWidth * render->mmHeight;
-    *den = VideoWindowHeight * render->mmWidth;
+    *num = VideoWindowWidth;
+    *den = VideoWindowHeight;
 }
 
 struct gbm_bo *bo = NULL, *next_bo=NULL;
@@ -488,8 +487,8 @@ static int old_color=-1,old_trc=-1;
 void InitBo(int bpp) {
     // create the GBM and EGL surface
     render->bpp = bpp;
-    gbm.surface = gbm_surface_create (gbm.dev, VideoWindowWidth,VideoWindowHeight, 
-                                      bpp==10?GBM_FORMAT_XRGB2101010:GBM_FORMAT_ARGB8888, 
+    gbm.surface = gbm_surface_create (gbm.dev, VideoWindowWidth,VideoWindowHeight,
+                                      bpp==10?GBM_FORMAT_XRGB2101010:GBM_FORMAT_ARGB8888,
                                       GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
     assert(gbm.surface != NULL);
     eglSurface = eglCreateWindowSurface (eglDisplay, eglConfig, gbm.surface, NULL);
@@ -501,10 +500,10 @@ static struct gbm_bo *previous_bo = NULL;
 static uint32_t previous_fb;
 
 static void drm_swap_buffers () {
-    
+
     uint32_t fb;
-    
-    eglSwapBuffers (eglDisplay, eglSurface);	
+
+    eglSwapBuffers (eglDisplay, eglSurface);
     struct gbm_bo *bo = gbm_surface_lock_front_buffer (gbm.surface);
 #if 1
     if (bo == NULL)
@@ -517,7 +516,7 @@ static void drm_swap_buffers () {
 
     drmModeAddFB (render->fd_drm, VideoWindowWidth,VideoWindowHeight,render->bpp==10? 30:24, 32, pitch, handle, &fb);
 //  drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
-   
+
     if (m_need_modeset) {
         drmModeAtomicReqPtr ModeReq;
         const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
@@ -531,14 +530,14 @@ static void drm_swap_buffers () {
             fprintf(stderr, "cannot allocate atomic request (%d): %m\n", errno);
             return;
         }
-        
-        // Need to disable the CRTC in order to submit the HDR data.... 
+
+        // Need to disable the CRTC in order to submit the HDR data....
         SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
-                            DRM_MODE_OBJECT_CRTC, "ACTIVE", 0);     
+                            DRM_MODE_OBJECT_CRTC, "ACTIVE", 0);
         if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
             fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
         sleep(2);
-        
+
         SetPropertyRequest(ModeReq, render->fd_drm, render->connector_id,
                             DRM_MODE_OBJECT_CONNECTOR, "Colorspace",old_color==AVCOL_PRI_BT2020?9:2 );
         SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
@@ -547,7 +546,7 @@ static void drm_swap_buffers () {
                             DRM_MODE_OBJECT_CONNECTOR, "CRTC_ID", render->crtc_id);
         SetPropertyRequest(ModeReq, render->fd_drm, render->crtc_id,
                             DRM_MODE_OBJECT_CRTC, "ACTIVE", 1);
-        
+
         if (drmModeAtomicCommit(render->fd_drm, ModeReq, flags, NULL) != 0)
             fprintf(stderr, "cannot set atomic mode (%d): %m\n", errno);
 
@@ -558,7 +557,7 @@ static void drm_swap_buffers () {
         m_need_modeset = 0;
     }
     drmModeSetCrtc (render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
-    
+
     if (previous_bo) {
         drmModeRmFB (render->fd_drm, previous_fb);
         gbm_surface_release_buffer (gbm.surface, previous_bo);
@@ -579,15 +578,15 @@ static void drm_clean_up () {
         drmModeRmFB (render->fd_drm, previous_fb);
         gbm_surface_release_buffer (gbm.surface, previous_bo);
     }
-	
+
     drmModeSetCrtc (render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id,
                     render->saved_crtc->x, render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
     drmModeFreeCrtc (render->saved_crtc);
-	
+
     if (render->hdr_blob_id)
         drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
 	render->hdr_blob_id = 0;
-	
+
     eglDestroySurface (eglDisplay, eglSurface);
 	EglCheck();
     gbm_surface_destroy (gbm.surface);
@@ -597,9 +596,9 @@ static void drm_clean_up () {
 	EglCheck();
 	eglSharedContext = NULL;
 
-    eglTerminate (eglDisplay);	
+    eglTerminate (eglDisplay);
 	EglCheck();
-	
+
     gbm_device_destroy (gbm.dev);
 	drmDropMaster(render->fd_drm);
     close (render->fd_drm);

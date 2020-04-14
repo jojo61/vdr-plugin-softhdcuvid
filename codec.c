@@ -96,6 +96,7 @@ static pthread_mutex_t CodecLockMutex;
 /// Flag prefer fast channel switch
 char CodecUsePossibleDefectFrames;
 AVBufferRef *hw_device_ctx;
+
 //----------------------------------------------------------------------------
 //  Video
 //----------------------------------------------------------------------------
@@ -255,18 +256,18 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 #endif
 #ifdef RASPI
     switch (codec_id) {
-    case AV_CODEC_ID_MPEG2VIDEO:
-        name = "mpeg2_v4l2m2m";
-        break;
-    case AV_CODEC_ID_H264:
-        name = "h264_v4l2m2m";
+        case AV_CODEC_ID_MPEG2VIDEO:
+            name = "mpeg2_v4l2m2m";
+            break;
+        case AV_CODEC_ID_H264:
+            name = "h264_v4l2m2m";
 //      name = "h264_mmal";
-        break;  
-    case AV_CODEC_ID_HEVC:
-        name = "hevc_v4l2m2m";
-        break;  
+            break;
+        case AV_CODEC_ID_HEVC:
+            name = "hevc_v4l2m2m";
+            break;
     }
-#endif  
+#endif
     if (name && (video_codec = avcodec_find_decoder_by_name(name))) {
         Debug(3, "codec: decoder found\n");
     } else if ((video_codec = avcodec_find_decoder(codec_id)) == NULL) {
@@ -281,15 +282,15 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (!(decoder->VideoCtx = avcodec_alloc_context3(video_codec))) {
         Fatal(_("codec: can't allocate video codec context\n"));
     }
-    
+
 #ifndef RASPI
     if (!HwDeviceContext) {
         Fatal("codec: no hw device context to be used");
     }
     decoder->VideoCtx->hw_device_ctx = av_buffer_ref(HwDeviceContext);
 #else
-    decoder->VideoCtx->pix_fmt = AV_PIX_FMT_DRM_PRIME;   /* request a DRM frame 
-//  decoder->VideoCtx->pix_fmt = AV_PIX_FMT_MMAL;   /* request a DRM frame */
+    decoder->VideoCtx->pix_fmt = AV_PIX_FMT_DRM_PRIME;  /* request a DRM frame */
+    //  decoder->VideoCtx->pix_fmt = AV_PIX_FMT_MMAL;   /* request a DRM frame */
 #endif
 
     // FIXME: for software decoder use all cpus, otherwise 1
@@ -310,7 +311,7 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
 //        decoder->VideoCtx->thread_count = 0;
-   }
+    }
 
     if (video_codec->capabilities & AV_CODEC_CAP_TRUNCATED) {
         Debug(3, "codec: supports truncated packets");
@@ -333,9 +334,9 @@ void CodecVideoOpen(VideoDecoder * decoder, int codec_id)
 //    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
 //        Fatal(_("VAAPI Refcounts invalid\n"));
     decoder->VideoCtx->thread_safe_callbacks = 0;
-            
+
 #endif
-    
+
 #ifdef RASPI
     decoder->VideoCtx->codec_id = codec_id;
     decoder->VideoCtx->flags |= AV_CODEC_FLAG_BITEXACT;
@@ -508,18 +509,18 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
         int ret;
         AVPacket pkt[1];
         AVFrame *frame;
-    
+
         *pkt = *avpkt;                  // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
         if (ret < 0) {
             return;
-        } 
-        
+        }
+
         if (!CuvidTestSurfaces())
             usleep(1000);
-        
+
         ret = 0;
-        while (ret >= 0 && CuvidTestSurfaces()) {  
+        while (ret >= 0 && CuvidTestSurfaces()) {
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame);
 
@@ -549,7 +550,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
                 av_frame_free(&frame);
                 return;
             }
-        }   
+        }
     }
 }
 #endif
@@ -596,9 +597,9 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
             } else {
                 got_frame = 0;
             }
- //            printf("got %s packet from decoder\n",got_frame?"1":"no");
+            //            printf("got %s packet from decoder\n",got_frame?"1":"no");
             if (got_frame) {            // frame completed
-//				printf("video frame pts %#012" PRIx64 " %dms\n",frame->pts,(int)(apts - frame->pts) / 90);
+//              printf("video frame pts %#012" PRIx64 " %dms\n",frame->pts,(int)(apts - frame->pts) / 90);
 #ifdef YADIF
                 if (decoder->filter) {
                     if (decoder->filter == 1) {
@@ -647,7 +648,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 void CodecVideoFlushBuffers(VideoDecoder * decoder)
 {
     if (decoder->VideoCtx) {
-		avcodec_flush_buffers(decoder->VideoCtx);	
+        avcodec_flush_buffers(decoder->VideoCtx);
     }
 }
 
@@ -819,7 +820,7 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
 void CodecAudioClose(AudioDecoder * audio_decoder)
 {
     // FIXME: output any buffered data
-	
+
 #ifdef USE_SWRESAMPLE
     if (audio_decoder->Resample) {
         swr_free(&audio_decoder->Resample);
@@ -1111,8 +1112,6 @@ static int CodecAudioPassthroughHelper(AudioDecoder * audio_decoder, const AVPac
     return 0;
 }
 
-
-
 #if defined(USE_SWRESAMPLE) || defined(USE_AVRESAMPLE)
 
 /**
@@ -1346,6 +1345,7 @@ void CodecAudioDecode(AudioDecoder * audio_decoder, const AVPacket * avpkt)
             if (audio_decoder->Resample) {
                 uint8_t outbuf[8192 * 2 * 8];
                 uint8_t *out[1];
+
                 out[0] = outbuf;
                 ret =
                     swr_convert(audio_decoder->Resample, out, sizeof(outbuf) / (2 * audio_decoder->HwChannels),

@@ -146,7 +146,6 @@ static volatile char AudioRunning;      ///< thread running / stopped
 static volatile char AudioPaused;       ///< audio paused
 static volatile char AudioVideoIsReady; ///< video ready start early
 static int AudioSkip;                   ///< skip audio to sync to video
-int AudioDelay;                         /// delay audio to sync to video
 
 static const int AudioBytesProSample = 2;   ///< number of bytes per sample
 
@@ -2005,7 +2004,7 @@ static void *AudioPlayHandlerThread(void *dummy)
 {
     Debug(3, "audio: play thread started\n");
     prctl(PR_SET_NAME, "cuvid audio", 0, 0, 0);
-	
+
     for (;;) {
         // check if we should stop the thread
         if (AudioThreadStop) {
@@ -2024,7 +2023,8 @@ static void *AudioPlayHandlerThread(void *dummy)
 
         Debug(3, "audio: ----> %dms %d start\n", (AudioUsedBytes() * 1000)
             / (!AudioRing[AudioRingWrite].HwSampleRate + !AudioRing[AudioRingWrite].HwChannels +
-                AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample),AudioUsedBytes());
+                AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample),
+            AudioUsedBytes());
 
         do {
             int filled;
@@ -2252,7 +2252,7 @@ void AudioEnqueue(const void *samples, int count)
             AudioNormalizer(buffer, count);
         }
     }
-	
+
     n = RingBufferWrite(AudioRing[AudioRingWrite].RingBuffer, buffer, count);
     if (n != (size_t)count) {
         Error(_("audio: can't place %d samples in ring buffer\n"), count);
@@ -2291,7 +2291,7 @@ void AudioEnqueue(const void *samples, int count)
             // no lock needed, can wakeup next time
             AudioRunning = 1;
             pthread_cond_signal(&AudioStartCond);
-            Debug(3, "Start on AudioEnque Threshold %d n %d\n",AudioStartThreshold,n);
+            Debug(3, "Start on AudioEnque Threshold %d n %d\n", AudioStartThreshold, n);
         }
     }
     // Update audio clock (stupid gcc developers thinks INT64_C is unsigned)
@@ -2325,7 +2325,7 @@ void AudioVideoReady(int64_t pts)
     // Audio.PTS = next written sample time stamp
 
     used = RingBufferUsedBytes(AudioRing[AudioRingWrite].RingBuffer);
-    audio_pts = 
+    audio_pts =
         AudioRing[AudioRingWrite].PTS -
         (used * 90 * 1000) / (AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels *
         AudioBytesProSample);
@@ -2337,11 +2337,12 @@ void AudioVideoReady(int64_t pts)
 
     if (!AudioRunning) {
         int skip;
+
         // buffer ~15 video frames
         // FIXME: HDTV can use smaller video buffer
         skip = pts - 0 * 20 * 90 - AudioBufferTime * 90 - audio_pts + VideoAudioDelay;
 #ifdef DEBUG
-  //      fprintf(stderr, "a/v-diff %dms a/v-delay %dms skip %dms  Audiobuffer %d\n", (int)(pts - audio_pts) / 90, VideoAudioDelay / 90, skip / 90,AudioBufferTime);
+        //      fprintf(stderr, "a/v-diff %dms a/v-delay %dms skip %dms  Audiobuffer %d\n", (int)(pts - audio_pts) / 90, VideoAudioDelay / 90, skip / 90,AudioBufferTime);
 #endif
         // guard against old PTS
         if (skip > 0 && skip < 4000 * 90) {
@@ -2479,7 +2480,7 @@ int64_t AudioGetDelay(void)
     pts += ((int64_t) RingBufferUsedBytes(AudioRing[AudioRingRead].RingBuffer)
         * 90 * 1000) / (AudioRing[AudioRingRead].HwSampleRate * AudioRing[AudioRingRead].HwChannels *
         AudioBytesProSample);
-    Debug(4,"audio: hw+sw delay %zd %" PRId64 "ms\n", RingBufferUsedBytes(AudioRing[AudioRingRead].RingBuffer),
+    Debug(4, "audio: hw+sw delay %zd %" PRId64 "ms\n", RingBufferUsedBytes(AudioRing[AudioRingRead].RingBuffer),
         pts / 90);
 
     return pts;
@@ -2496,7 +2497,7 @@ void AudioSetClock(int64_t pts)
         Debug(4, "audio: set clock %s -> %s pts\n", Timestamp2String(AudioRing[AudioRingWrite].PTS),
             Timestamp2String(pts));
     }
-//	printf("Audiosetclock                  pts %#012" PRIx64 " %d\n",pts,RingBufferUsedBytes(AudioRing[AudioRingWrite].RingBuffer));
+//  printf("Audiosetclock                  pts %#012" PRIx64 " %d\n",pts,RingBufferUsedBytes(AudioRing[AudioRingWrite].RingBuffer));
     AudioRing[AudioRingWrite].PTS = pts;
 }
 

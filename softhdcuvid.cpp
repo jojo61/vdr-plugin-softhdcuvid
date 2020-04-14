@@ -1096,10 +1096,10 @@ void cMenuSetupSoft::Create(void)
         "auto", "1920x1080", "1280x720", "custom",
     };
     static const char *const video_display_formats_4_3[] = {
-        "pan&scan", "letterbox", "center cut-out",
+        "pan&scan", "letterbox", "center cut-out", "original"
     };
     static const char *const video_display_formats_16_9[] = {
-        "pan&scan", "pillarbox", "center cut-out",
+        "pan&scan", "pillarbox", "center cut-out", "original"
     };
 #ifdef YADIF
     static const char *const deinterlace[] = {
@@ -1133,7 +1133,7 @@ void cMenuSetupSoft::Create(void)
     static char *scalingtest[100];
 
     if (scalers == 0) {
-        scalingtest[0] = (char *) "Off";
+        scalingtest[0] = (char *)"Off";
         for (scalers = 0; pl_named_filters[scalers].filter != NULL; scalers++) {
             scaling[scalers] = (char *)pl_named_filters[scalers].name;
             scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
@@ -1182,9 +1182,9 @@ void cMenuSetupSoft::Create(void)
         Add(new cMenuEditBoolItem(tr("Enable Screensaver(DPMS) at black screen"), &EnableDPMSatBlackScreen,
                 trVDR("no"), trVDR("yes")));
 #endif
-        Add(new cMenuEditStraItem(trVDR("4:3 video display format"), &Video4to3DisplayFormat, 3,
+        Add(new cMenuEditStraItem(trVDR("4:3 video display format"), &Video4to3DisplayFormat, 4,
                 video_display_formats_4_3));
-        Add(new cMenuEditStraItem(trVDR("16:9+other video display format"), &VideoOtherDisplayFormat, 3,
+        Add(new cMenuEditStraItem(trVDR("16:9+other video display format"), &VideoOtherDisplayFormat, 4,
                 video_display_formats_16_9));
 
 #if 0
@@ -2153,10 +2153,10 @@ void cSoftHdMenu::Create(void)
     int dropped;
     int counter;
     float frametime;
-	int width,height;
-	int color;
-	int eotf;
-	char *colorstr, *eotfstr;
+    int width, height;
+    int color;
+    int eotf;
+    char *colorstr, *eotfstr;
 
     current = Current();                // get current menu item index
     Clear();                            // clear the menu
@@ -2191,8 +2191,8 @@ void cSoftHdMenu::Create(void)
 #endif
     Add(new cOsdItem(NULL, osUnknown, false));
     Add(new cOsdItem(NULL, osUnknown, false));
-    GetStats(&missed, &duped, &dropped, &counter, &frametime, &width, &height, &color,&eotf);
-	switch (color) {
+    GetStats(&missed, &duped, &dropped, &counter, &frametime, &width, &height, &color, &eotf);
+    switch (color) {
         case AVCOL_SPC_RGB:
             colorstr = strdup("BT 601");
             eotfstr = strdup("BT 1886");
@@ -2213,8 +2213,9 @@ void cSoftHdMenu::Create(void)
     }
     Add(new cOsdItem(cString::sprintf(tr(" Frames missed(%d) duped(%d) dropped(%d) total(%d)"), missed, duped, dropped,
                 counter), osUnknown, false));
-	Add(new cOsdItem(cString::sprintf(tr(" Video %dx%d Color: %s Gamma: %s"), width, height, colorstr, eotfstr), osUnknown, false));	
- //   Add(new cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
+    Add(new cOsdItem(cString::sprintf(tr(" Video %dx%d Color: %s Gamma: %s"), width, height, colorstr, eotfstr),
+            osUnknown, false));
+    //   Add(new cOsdItem(cString::sprintf(tr(" Frame Process time %2.2fms"), frametime), osUnknown, false));
     SetCurrent(Get(current));           // restore selected menu entry
     Display();                          // display build menu
 }

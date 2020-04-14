@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2019-10-26 18:41+0200\n"
+"POT-Creation-Date: 2020-04-13 16:26+0200\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -263,9 +263,6 @@ msgstr ""
 msgid "codec: can't allocate video codec context\n"
 msgstr ""
 
-msgid "VAAPI Refcounts invalid\n"
-msgstr ""
-
 msgid "codec: can't set option deint to video codec!\n"
 msgstr ""
 
@@ -304,24 +301,6 @@ msgid "codec: can't open audio codec\n"
 msgstr ""
 
 msgid "codec/audio: decoded data smaller than encoded\n"
-msgstr ""
-
-msgid "codec/audio: resample setup error\n"
-msgstr ""
-
-msgid "codec/audio: overwrite resample\n"
-msgstr ""
-
-msgid "codec/audio: AvResample setup error\n"
-msgstr ""
-
-msgid "codec: latm\n"
-msgstr ""
-
-msgid "codec: error audio data\n"
-msgstr ""
-
-msgid "codec: error more than one frame data\n"
 msgstr ""
 
 msgid "codec/audio: can't setup resample\n"
@@ -642,7 +621,7 @@ msgid " Frames missed(%d) duped(%d) dropped(%d) total(%d)"
 msgstr " Frames verloren(%d) verdoppelt(%d) übersprungen(%d) Gesamt(%d)"
 
 #, c-format
-msgid " Frame Process time %2.2fms"
+msgid " Video %dx%d Color: %s Gamma: %s"
 msgstr ""
 
 msgid "pass-through disabled"
@@ -807,10 +786,6 @@ msgstr ""
 msgid "video/glx: no GLX support\n"
 msgstr ""
 
-#, c-format
-msgid "video/glx: glx version %d.%d\n"
-msgstr ""
-
 msgid "did not get FBconfig"
 msgstr ""
 
@@ -898,11 +873,10 @@ msgid "Failed rendering frame!\n"
 msgstr ""
 
 #, c-format
-msgid "video/vdpau: output buffer full, dropping frame (%d/%d)\n"
+msgid "video/cuvid: output buffer full, dropping frame (%d/%d)\n"
 msgstr ""
 
-#, c-format
-msgid "video/vdpau: pixel format %d not supported\n"
+msgid "Could not dynamically load CUDA\n"
 msgstr ""
 
 msgid "Kein Cuda device gefunden"
@@ -941,12 +915,6 @@ msgid "Failed initializing libplacebo renderer\n"
 msgstr ""
 
 msgid "video/egl: can't create thread egl context\n"
-msgstr ""
-
-msgid "video: can't queue cancel video display thread\n"
-msgstr ""
-
-msgid "video: can't cancel video display thread\n"
 msgstr ""
 
 #, c-format
