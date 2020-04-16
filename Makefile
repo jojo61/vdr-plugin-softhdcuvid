@@ -39,6 +39,7 @@ CONFIG :=  #-DDEBUG 		# remove # to enable debug output
 
 # sanitize selections --------
 ifneq "$(MAKECMDGOALS)" "clean"
+ifneq "$(MAKECMDGOALS)" "indent"
 
 ifeq ($(VAAPI),0)
 ifeq ($(CUVID),0)
@@ -65,7 +66,8 @@ exit 1;
 endif
 endif
 
-endif
+endif # MAKECMDGOALS!=indent
+endif # MAKECMDGOALS!=clean
 #--------------------------
 
 PLUGIN = softhdcuvid

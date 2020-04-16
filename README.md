@@ -232,18 +232,6 @@ Setup: /etc/vdr/setup.conf
 	0 = default (336 ms)
 	1 - 1000 = size of the buffer in ms
 
-	softhddevice.AutoCrop.Interval = 0
-	0 disables auto-crop
-	n each 'n' frames auto-crop is checked.
-
-	softhddevice.AutoCrop.Delay = 0
-	if auto-crop is over 'n' intervals the same, the cropping is
-	used.
-
-	softhddevice.AutoCrop.Tolerance = 0
-	if detected crop area is too small, cut max 'n' pixels at top and
-	bottom.
-
 	softhddevice.Background = 0
 	32bit RGBA background color
 	(Red * 16777216 +  Green * 65536 + Blue * 256 + Alpha)

@@ -136,11 +136,6 @@ static int ConfigVideoCutTopBottom[RESOLUTIONS];
 /// config cut left and right pixels
 static int ConfigVideoCutLeftRight[RESOLUTIONS];
 
-static int ConfigAutoCropEnabled;       ///< auto crop detection enabled
-static int ConfigAutoCropInterval;      ///< auto crop detection interval
-static int ConfigAutoCropDelay;         ///< auto crop detection delay
-static int ConfigAutoCropTolerance;     ///< auto crop detection tolerance
-
 static int ConfigVideoAudioDelay;       ///< config audio delay
 static char ConfigAudioDrift;           ///< config audio drift
 static char ConfigAudioPassthrough;     ///< config audio pass-through mask
@@ -997,10 +992,6 @@ class cMenuSetupSoft:public cMenuSetupPage
     int CutTopBottom[RESOLUTIONS];
     int CutLeftRight[RESOLUTIONS];
 
-    int AutoCropInterval;
-    int AutoCropDelay;
-    int AutoCropTolerance;
-
     int Audio;
     int AudioDelay;
     int AudioDrift;
@@ -1243,15 +1234,6 @@ void cMenuSetupSoft::Create(void)
                 Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"), &CutLeftRight[i], 0, 250));
             }
         }
-#ifdef USE_AUTOCROP
-        //
-        //  auto-crop
-        //
-        Add(SeparatorItem(tr("Auto-crop")));
-        Add(new cMenuEditIntItem(tr("Autocrop interval (frames)"), &AutoCropInterval, 0, 200, tr("off")));
-        Add(new cMenuEditIntItem(tr("Autocrop delay (n * interval)"), &AutoCropDelay, 0, 200));
-        Add(new cMenuEditIntItem(tr("Autocrop tolerance (pixel)"), &AutoCropTolerance, 0, 32));
-#endif
     }
     //
     //  audio
@@ -1429,13 +1411,6 @@ cMenuSetupSoft::cMenuSetupSoft(void)
         CutLeftRight[i] = ConfigVideoCutLeftRight[i];
     }
     //
-    //  auto-crop
-    //
-    AutoCropInterval = ConfigAutoCropInterval;
-    AutoCropDelay = ConfigAutoCropDelay;
-    AutoCropTolerance = ConfigAutoCropTolerance;
-
-    //
     //  audio
     //
     Audio = 0;
@@ -1590,12 +1565,6 @@ void cMenuSetupSoft::Store(void)
     VideoSetSharpen(ConfigVideoSharpen);
     VideoSetCutTopBottom(ConfigVideoCutTopBottom);
     VideoSetCutLeftRight(ConfigVideoCutLeftRight);
-
-    SetupStore("AutoCrop.Interval", ConfigAutoCropInterval = AutoCropInterval);
-    SetupStore("AutoCrop.Delay", ConfigAutoCropDelay = AutoCropDelay);
-    SetupStore("AutoCrop.Tolerance", ConfigAutoCropTolerance = AutoCropTolerance);
-    VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance);
-    ConfigAutoCropEnabled = ConfigAutoCropInterval != 0;
 
     SetupStore("AudioDelay", ConfigVideoAudioDelay = AudioDelay);
     VideoSetAudioDelay(ConfigVideoAudioDelay);
@@ -2297,33 +2266,6 @@ static void HandleHotkey(int code)
             break;
         case 22:                       // toggle full screen
             VideoSetFullscreen(-1);
-            break;
-        case 23:                       // disable auto-crop
-            ConfigAutoCropEnabled = 0;
-            VideoSetAutoCrop(0, ConfigAutoCropDelay, ConfigAutoCropTolerance);
-            Skins.QueueMessage(mtInfo, tr("auto-crop disabled and freezed"));
-            break;
-        case 24:                       // enable auto-crop
-            ConfigAutoCropEnabled = 1;
-            if (!ConfigAutoCropInterval) {
-                ConfigAutoCropInterval = 50;
-            }
-            VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance);
-            Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
-            break;
-        case 25:                       // toggle auto-crop
-            ConfigAutoCropEnabled ^= 1;
-            // no interval configured, use some default
-            if (!ConfigAutoCropInterval) {
-                ConfigAutoCropInterval = 50;
-            }
-            VideoSetAutoCrop(ConfigAutoCropEnabled * ConfigAutoCropInterval, ConfigAutoCropDelay,
-                ConfigAutoCropTolerance);
-            if (ConfigAutoCropEnabled) {
-                Skins.QueueMessage(mtInfo, tr("auto-crop enabled"));
-            } else {
-                Skins.QueueMessage(mtInfo, tr("auto-crop disabled and freezed"));
-            }
             break;
         case 30:                       // change 4:3 -> window mode
         case 31:
@@ -3294,7 +3236,6 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
         ConfigSuspendX11 = atoi(value);
         return true;
     }
-
     if (!strcasecmp(name, "Video4to3DisplayFormat")) {
         Config4to3DisplayFormat = atoi(value);
         VideoSet4to3DisplayFormat(Config4to3DisplayFormat);
@@ -3435,20 +3376,6 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
             VideoSetCutLeftRight(ConfigVideoCutLeftRight);
             return true;
         }
-    }
-
-    if (!strcasecmp(name, "AutoCrop.Interval")) {
-        VideoSetAutoCrop(ConfigAutoCropInterval = atoi(value), ConfigAutoCropDelay, ConfigAutoCropTolerance);
-        ConfigAutoCropEnabled = ConfigAutoCropInterval != 0;
-        return true;
-    }
-    if (!strcasecmp(name, "AutoCrop.Delay")) {
-        VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay = atoi(value), ConfigAutoCropTolerance);
-        return true;
-    }
-    if (!strcasecmp(name, "AutoCrop.Tolerance")) {
-        VideoSetAutoCrop(ConfigAutoCropInterval, ConfigAutoCropDelay, ConfigAutoCropTolerance = atoi(value));
-        return true;
     }
 
     if (!strcasecmp(name, "AudioDelay")) {
@@ -3706,7 +3633,6 @@ static const char *SVDRPHelpText[] = {
         "    12: toggle audio pass-through\n" "    13: decrease audio delay by 10ms\n"
         "    14: increase audio delay by 10ms\n" "    15: toggle ac3 mixdown\n"
         "    20: disable fullscreen\n\040   21: enable fullscreen\n" "    22: toggle fullscreen\n"
-        "    23: disable auto-crop\n\040   24: enable auto-crop\n" "    25: toggle auto-crop\n"
         "    30: stretch 4:3 to display\n\040   31: pillar box 4:3 in display\n"
         "    32: center cut-out 4:3 to display\n" "    39: rotate 4:3 to display zoom mode\n"
         "    40: stretch other aspect ratios to display\n" "    41: letter box other aspect ratios in display\n"
