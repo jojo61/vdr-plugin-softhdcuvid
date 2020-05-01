@@ -106,7 +106,7 @@ static int ConfigVideoBrightness;       ///< config video brightness
 static int ConfigVideoContrast = 100;   ///< config video contrast
 static int ConfigVideoSaturation = 100; ///< config video saturation
 static int ConfigVideoHue;              ///< config video hue
-static int ConfigGamma;                 ///< config Gamma
+static int ConfigGamma=100;                 ///< config Gamma
 static int ConfigTargetColorSpace;      ///< config Target Colrospace
 static int ConfigScalerTest;            /// Test for Scalers
 static int ConfigColorBlindness;

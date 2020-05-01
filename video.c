@@ -38,7 +38,7 @@
 /// @todo FIXME: use vaErrorStr for all VA-API errors.
 ///
 
-//#define PLACEBO
+//#define PLACEBO_GL
 
 #define USE_XLIB_XCB                    ///< use xlib/xcb backend
 #define noUSE_SCREENSAVER               ///< support disable screensaver
@@ -175,10 +175,12 @@ typedef void *EGLImageKHR;
 #endif
 
 #ifdef PLACEBO
+#ifdef PLACEBO_GL
+#include <libplacebo/opengl.h>
+#else
 #define VK_USE_PLATFORM_XCB_KHR
-#include <vulkan/vulkan.h>
-#include <libplacebo/context.h>
 #include <libplacebo/vulkan.h>
+#endif
 #include <libplacebo/renderer.h>
 #endif
 
@@ -488,6 +490,7 @@ static char DPMSDisabled;               ///< flag we have disabled dpms
 static char EnableDPMSatBlackScreen;    ///< flag we should enable dpms at black screen
 #endif
 
+static unsigned int Count;
 static int EglEnabled;                  ///< use EGL
 static int GlxVSyncEnabled = 1;         ///< enable/disable v-sync
 
@@ -779,8 +782,7 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
     *output_width = (*crop_width * input_aspect_ratio.num) / input_aspect_ratio.den;    // normalize pixel aspect ratio
     *output_x = video_x + (video_width - *output_width) / 2;
     *output_y = video_y + (video_height - *output_height) / 2;
-    CuvidMessage(2, "video: original aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x,
-        *output_y);
+    CuvidMessage(2, "video: original aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
     return;
 }
 
@@ -941,7 +943,7 @@ static void EglInit(void)
 
     XVisualInfo *vi = NULL;
 
-#ifdef PLACEBO
+#if defined PLACEBO && !defined PLACEBO_GL
     return;
 #endif
 
@@ -1399,9 +1401,14 @@ typedef struct priv
     // struct pl_render_target r_target;
     // struct pl_render_params r_params;
     // struct pl_tex      final_fbo;
+#ifndef PLACEBO_GL
     VkSurfaceKHR pSurface;
+#endif
     // VkSemaphore sig_in;
     int has_dma_buf;
+#ifdef PLACEBO_GL
+    struct pl_opengl *gl;
+#endif
 } priv;
 static priv *p;
 static struct pl_overlay osdoverlay;
@@ -2091,7 +2098,7 @@ static int CuvidGlxInit( __attribute__((unused))
     const char *display_name)
 {
 
-#ifndef PLACEBO
+#if !defined PLACEBO || defined PLACEBO_GL
 
     EglInit();
     if (EglEnabled) {
@@ -2940,7 +2947,7 @@ int get_RGB(CuvidDecoder * decoder)
     struct pl_render_params render_params = pl_render_default_params;
     struct pl_render_target target = { 0 };
     const struct pl_fmt *fmt;
-    VkImage Image;
+
     int offset, x1, y1, x0, y0;
     float faktorx, faktory;
 #endif
@@ -3556,7 +3563,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     struct pl_tex_vk *vkp;
     struct pl_plane *pl;
     const struct pl_fmt *fmt;
-    VkImage Image;
+
     struct pl_image *img;
     bool ok;
 
@@ -3873,13 +3880,14 @@ void make_osd_overlay(int x, int y, int width, int height)
 ///
 /// Display a video frame.
 ///
+
 static void CuvidDisplayFrame(void)
 {
 
     static uint64_t first_time = 0, round_time = 0;
     static uint64_t last_time = 0;
     int i;
-    static unsigned int Count;
+    
     int filled;
     CuvidDecoder *decoder;
     int RTS_flag;
@@ -3895,7 +3903,6 @@ static void CuvidDisplayFrame(void)
     struct pl_render_target target;
     bool ok;
 
-    VkImage Image;
     const struct pl_fmt *fmt;
     const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 #endif
@@ -3917,6 +3924,18 @@ static void CuvidDisplayFrame(void)
 
 #else // PLACEBO
 
+#ifdef PLACEBO_GL
+#ifdef CUVID
+    glXMakeCurrent(XlibDisplay, VideoWindow, glxThreadContext);
+    glXWaitVideoSyncSGI(2, (Count + 1) % 2, &Count);    // wait for previous frame to swap
+    last_time = GetusTicks();
+#else
+    eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
+    EglCheck();
+#endif
+    glClear(GL_COLOR_BUFFER_BIT);
+#endif
+    
     if (CuvidDecoderN) {
         ldiff = (float)(GetusTicks() - round_time) / 1000000.0;
         if (ldiff < 100.0 && ldiff > 0.0)
@@ -4164,6 +4183,23 @@ static void CuvidDisplayFrame(void)
     }
 }
 
+#ifdef PLACEBO_GL    
+CuvidSwapBuffer() {    
+#ifdef CUVID
+    glXGetVideoSyncSGI(&Count);         // get current frame
+    glXSwapBuffers(XlibDisplay, VideoWindow);
+    glXMakeCurrent(XlibDisplay, None, NULL);
+#else
+#ifndef USE_DRM
+    eglSwapBuffers(eglDisplay, eglSurface);
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#else
+    drm_swap_buffers();
+#endif
+#endif    
+}
+#endif
+    
 ///
 /// Set CUVID decoder video clock.
 ///
@@ -5172,14 +5208,6 @@ void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
 
 void InitPlacebo()
 {
-
-    struct pl_vulkan_params params;
-    struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
-    VkXcbSurfaceCreateInfoKHR xcbinfo;
-
-    char xcbext[] = { "VK_KHR_xcb_surface" };
-    char surfext[] = { "VK_KHR_surface" };
-
     Debug(3, "Init Placebo mit API %d\n", PL_API_VER);
 
     p = calloc(1, sizeof(struct priv));
@@ -5188,12 +5216,31 @@ void InitPlacebo()
 
     // Create context
     p->context.log_cb = &pl_log_intern;
-    p->context.log_level = PL_LOG_WARN;
+    p->context.log_level = PL_LOG_WARN;   // WARN
 
     p->ctx = pl_context_create(PL_API_VER, &p->context);
     if (!p->ctx) {
         Fatal(_("Failed initializing libplacebo\n"));
     }
+    
+#ifdef PLACEBO_GL
+    struct pl_opengl_params params = pl_opengl_default_params;
+ 
+    p->gl = pl_opengl_create(p->ctx, &params);
+    
+    p->swapchain = pl_opengl_create_swapchain(p->gl, &(struct pl_opengl_swapchain_params) {
+        .swap_buffers = (void (*)(void *)) CuvidSwapBuffer,
+        .priv = NULL,
+    });
+    
+    p->gpu = p->gl->gpu;
+#else
+    struct pl_vulkan_params params;
+    struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
+    VkXcbSurfaceCreateInfoKHR xcbinfo;
+
+    char xcbext[] = { "VK_KHR_xcb_surface" };
+    char surfext[] = { "VK_KHR_surface" };
 
     // create Vulkan instance
     memcpy(&iparams, &pl_vk_inst_default_params, sizeof(iparams));
@@ -5234,15 +5281,6 @@ void InitPlacebo()
 
     p->gpu = p->vk->gpu;
 
-    if (!(p->gpu->import_caps.tex & PL_HANDLE_DMA_BUF)) {
-        p->has_dma_buf = 0;
-        Debug(3, "No support for dma_buf import in Vulkan\n");
-    } else {
-        p->has_dma_buf = 1;
-        Debug(3, "dma_buf support in Vulkan available\n");
-    }
-
-#if 1
     // Create initial swapchain
     p->swapchain = pl_vulkan_create_swapchain(p->vk, &(struct pl_vulkan_swapchain_params) {
             .surface = p->pSurface,
@@ -5250,16 +5288,32 @@ void InitPlacebo()
             .swapchain_depth = SWAP_BUFFER_SIZE,
         });
 
+#endif
+    
     if (!p->swapchain) {
         Fatal(_("Failed creating vulkan swapchain!"));
     }
+    
+    if (!(p->gpu->import_caps.tex & PL_HANDLE_DMA_BUF)) {
+        p->has_dma_buf = 0;
+        Debug(3, "No support for dma_buf import \n");
+    } else {
+        p->has_dma_buf = 1;
+        Debug(3, "dma_buf support available\n");
+    }
 
+#ifdef PLACEBO_GL
+   if (!pl_swapchain_resize(p->swapchain, &VideoWindowWidth, &VideoWindowHeight)) {
+        Fatal(_( "libplacebo: failed initializing swapchain\n"));
+    } 
+#endif    
+    
     // create renderer
     p->renderer = pl_renderer_create(p->ctx, p->gpu);
     if (!p->renderer) {
         Fatal(_("Failed initializing libplacebo renderer\n"));
     }
-#endif
+
     Debug(3, "Placebo: init ok");
 
 }
@@ -5313,10 +5367,15 @@ void exit_display()
         p->renderertest = NULL;
     }
     pl_swapchain_destroy(&p->swapchain);
-
+#ifdef PLACEBO_GL
+    pl_opengl_destroy(&p->gl);
+#else
+    // pl_vulkan_destroy(&p->vk);
     vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
     pl_vk_inst_destroy(&p->vk_inst);
-    // pl_vulkan_destroy(&p->vk);
+#endif
+    
+    
     pl_context_destroy(&p->ctx);
     free(p);
     p = NULL;
@@ -5352,16 +5411,14 @@ static void *VideoHandlerThread(void *dummy)
     Set_Gamma(0.0, 6500);
 #endif
 
-#ifdef PLACEBO
-    InitPlacebo();
-#else
-#ifdef CUVID
+
+#if (defined CUVID && !defined PLACEBO) || (defined CUVID && defined PLACEBO_GL)
     if (EglEnabled) {
         glxThreadContext = glXCreateContext(XlibDisplay, GlxVisualInfo, glxSharedContext, GL_TRUE);
         GlxSetupWindow(VideoWindow, VideoWindowWidth, VideoWindowHeight, glxThreadContext);
     }
 #endif
-#ifdef VAAPI
+#if (defined VAAPI && !defined PLACEBO) || (defined VAAPI && defined PLACEBO_GL)
     eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
     if (!eglThreadContext) {
         EglCheck();
@@ -5370,7 +5427,11 @@ static void *VideoHandlerThread(void *dummy)
     }
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
 #endif
+
+#ifdef PLACEBO
+    InitPlacebo();
 #endif
+    
     pthread_cleanup_push(exit_display, NULL);
     for (;;) {
 
@@ -6343,6 +6404,11 @@ void VideoSetVideoMode( __attribute__((unused))
     VideoWindowHeight = height;
 #ifdef PLACEBO
     VideoSetOsdSize(width, height);
+#ifdef PLACEBO_GL
+    if (!pl_swapchain_resize(p->swapchain, &width, &height)) {
+        Fatal(_( "libplacebo: failed initializing swapchain\n"));
+    }
+#endif
 #endif
     VideoUsedModule->SetVideoMode();
     VideoThreadUnlock();
