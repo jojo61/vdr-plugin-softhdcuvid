@@ -179,9 +179,6 @@ extern void VideoSetBackground(uint32_t);
 /// Set audio delay.
 extern void VideoSetAudioDelay(int);
 
-/// Set auto-crop parameters.
-extern void VideoSetAutoCrop(int, int, int);
-
 /// Clear OSD.
 extern void VideoOsdClear(void);
 

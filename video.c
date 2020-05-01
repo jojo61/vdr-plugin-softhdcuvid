@@ -779,7 +779,8 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
     *output_width = (*crop_width * input_aspect_ratio.num) / input_aspect_ratio.den;    // normalize pixel aspect ratio
     *output_x = video_x + (video_width - *output_width) / 2;
     *output_y = video_y + (video_height - *output_height) / 2;
-    CuvidMessage(2, "video: original aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x, *output_y);
+    CuvidMessage(2, "video: original aspect output %dx%d%+d%+d\n", *output_width, *output_height, *output_x,
+        *output_y);
     return;
 }
 
@@ -6654,16 +6655,6 @@ void VideoSetBackground(uint32_t rgba)
 void VideoSetAudioDelay(int ms)
 {
     VideoAudioDelay = ms * 90;
-}
-
-///
-/// Set auto-crop parameters.
-///
-void VideoSetAutoCrop(int interval, int delay, int tolerance)
-{
-    (void)interval;
-    (void)delay;
-    (void)tolerance;
 }
 
 ///
