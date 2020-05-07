@@ -240,8 +240,28 @@ static int FindDevice(VideoRender * render)
         fprintf(stderr, "FindDevice: cannot open /dev/dri/card0: %m\n");
         return -errno;
     }
-	drmSetMaster(render->fd_drm);
+	
+	int ret = drmSetMaster(render->fd_drm);
+ 	
+	if (ret < 0)
+	{
+		drm_magic_t magic;
 
+		ret = drmGetMagic(render->fd_drm, &magic);
+		if (ret < 0)
+		{
+		  Debug(3, "drm:%s - failed to get drm magic: %s\n", __FUNCTION__, strerror(errno));
+		  return -1;
+		}
+
+		ret = drmAuthMagic(render->fd_drm, magic);
+		if (ret < 0)
+		{
+		  Debug(3, "drm:%s - failed to authorize drm magic: %s\n", __FUNCTION__, strerror(errno));
+		  return -1;
+		}
+	}
+    
     version = drmGetVersion(render->fd_drm);
     fprintf(stderr, "FindDevice: open /dev/dri/card0:  %s\n",  version->name);
 
