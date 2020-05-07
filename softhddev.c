@@ -3397,10 +3397,12 @@ void GetStats(int *missed, int *duped, int *dropped, int *counter, float *framet
 */
 void ScaleVideo(int x, int y, int width, int height)
 {
+#ifdef USE_PIP
     if (PiPActive && !(x & y & width & height)) {
         Info("[softhddev]%s: fullscreen with PiP active.\n", __FUNCTION__);
         x = mwx; y = mwy; width = mww; height = mwh;
     }
+#endif
     if (MyVideoStream->HwDecoder) {
         VideoSetOutputPosition(MyVideoStream->HwDecoder, x, y, width, height);
     }
