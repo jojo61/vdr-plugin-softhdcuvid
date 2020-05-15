@@ -5003,10 +5003,11 @@ void VideoOsdInit(void)
         OsdWidth = VideoWindowWidth;
         OsdHeight = VideoWindowHeight;
     }
-
+//printf("\nset osd %d x %d\n",OsdWidth,OsdHeight);
     if (posd)
         free(posd);
     posd = (unsigned char *)calloc((OsdWidth + 1) * (OsdHeight + 1) * 4, 1);
+  //  posd = (unsigned char *)calloc((4096 + 1) * (2160 + 1) * 4, 1);
     VideoOsdClear();
 }
 
@@ -5235,25 +5236,23 @@ void InitPlacebo()
     
     p->gpu = p->gl->gpu;
 #else
-    struct pl_vulkan_params params;
+    struct pl_vulkan_params params; 
     struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
-    VkXcbSurfaceCreateInfoKHR xcbinfo;
+    VkXcbSurfaceCreateInfoKHR xcbinfo; 
 
     char xcbext[] = { "VK_KHR_xcb_surface" };
     char surfext[] = { "VK_KHR_surface" };
+    char *ext[2] = {&xcbext,&surfext};
 
     // create Vulkan instance
-    memcpy(&iparams, &pl_vk_inst_default_params, sizeof(iparams));
+//    memcpy(&iparams, &pl_vk_inst_default_params, sizeof(iparams));
     // iparams.debug = true;
-    iparams.num_extensions = 2;
-    iparams.extensions = malloc(2 * sizeof(const char *));
-    *iparams.extensions = surfext;
+   
+    iparams.num_extensions = 2; //extensions_count;
+    iparams.extensions = &ext;
     iparams.debug = false;
-    *(iparams.extensions + 1) = xcbext;
 
     p->vk_inst = pl_vk_inst_create(p->ctx, &iparams);
-
-    free(iparams.extensions);
 
     // create XCB surface for swapchain
     xcbinfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
