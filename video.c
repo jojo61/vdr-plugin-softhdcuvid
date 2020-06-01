@@ -2913,6 +2913,8 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
             decoder->Closing = 0;
             decoder->PTS = AV_NOPTS_VALUE;
             VideoDeltaPTS = 0;
+            decoder->InputAspect = video_ctx->sample_aspect_ratio;
+            CuvidUpdateOutput(decoder);         // update aspect/scaling
         }
 
         CuvidMessage(2, "GetFormat Init ok %dx%d\n", video_ctx->width, video_ctx->height);
