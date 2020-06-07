@@ -61,7 +61,7 @@ extern "C"
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.1.1"
+static const char *const VERSION = "3.2.0"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -111,6 +111,7 @@ static int ConfigTargetColorSpace;      ///< config Target Colrospace
 static int ConfigScalerTest;            /// Test for Scalers
 static int ConfigColorBlindness;
 static int ConfigColorBlindnessFaktor;
+
 
 /// config deinterlace
 static int ConfigVideoDeinterlace[RESOLUTIONS];
@@ -3065,7 +3066,9 @@ bool cPluginSoftHdDevice::ProcessArgs(int argc, char *argv[])
 bool cPluginSoftHdDevice::Initialize(void)
 {
     // dsyslog("[softhddev]%s:\n", __FUNCTION__);
-
+#if defined PLACEBO
+	MyConfigDir = cPlugin::ConfigDirectory("shaders");
+#endif
     MyDevice = new cSoftHdDevice();
 
     return true;

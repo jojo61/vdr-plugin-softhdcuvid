@@ -397,8 +397,11 @@ void cOglFont::Cleanup(void)
     delete fonts;
 
     fonts = 0;
-    if (FT_Done_FreeType(ftLib))
-        esyslog("failed to deinitialize FreeType library!");
+	if (ftLib) {
+		if (FT_Done_FreeType(ftLib))
+			esyslog("failed to deinitialize FreeType library!");
+	}
+	ftLib = 0;
 }
 
 cOglGlyph *cOglFont::Glyph(FT_ULong charCode) const

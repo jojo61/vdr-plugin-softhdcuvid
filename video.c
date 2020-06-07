@@ -332,6 +332,8 @@ typedef struct
 
 #define VIDEO_SURFACES_MAX  6           ///< video output surfaces for queue
 
+#define NUM_SHADERS  5                  // Number of supported user shaders with placebo
+
 #if defined VAAPI && !defined RASPI
 #define PIXEL_FORMAT AV_PIX_FMT_VAAPI
 #define SWAP_BUFFER_SIZE     3
@@ -444,6 +446,10 @@ static int VulkanTargetColorSpace = 0;
 static int VideoScalerTest = 0;
 static int VideoColorBlindness = 0;
 static float VideoColorBlindnessFaktor = 1.0f;
+
+static char* shadersp[NUM_SHADERS];
+const char *MyConfigDir;
+static int num_shaders = 0;
 
 static xcb_atom_t WmDeleteWindowAtom;   ///< WM delete message atom
 static xcb_atom_t NetWmState;           ///< wm-state message atom
@@ -1409,7 +1415,12 @@ typedef struct priv
 #ifdef PLACEBO_GL
     struct pl_opengl *gl;
 #endif
+#if PL_API_VER >= 58
+    const struct pl_hook *hook[NUM_SHADERS];
+    int num_shaders;
+#endif
 } priv;
+
 static priv *p;
 static struct pl_overlay osdoverlay;
 
@@ -1535,6 +1546,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 
     Debug(3, "video/cuvid: %s\n", __FUNCTION__);
 
+    
 #ifndef PLACEBO
 #ifdef CUVID
     glXMakeCurrent(XlibDisplay, VideoWindow, glxSharedContext);
@@ -1544,6 +1556,11 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
     EglCheck();
 #endif
 #endif
+ 
+#if defined PLACEBO && API_VER >= 58    
+    p->num_shaders = 0;
+#endif    
+    
     for (i = 0; i < decoder->SurfacesNeeded; i++) {
         if (decoder->frames[i]) {
             av_frame_free(&decoder->frames[i]);
@@ -1575,9 +1592,12 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 #endif
         }
     }
+
 #ifdef PLACEBO
-    pl_renderer_destroy(&p->renderer);
-    p->renderer = pl_renderer_create(p->ctx, p->gpu);
+
+ //   pl_renderer_destroy(&p->renderer);
+ //   p->renderer = pl_renderer_create(p->ctx, p->gpu);
+
 #else
     glDeleteTextures(CODEC_SURFACES_MAX * 2, (GLuint *) & decoder->gl_textures);
     GlxCheck();
@@ -1590,7 +1610,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
         gl_prog = 0;
     }
 #endif
-
+    
     for (i = 0; i < decoder->SurfaceFreeN; ++i) {
         decoder->SurfacesFree[i] = -1;
     }
@@ -1601,6 +1621,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 
     decoder->SurfaceFreeN = 0;
     decoder->SurfaceUsedN = 0;
+
 }
 
 ///
@@ -2238,6 +2259,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                         .export_handle = PL_HANDLE_FD,
                     });
             }
+            
             // make planes for image
             pl = &decoder->pl_images[i].planes[n];
             pl->components = n == 0 ? 1 : 2;
@@ -3543,6 +3565,55 @@ static void CuvidAdvanceDecoderFrame(CuvidDecoder * decoder)
     // next field
     decoder->SurfaceField = 1;
 }
+    
+#if defined PLACEBO && PL_API_VER >= 58
+
+static const struct pl_hook *
+parse_user_shader(char *shader)
+{
+    char tmp[200];
+    if (!shader )
+        return NULL;
+
+    const struct pl_hook *hook = NULL;
+    char *str = NULL;
+    
+//    Debug(3,"Parse user shader %s/%s\n",MyConfigDir,shader);
+ 
+    sprintf(tmp,"%s/%s",MyConfigDir,shader);
+    FILE *f = fopen(tmp, "rb");
+
+    if (!f) {
+        Debug(3, "Failed to open shader file %s: %s\n", shader, strerror(errno));
+        goto error;
+    }
+
+    int ret = fseek(f, 0, SEEK_END);
+    if (ret == -1)
+        goto error;
+    long length = ftell(f);
+    if (length == -1)
+        goto error;
+    rewind(f);
+
+    str = malloc(length);
+    if (!str)
+        goto error;
+    ret = fread(str, length, 1, f);
+    if (ret != 1)
+        goto error;
+
+    hook = pl_mpv_user_shader_parse(p->gpu, str, length);
+    // fall through
+    Debug(3,"User shader %p\n",hook);
+error:
+    if (f)
+        fclose(f);
+    free(str);
+    return hook;
+}
+#endif
+
 
 ///
 /// Render video surface to output surface.
@@ -3726,13 +3797,14 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         img->src_rect.y0 = video_src_rect.y0;
         img->src_rect.x1 = video_src_rect.x1;
         img->src_rect.y1 = video_src_rect.y1;
-
+        
         // Video aspect ratio
         target->dst_rect.x0 = dst_video_rect.x0;
         target->dst_rect.y0 = dst_video_rect.y0;
         target->dst_rect.x1 = dst_video_rect.x1;
-        target->dst_rect.y1 = dst_video_rect.y1;
+        target->dst_rect.y1 = dst_video_rect.y1;       
     }
+    
     if (level == 0)
         pl_tex_clear(p->gpu, target->fbo, (float[4]) { 0 }
     );
@@ -3781,18 +3853,43 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         target->overlays = 0;
         target->num_overlays = 0;
     }
-
+    
+#if PL_API_VER >= 58
+    if (decoder->newchannel == 1 && !level) {   // got new textures
+        p->num_shaders = 0;
+        for (int i=NUM_SHADERS-1;i>=0;i--) {    // Remove shaders in invers order
+            if (p->hook[i]) {
+                pl_mpv_user_shader_destroy(&p->hook[i]);
+                p->hook[i] = NULL;
+                Debug(3,"remove shader %d\n",i);
+            }
+        }
+        for (int i = 0;i<num_shaders;i++) {
+            if (p->hook[i] == NULL && shadersp[i]) {
+                p->hook[i] = parse_user_shader(shadersp[i]);
+                if (!p->hook[i])
+                    shadersp[i]= 0;
+                else
+                    p->num_shaders++;
+            }
+        }
+    }   
+    render_params.hooks = &p->hook;
+    render_params.num_hooks = p->num_shaders;
+#endif
+    
     if (decoder->newchannel && current == 0) {
         colors.brightness = -1.0f;
         colors.contrast = 0.0f;
         if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
-            Debug(3, "Failed rendering frame!\n");
+            Debug(3, "Failed rendering first frame!\n");
         }
+        decoder->newchannel = 2;
         return;
     }
 
     decoder->newchannel = 0;
-
+    
     if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Debug(3, "Failed rendering frame!\n");
     }
@@ -3905,6 +4002,7 @@ static void CuvidDisplayFrame(void)
     struct pl_render_target target;
     bool ok;
 
+
     const struct pl_fmt *fmt;
     const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 #endif
@@ -3961,11 +4059,13 @@ static void CuvidDisplayFrame(void)
 
 #ifdef CUVID
     VideoThreadLock();
+#if 0
     if (!first) {
         if (!pl_swapchain_submit_frame(p->swapchain))
             Error(_("Failed to submit swapchain buffer\n"));
         pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
     }
+#endif
 #endif
 
     first = 0;
@@ -4154,13 +4254,13 @@ static void CuvidDisplayFrame(void)
 #endif
 
 #ifdef PLACEBO
-#ifdef VAAPI
+//#ifdef VAAPI
     // first_time = GetusTicks();
     if (!pl_swapchain_submit_frame(p->swapchain))
         Fatal(_("Failed to submit swapchain buffer\n"));
     pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
 
-#endif
+//#endif
     VideoThreadUnlock();
 #else // not PLACEBO
 #ifdef CUVID
@@ -5356,9 +5456,11 @@ void exit_display()
 
 #ifdef PLACEBO
     Debug(3, "delete placebo\n");
-    if (p == NULL)
+    if (p == NULL) {
+        Debug(3,"Placebo not initialised\n");
         return;
-
+    }
+    pl_gpu_finish(p->gpu);
     if (osdoverlay.plane.texture)
         pl_tex_destroy(p->gpu, &osdoverlay.plane.texture);
 
@@ -5367,20 +5469,22 @@ void exit_display()
         pl_renderer_destroy(&p->renderertest);
         p->renderertest = NULL;
     }
+ 
     pl_swapchain_destroy(&p->swapchain);
+  
 #ifdef PLACEBO_GL
     pl_opengl_destroy(&p->gl);
 #else
-    // pl_vulkan_destroy(&p->vk);
+//    pl_vulkan_destroy(&p->vk);
     vkDestroySurfaceKHR(p->vk_inst->instance, p->pSurface, NULL);
     pl_vk_inst_destroy(&p->vk_inst);
 #endif
-    
-    
+ 
     pl_context_destroy(&p->ctx);
     free(p);
     p = NULL;
 #endif
+    
 #ifdef CUVID
     if (glxThreadContext) {
         glXDestroyContext(XlibDisplay, glxThreadContext);
@@ -5394,8 +5498,7 @@ void exit_display()
         eglThreadContext = NULL;
     }
 #endif
-    Debug(3, "display thread exit\n");
-
+    Debug(3, "display thread exit\n");  
 }
 
 static void *VideoHandlerThread(void *dummy)
@@ -5434,7 +5537,7 @@ static void *VideoHandlerThread(void *dummy)
 #endif
     
     pthread_cleanup_push(exit_display, NULL);
-    for (;;) {
+    while (1) {
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         pthread_testcancel();
@@ -5446,7 +5549,6 @@ static void *VideoHandlerThread(void *dummy)
         CuvidSyncDisplayFrame();
         // printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000);
     }
-
     pthread_cleanup_pop(NULL);
 
     return dummy;
@@ -5457,14 +5559,15 @@ static void *VideoHandlerThread(void *dummy)
 ///
 static void VideoThreadInit(void)
 {
-
+  
 #ifndef PLACEBO
 #ifdef CUVID
     glXMakeCurrent(XlibDisplay, None, NULL);
 #else
 //    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglContext);
 #endif
-#endif
+#endif 
+  
     pthread_mutex_init(&VideoMutex, NULL);
     pthread_mutex_init(&VideoLockMutex, NULL);
     pthread_mutex_init(&OSDMutex, NULL);
@@ -5493,7 +5596,7 @@ static void VideoThreadExit(void)
         if (pthread_join(VideoThread, &retval) || retval != PTHREAD_CANCELED) {
             Debug(3, "video: can't cancel video decoder thread\n");
         }
-
+        
         if (VideoDisplayThread) {
             if (pthread_cancel(VideoDisplayThread)) {
                 Debug(3, "video: can't queue cancel video display thread\n");
@@ -5504,6 +5607,7 @@ static void VideoThreadExit(void)
             }
             VideoDisplayThread = 0;
         }
+        
         VideoThread = 0;
         pthread_cond_destroy(&VideoWakeupCond);
         pthread_mutex_destroy(&VideoLockMutex);
@@ -5747,7 +5851,9 @@ void VideoSetClosing(VideoHwDecoder * hw_decoder)
 ///
 void VideoResetStart(VideoHwDecoder * hw_decoder)
 {
+    
     Debug(3, "video: reset start\n");
+
     VideoUsedModule->ResetStart(hw_decoder);
     // clear clock to trigger new video stream
     VideoSetClock(hw_decoder, AV_NOPTS_VALUE);
@@ -6198,6 +6304,7 @@ void VideoSetDevice(const char *device)
 
 void VideoSetConnector(char *c)
 {
+
     DRMConnector = c;
 }
 
@@ -6206,6 +6313,24 @@ void VideoSetRefresh(char *r)
     DRMRefresh = atoi(r);
 }
 
+int VideoSetShader(char *s) 
+{
+#if defined CUVID && PL_API_VER >= 58
+    if(num_shaders == NUM_SHADERS)
+        return -1;
+    p = malloc(strlen(s)+1);
+    memcpy(p,s,strlen(s)+1);
+    shadersp[num_shaders++] = p;
+    Debug(3,"Use Shader %s\n",s);
+    return 0;
+#else
+    printf("Shaders are only support with placebo\n");
+    return -1;
+#endif
+    
+}
+    
+    
 ///
 /// Get video driver name.
 ///

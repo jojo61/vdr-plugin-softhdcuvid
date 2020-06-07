@@ -2874,6 +2874,7 @@ const char *CommandLineHelp(void)
         "  -f\t\tstart with fullscreen window (only with window manager)\n"
         "  -g geometry\tx11 window geometry wxh+x+y\n" "  -r Refresh\tRefreshrate for DRM (default is 50 Hz)\n"
         "  -C Connector\tConnector for DRM (default is current Connector)\n"
+		"  -S shader\tShader to use.\n\t\tOnly with placebo. Can be repeated for more shaders\n"
         "  -v device\tvideo driver device (cuvid)\n" "  -s\t\tstart in suspended mode\n"
         "  -x\t\tstart x11 server, with -xx try to connect, if this fails\n"
         "  -X args\tX11 server arguments (f.e. -nocursor)\n" "  -w workaround\tenable/disable workarounds\n"
@@ -2907,7 +2908,7 @@ int ProcessArgs(int argc, char *const argv[])
 #endif
 
     for (;;) {
-        switch (getopt(argc, argv, "-a:c:C:r:d:fg:p:sv:w:xDX:")) {
+        switch (getopt(argc, argv, "-a:c:C:r:d:fg:p:S:sv:w:xDX:")) {
             case 'a':                  // audio device for pcm
                 AudioSetDevice(optarg);
                 continue;
@@ -2919,6 +2920,12 @@ int ProcessArgs(int argc, char *const argv[])
                 continue;
             case 'r':                  // Connector for DRM
                 VideoSetRefresh(optarg);
+                continue;
+			case 'S':                  // Shader
+                if (VideoSetShader(optarg) < 0) {
+				    fprintf(stderr,_("Too much shaders definded\n"));
+                    return 0;
+                }
                 continue;
             case 'p':                  // pass-through audio device
                 AudioSetPassthroughDevice(optarg);
