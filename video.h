@@ -231,7 +231,7 @@ extern void VideoExit(void);            ///< Cleanup and exit video module.
 extern int VideoPollInput(VideoStream *);
 
 /// Decode video input buffers.
-extern int VideoDecodeInput(VideoStream *);
+extern int VideoDecodeInput(VideoStream *, int);
 
 /// Get number of input buffers.
 extern int VideoGetBuffers(const VideoStream *);

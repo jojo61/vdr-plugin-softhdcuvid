@@ -4168,6 +4168,7 @@ static void CuvidDisplayFrame(void)
             pthread_mutex_unlock(&OSDMutex);
 
         }
+        
         if (OsdShown == 2) {
             CuvidMixVideo(decoder, i, &target, &osdoverlay);
         } else {
@@ -4697,7 +4698,7 @@ static void CuvidDisplayHandlerThread(void)
             // FIXME: hot polling
             // fetch+decode or reopen
             allfull = 0;
-            err = VideoDecodeInput(decoder->Stream);
+            err = VideoDecodeInput(decoder->Stream,decoder->TrickSpeed);
         } else {
             err = VideoPollInput(decoder->Stream);
         }

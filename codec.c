@@ -648,7 +648,7 @@ void CodecVideoDecode(VideoDecoder * decoder, const AVPacket * avpkt)
 void CodecVideoFlushBuffers(VideoDecoder * decoder)
 {
     if (decoder->VideoCtx) {
- //       avcodec_flush_buffers(decoder->VideoCtx);
+        avcodec_flush_buffers(decoder->VideoCtx);
     }
 }
 

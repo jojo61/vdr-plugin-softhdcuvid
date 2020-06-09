@@ -1832,7 +1832,7 @@ int VideoPollInput(VideoStream * stream)
 **  @retval 1   stream paused
 **  @retval -1  empty stream
 */
-int VideoDecodeInput(VideoStream * stream)
+int VideoDecodeInput(VideoStream * stream, int trick)
 {
     int filled;
     AVPacket *avpkt;
@@ -1850,6 +1850,9 @@ int VideoDecodeInput(VideoStream * stream)
         stream->Close = 0;
         return 1;
     }
+	if (stream->ClearBuffers && trick)
+		stream->ClearBuffers = 0;
+	
     if (stream->ClearBuffers) {         // clear buffer request
         atomic_set(&stream->PacketsFilled, 0);
         stream->PacketRead = stream->PacketWrite;
@@ -2676,12 +2679,14 @@ void StillPicture(const uint8_t * data, int size)
 #ifdef STILL_DEBUG
     fprintf(stderr, "still-picture\n");
 #endif
+
     for (i = 0; i < (MyVideoStream->CodecID == AV_CODEC_ID_HEVC ? 12 : 12); ++i) {
         const uint8_t *split;
         int n;
 
         // FIXME: vdr pes recordings sends mixed audio/video
         if ((data[3] & 0xF0) == 0xE0) { // PES packet
+
             split = data;
             n = size;
             // split the I-frame into single pes packets
@@ -2715,7 +2720,7 @@ void StillPicture(const uint8_t * data, int size)
 
             VideoNextPacket(MyVideoStream, MyVideoStream->CodecID); // terminate last packet
         } else {                        // ES packet
-            if (MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
+            if (0 && MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
                 VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);   // close last stream
                 MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
             }
