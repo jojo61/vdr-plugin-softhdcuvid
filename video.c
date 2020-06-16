@@ -5312,7 +5312,7 @@ void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
 
 void InitPlacebo()
 {
-    Debug(3, "Init Placebo mit API %d\n", PL_API_VER);
+    CuvidMessage(2,"Init Placebo mit API %d\n", PL_API_VER);
 
     p = calloc(1, sizeof(struct priv));
     if (!p)
@@ -6316,13 +6316,13 @@ void VideoSetRefresh(char *r)
 
 int VideoSetShader(char *s) 
 {
-#if defined CUVID && PL_API_VER >= 58
+#if defined PLACEBO && PL_API_VER >= 58
     if(num_shaders == NUM_SHADERS)
         return -1;
     p = malloc(strlen(s)+1);
     memcpy(p,s,strlen(s)+1);
     shadersp[num_shaders++] = p;
-    Debug(3,"Use Shader %s\n",s);
+    CuvidMessage(2,"Use Shader %s\n",s);
     return 0;
 #else
     printf("Shaders are only support with placebo\n");
