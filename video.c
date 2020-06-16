@@ -448,7 +448,7 @@ static int VideoColorBlindness = 0;
 static float VideoColorBlindnessFaktor = 1.0f;
 
 static char* shadersp[NUM_SHADERS];
-const char *MyConfigDir;
+char MyConfigDir[200];
 static int num_shaders = 0;
 
 static xcb_atom_t WmDeleteWindowAtom;   ///< WM delete message atom
@@ -3579,12 +3579,12 @@ parse_user_shader(char *shader)
     char *str = NULL;
     
 //    Debug(3,"Parse user shader %s/%s\n",MyConfigDir,shader);
- 
+
     sprintf(tmp,"%s/%s",MyConfigDir,shader);
     FILE *f = fopen(tmp, "rb");
 
     if (!f) {
-        Debug(3, "Failed to open shader file %s: %s\n", shader, strerror(errno));
+        Debug(3, "Failed to open shader file %s: %s\n", tmp, strerror(errno));
         goto error;
     }
 

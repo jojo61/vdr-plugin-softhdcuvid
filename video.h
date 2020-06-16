@@ -44,7 +44,7 @@ extern signed char VideoHardwareDecoder;    ///< flag use hardware decoder
 extern char VideoIgnoreRepeatPict;      ///< disable repeat pict warning
 extern int VideoAudioDelay;             ///< audio/video delay
 extern char ConfigStartX11Server;       ///< flag start the x11 server
-extern const char* MyConfigDir;
+extern char MyConfigDir[];
 //----------------------------------------------------------------------------
 //  Prototypes
 //----------------------------------------------------------------------------
