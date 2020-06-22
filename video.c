@@ -1557,9 +1557,12 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 #endif
 #endif
  
-#if defined PLACEBO && API_VER >= 58    
+#ifdef PLACEBO 
+    pl_gpu_finish(p->gpu);
+#if API_VER >= 58    
     p->num_shaders = 0;
-#endif    
+#endif
+#endif
     
     for (i = 0; i < decoder->SurfacesNeeded; i++) {
         if (decoder->frames[i]) {
@@ -3875,7 +3878,10 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         }
     }   
     render_params.hooks = &p->hook;
-    render_params.num_hooks = p->num_shaders;
+    if (ovl)
+      render_params.num_hooks = 0;   // no shaders when OSD activ 
+    else
+      render_params.num_hooks = p->num_shaders;
 #endif
     
     if (decoder->newchannel && current == 0) {
@@ -5465,7 +5471,7 @@ void exit_display()
     if (osdoverlay.plane.texture)
         pl_tex_destroy(p->gpu, &osdoverlay.plane.texture);
 
-    pl_renderer_destroy(&p->renderer);
+ //   pl_renderer_destroy(&p->renderer);
     if (p->renderertest) {
         pl_renderer_destroy(&p->renderertest);
         p->renderertest = NULL;
