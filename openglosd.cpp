@@ -83,11 +83,10 @@ uniform sampler2D screenTexture; \
 \
 void main() \
 { \
-    color = texture(screenTexture, TexCoords) * alphaValue; \
-	if (color == vec4(0.0,0.0,0.0,1.0))\
-	  color.a = 0.0;\
+	color = texture(screenTexture, TexCoords) * alphaValue; \
 } \
 ";
+
 
 const char *textVertexShader = "%s\n \
 \
@@ -749,9 +748,6 @@ void cOglVb::SetShaderColor(GLint color)
 
 void cOglVb::SetShaderAlpha(GLint alpha)
 {
-	GLfloat a = (GLfloat) (alpha) / 255.0f;
-	if (a > 0.98)
-		a = 1.0;
     Shaders[shader]->SetVector4f("alpha", 1.0f, 1.0f, 1.0f, (GLfloat) (alpha) / 255.0f);
 }
 
@@ -1277,7 +1273,7 @@ cOglCmdDrawText::cOglCmdDrawText(cOglFb * fb, GLint x, GLint y, unsigned int *sy
     this->x = x;
     this->y = y;
     this->limitX = limitX;
-    this->colorText = colorText & 0xfeffffff;
+    this->colorText = colorText;
     this->fontSize = fontSize;
     this->symbols = symbols;
     this->fontName = name;
