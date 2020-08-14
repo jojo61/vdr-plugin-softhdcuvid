@@ -152,9 +152,9 @@ typedef enum
 
 #include <va/va_drmcommon.h>
 #include <libavcodec/vaapi.h>
+#include <libdrm/drm_fourcc.h>
 #ifdef RASPI
 #include <libavutil/hwcontext_drm.h>
-#include <libdrm/drm_fourcc.h>
 #endif
 #include <libavutil/hwcontext_vaapi.h>
 #define TO_AVHW_DEVICE_CTX(x) ((AVHWDeviceContext*)x->data)
@@ -2383,6 +2383,9 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
                         },
                     .size = size,
                     .offset = offset,
+#if PL_API_VER > 87
+					.drm_format_mod = DRM_FORMAT_MOD_INVALID,
+#endif
                 },
         };
 
@@ -5247,6 +5250,7 @@ static void VideoEvent(void)
             FeedKeyPress("XKeySym", keynam, 0, 0, letter);
             break;
         case KeyRelease:
+        case ButtonRelease:
             break;
         case MotionNotify:
             values[0] = XCB_NONE;
