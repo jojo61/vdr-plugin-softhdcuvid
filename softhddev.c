@@ -1490,7 +1490,7 @@ static void VideoNextPacket(VideoStream * stream, int codec_id)
     VideoResetPacket(stream);
 }
 
-#ifdef USE_PIP
+#if defined(USE_PIP) || defined(VAAPI)
 
 /**
 **  Place mpeg video data in packet ringbuffer.
@@ -1943,7 +1943,7 @@ int VideoDecodeInput(VideoStream * stream, int trick)
     avpkt->size = avpkt->stream_index;
     avpkt->stream_index = 0;
 
-#ifdef USE_PIP
+#if defined(USE_PIP) || defined(VAAPI)
     // fprintf(stderr, "[");
     // DumpMpeg(avpkt->data, avpkt->size);
 #ifdef STILL_DEBUG
@@ -2305,7 +2305,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
         }
 
         // SKIP PES header, begin of start code
-#ifdef USE_PIP
+#if defined(USE_PIP) || defined(VAAPI)
         VideoMpegEnqueue(stream, pts, dts, check - 2, l + 2);
 #else
         VideoEnqueue(stream, pts, dts, check - 2, l + 2);
@@ -2318,7 +2318,7 @@ int PlayVideo3(VideoStream * stream, const uint8_t * data, int size)
         return size;
     }
 
-#ifdef USE_PIP
+#if defined(USE_PIP) || defined(VAAPI)
     if (stream->CodecID == AV_CODEC_ID_MPEG2VIDEO) {
         // SKIP PES header
         VideoMpegEnqueue(stream, pts, dts, data + 9 + n, size - 9 - n);
