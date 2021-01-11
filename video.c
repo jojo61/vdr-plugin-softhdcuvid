@@ -1624,6 +1624,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 #ifdef PLACEBO
 			if (p->hasdma_buf) {
 #endif
+#ifdef VAAPI
 				if (decoder->images[i * Planes + j]) {
 					DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i * Planes + j]);
 					if (decoder->fds[i * Planes + j])
@@ -1631,6 +1632,7 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
 				}
 				decoder->fds[i * Planes + j] = 0;
 				decoder->images[i * Planes + j] = 0;
+#endif
 #ifdef PLACEBO
 			}
 #endif
