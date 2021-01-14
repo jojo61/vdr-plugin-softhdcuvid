@@ -53,7 +53,6 @@ I tested it with Intel VAAPI. If you have problmes with the shaders then copy th
 AMD VAAPI is broken by AMD and will not work currently.
 
 You have to adapt the Makefile to your needs. I use FFMPEG 4.0
-The Makefile expects the CUDA SDK in /usr/local/cuda. Currently it is tested with CUDA 10
 
 This Version supports building with libplacebo. https://github.com/haasn/libplacebo
 You have to enable it in the Makefile and install libplacebo yourself.
@@ -308,22 +307,6 @@ Setup: /etc/vdr/setup.conf
 	softhddevice.pip.Alt.VideoHeight = 50
 	PIP alternative video window position and size in percent.
 
-
-Setup: /etc/vdr/remote.conf
-------
-
-	Add "XKeySym." definitions to /etc/vdr/remote.conf to control
-	the vdr and plugin with the connected input device.
-
-	fe.
-	XKeySym.Up	Up
-	XKeySym.Down	Down
-	...
-
-	Additional to the x11 input sends the window close button "Close".
-
-	fe.
-	XKeySym.Power	Close
 
 Commandline:
 ------------
