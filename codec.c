@@ -784,7 +784,7 @@ void CodecAudioOpen(AudioDecoder * audio_decoder, int codec_id)
     }
 
     if (CodecDownmix) {
-        audio_decoder->AudioCtx->request_channel_layout = AV_CH_LAYOUT_STEREO_DOWNMIX;
+        audio_decoder->AudioCtx->request_channel_layout = AV_CH_LAYOUT_STEREO;
     }
     pthread_mutex_lock(&CodecLockMutex);
     // open codec

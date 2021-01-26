@@ -61,7 +61,7 @@ extern "C"
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.3"
+static const char *const VERSION = "3.3.1"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -1243,12 +1243,15 @@ void cMenuSetupSoft::Create(void)
     if (Audio) {
         Add(new cMenuEditIntItem(tr("Audio/Video delay (ms)"), &AudioDelay, -1000, 1000));
         Add(new cMenuEditStraItem(tr("Audio drift correction"), &AudioDrift, 4, audiodrift));
+		
         Add(new cMenuEditBoolItem(tr("Pass-through default"), &AudioPassthroughDefault, trVDR("off"), trVDR("on")));
-        Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"), &AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
-        Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"), &AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
-        Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"), &AudioPassthroughEAC3, trVDR("no"),
-                trVDR("yes")));
-        Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"), &AudioDownmix, trVDR("no"), trVDR("yes")));
+		if (AudioPassthroughDefault) {
+        	Add(new cMenuEditBoolItem(tr("\040\040PCM pass-through"), &AudioPassthroughPCM, trVDR("no"), trVDR("yes")));
+        	Add(new cMenuEditBoolItem(tr("\040\040AC-3 pass-through"), &AudioPassthroughAC3, trVDR("no"), trVDR("yes")));
+        	Add(new cMenuEditBoolItem(tr("\040\040E-AC-3 pass-through"), &AudioPassthroughEAC3, trVDR("no"),trVDR("yes")));
+		} else {
+        	Add(new cMenuEditBoolItem(tr("Enable (E-)AC-3 (decoder) downmix"), &AudioDownmix, trVDR("no"), trVDR("yes")));
+		}
         Add(new cMenuEditBoolItem(tr("Volume control"), &AudioSoftvol, tr("Hardware"), tr("Software")));
         Add(new cMenuEditBoolItem(tr("Enable normalize volume"), &AudioNormalize, trVDR("no"), trVDR("yes")));
         Add(new cMenuEditIntItem(tr("  Max normalize factor (/1000)"), &AudioMaxNormalize, 0, 10000));
@@ -1304,10 +1307,12 @@ eOSState cMenuSetupSoft::ProcessKey(eKeys key)
     int old_osd_size;
     int old_resolution_shown[RESOLUTIONS];
     int i;
+	int old_pass;
 
     old_general = General;
     old_video = Video;
     old_audio = Audio;
+	old_pass = AudioPassthroughDefault;
 #ifdef USE_PIP
     old_pip = Pip;
 #endif
@@ -1322,6 +1327,7 @@ eOSState cMenuSetupSoft::ProcessKey(eKeys key)
 #ifdef USE_PIP
             || old_pip != Pip
 #endif
+			|| old_pass != AudioPassthroughDefault
             || old_osd_size != OsdSize) {
             Create();                   // update menu
         } else {
