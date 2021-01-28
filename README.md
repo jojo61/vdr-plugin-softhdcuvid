@@ -71,16 +71,22 @@ Quickstart:
 
 You have to adapt the Makefile. There are 3 possible Version that you can build:
 
-    softhdcuvid
+    softhdcuvid  (CUVID=1)
     This is for NVIDA cards and uses cuvid as decoder. It uses xcb for output and needs a X Server to run.
+    I recommend to use libplacebo and set LIBPLACEBO=1 in the Makefile
 
-    softhdvaapi
+    softhdvaapi (VAAPI=1)
     This is for INTEL cards and uses Vaapi as decoder. It uses xcb for output and needs a X Server to run.
+    I recommend to use libplacebo and set LIBPLACEBO=1 in the Makefile. Also LIBPLACEBO_GL is supportet here.
 
-    softhddrm
+    softhddrm (DRM=1)
     This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
-
+    I recommend to use libplacebo and set LIBPLCEBO_GL=1 in the Makefile.
+    
+    Libplacebo API Version >= 107 is needed.
+    
+    
 Install:
 --------
 	1a) git
@@ -100,9 +106,10 @@ Beginners Guide for libplacebo:
     When using libplacebo you will find several config options.
 
     First of all you need to set the right scaler for each resolution:
-    Best you beginn with setting all to "bilinear". If that works ok for you, you can try to change them
+    Best you begin with setting all to "bilinear". If that works ok for you, you can try to change them
     for more advanced scaler. I use ewa_robidouxsharp on my GTX1050, but your mileage may vary.
     Unfortunatly on INTEL not all scalers may work or crash.
+    The Intel GPU is much slower than NVIDIA and for UHD you most likly need to set the scaler to bilinear.
 
     You can enable a Scaler Test feature. When enabled then the screen is split.On the left half you will
     see the scaler defined by Scaler Test and on the right side you will see the scaler defined at the
@@ -121,6 +128,8 @@ Beginners Guide for libplacebo:
     The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is 
     provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start  
     vdr -P 'softhdcuvid -S filmgrain.glsl ...'
+    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect picture for me.
+    
 
 
 
