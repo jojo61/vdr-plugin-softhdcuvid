@@ -345,7 +345,7 @@ typedef struct
 #endif
 #ifdef CUVID
 #define PIXEL_FORMAT AV_PIX_FMT_CUDA
-#define SWAP_BUFFER_SIZE     1
+#define SWAP_BUFFER_SIZE     3
 #endif
 #if defined RASPI
 #define PIXEL_FORMAT AV_PIX_FMT_MMAL
@@ -828,23 +828,23 @@ static uint64_t test_time = 0;
 #ifdef PLACEBO_GL
 #define Lock_and_SharedContext\
 {\
-	VideoThreadLock();\
-	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);\
-	EglCheck();\
+    VideoThreadLock();\
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);\
+    EglCheck();\
 }
 #define Unlock_and_NoContext {\
-	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);\
-	EglCheck();\
-	VideoThreadUnlock();\
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);\
+    EglCheck();\
+    VideoThreadUnlock();\
 }
 #define SharedContext\
 {\
-	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);\
-	EglCheck();\
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);\
+    EglCheck();\
 }
 #define NoContext {\
-	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);\
-	EglCheck();\
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);\
+    EglCheck();\
 }
 #else
 #ifdef PLACEBO
@@ -1190,7 +1190,7 @@ static void EglInit(void)
     eglSharedContext = eglContext;
 
     context = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, eglAttrs);
-	
+    
     EglCheck();
     if (!context) {
         Fatal(_("video/egl: can't create egl context\n"));
@@ -1613,28 +1613,28 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
                     close(decoder->pl_images[i].planes[j].texture->params.shared_mem.handle.fd);
                 }
 #endif
-				SharedContext;
+                SharedContext;
                 pl_tex_destroy(p->gpu, &decoder->pl_images[i].planes[j].texture);
-				NoContext;
+                NoContext;
             }
 #else
 #ifdef CUVID
             checkCudaErrors(cu->cuGraphicsUnregisterResource(decoder->cu_res[i][j]));
 #endif
 #ifdef PLACEBO
-			if (p->hasdma_buf) {
+            if (p->hasdma_buf) {
 #endif
 #ifdef VAAPI
-				if (decoder->images[i * Planes + j]) {
-					DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i * Planes + j]);
-					if (decoder->fds[i * Planes + j])
-						close(decoder->fds[i * Planes + j]);
-				}
-				decoder->fds[i * Planes + j] = 0;
-				decoder->images[i * Planes + j] = 0;
+                if (decoder->images[i * Planes + j]) {
+                    DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[i * Planes + j]);
+                    if (decoder->fds[i * Planes + j])
+                        close(decoder->fds[i * Planes + j]);
+                }
+                decoder->fds[i * Planes + j] = 0;
+                decoder->images[i * Planes + j] = 0;
 #endif
 #ifdef PLACEBO
-			}
+            }
 #endif
 #endif
         }
@@ -1715,7 +1715,7 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
         av_frame_free(&decoder->frames[surface]);
     }
 #ifdef PLACEBO
-	SharedContext;
+    SharedContext;
     if (p->has_dma_buf) {
         if (decoder->pl_images[surface].planes[0].texture) {
             if (decoder->pl_images[surface].planes[0].texture->params.shared_mem.handle.fd) {
@@ -1730,7 +1730,7 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
             pl_tex_destroy(p->gpu, &decoder->pl_images[surface].planes[1].texture);
         }
     }
-	NoContext;
+    NoContext;
 #else
 #ifdef VAAPI
     if (decoder->images[surface * Planes]) {
@@ -1814,7 +1814,7 @@ static const struct mp_egl_config_attr mp_egl_attribs[] = {
 };
 
 const int mpgl_preferred_gl_versions[] = {
-	460,
+    460,
     440,
     430,
     400,
@@ -1857,9 +1857,9 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
     if (!eglBindAPI(api)) {
         Fatal(_(" Could not bind API!\n"));
     }
-	
-	Debug(3, "Trying to create %s context \n", name);
-	
+    
+    Debug(3, "Trying to create %s context \n", name);
+    
     EGLint attributes8[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RED_SIZE, 8,
@@ -1901,7 +1901,7 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
             num_configs = 0;
         }
     }
-		
+        
     EGLConfig *configs = malloc(sizeof(EGLConfig) * num_configs);
 
     if (!eglChooseConfig(display, attribs, configs, num_configs, &num_configs))
@@ -2269,7 +2269,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     struct pl_image *img;
     struct pl_plane *pl;
 
-	SharedContext;
+    SharedContext;
     // printf("Create textures and planes %d %d\n",size_x,size_y);
     Debug(3, "video/vulkan: create %d Textures Format %s w %d h %d \n", anz,
         PixFmt == AV_PIX_FMT_NV12 ? "NV12" : "P010", size_x, size_y);
@@ -2377,7 +2377,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
         img->height = size_y;
         img->num_overlays = 0;
     }
-	NoContext;
+    NoContext;
 }
 
 #ifdef VAAPI
@@ -2400,7 +2400,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         return;
     }
     vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
-	Lock_and_SharedContext;
+    Lock_and_SharedContext;
     for (n = 0; n < 2; n++) {           //  Set DMA_BUF from VAAPI decoder to Textures
         int id = desc.layers[n].object_index[0];
         int fd = desc.objects[id].fd;
@@ -2418,11 +2418,11 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         } else {
             fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r16" : "rg16");   // 10 Bit YUV
         }
-		
+        
 #ifdef PLACEBO_GL
         fmt->fourcc = desc.layers[n].drm_format;
 #endif
-	
+    
         struct pl_tex_params tex_params = {
             .w = n == 0 ? image_width : image_width / 2, 
             .h = n == 0 ? image_height : image_height / 2,
@@ -2431,7 +2431,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
             .sampleable = true,
             .host_writable = false,
             .blit_dst = true,
-			.renderable = true,
+            .renderable = true,
             .address_mode = PL_TEX_ADDRESS_CLAMP ,
             .sample_mode = PL_TEX_SAMPLE_LINEAR,
             .import_handle = PL_HANDLE_DMA_BUF,
@@ -2442,10 +2442,10 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
                     .size = size,
                     .offset = offset,
 #ifdef PLACEBO_GL
-				    .stride_w = desc.layers[n].pitch[0],
+                    .stride_w = desc.layers[n].pitch[0],
 #endif
 #if PL_API_VER > 87
-					.drm_format_mod = DRM_FORMAT_MOD_INVALID,
+                    .drm_format_mod = DRM_FORMAT_MOD_INVALID,
 #endif
                 },
         };
@@ -3807,11 +3807,11 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 
     memcpy(&deband, &pl_deband_default_params, sizeof(deband));
     memcpy(&render_params, &pl_render_default_params, sizeof(render_params));
-
+    render_params.deband_params = &deband;
+    
     switch (decoder->ColorSpace) {
         case AVCOL_SPC_RGB:            // BT 601 is reportet as RGB
-            img->repr.sys = PL_COLOR_SYSTEM_BT_601;
-            img->repr.levels = PL_COLOR_LEVELS_TV;
+            memcpy(&img->repr, &pl_color_repr_sdtv, sizeof(struct pl_color_repr));
             img->color.primaries = PL_COLOR_PRIM_BT_601_625;
             img->color.transfer = PL_COLOR_TRC_BT_1886;
             img->color.light = PL_COLOR_LIGHT_DISPLAY;
@@ -3819,19 +3819,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             break;
         case AVCOL_SPC_BT709:
         case AVCOL_SPC_UNSPECIFIED:    //  comes with UHD
-            img->repr.sys = PL_COLOR_SYSTEM_BT_709;
-            img->repr.levels = PL_COLOR_LEVELS_TV;
+            memcpy(&img->repr, &pl_color_repr_hdtv, sizeof(struct pl_color_repr));
             memcpy(&img->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
-            // img->color.primaries = PL_COLOR_PRIM_BT_709;
-            // img->color.transfer = PL_COLOR_TRC_BT_1886;
-            // img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;
-            // img->color.light = PL_COLOR_LIGHT_DISPLAY;
             pl->shift_x = -0.5f;
             break;
 
         case AVCOL_SPC_BT2020_NCL:
-            img->repr.sys = PL_COLOR_SYSTEM_BT_2020_NC;
-            img->repr.levels = PL_COLOR_LEVELS_TV;
             memcpy(&img->repr, &pl_color_repr_uhdtv, sizeof(struct pl_color_repr));
             memcpy(&img->color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
             deband.grain = 0.0f;        // no grain in HDR
@@ -3839,19 +3832,15 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             pl->shift_x = -0.5f;
 #if defined  VAAPI || defined USE_DRM
             render_params.peak_detect_params = NULL;
+            render_params.deband_params = NULL;
+            render_params.dither_params = NULL;
+            render_params.skip_anti_aliasing = true;
 #endif
-            // img->color.primaries = PL_COLOR_PRIM_BT_2020;
-            // img->color.transfer = PL_COLOR_TRC_HLG;
-            // img->color.light = PL_COLOR_LIGHT_SCENE_HLG;
             break;
 
         default:                       // fallback
-            img->repr.sys = PL_COLOR_SYSTEM_BT_709;
-            img->repr.levels = PL_COLOR_LEVELS_TV;
+            memcpy(&img->repr, &pl_color_repr_hdtv, sizeof(struct pl_color_repr));
             memcpy(&img->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
-            // img->color.primaries = PL_COLOR_PRIM_BT_709;
-            // img->color.transfer = PL_COLOR_TRC_BT_1886;
-            // img->color.light = PL_COLOR_LIGHT_DISPLAY;
             pl->shift_x = -0.5f;
             break;
     }
@@ -3864,8 +3853,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         img->crop.x1 = video_src_rect.x1;
         img->crop.y1 = video_src_rect.y1;
         // Output scale
-#ifdef PLACEBO_GL		
-		target->crop.x0 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2 + 1;
+#ifdef PLACEBO_GL       
+        target->crop.x0 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2 + 1;
         target->crop.y1 = dst_video_rect.y0;
         target->crop.x1 = dst_video_rect.x1;
         target->crop.y0 = dst_video_rect.y1; 
@@ -3893,9 +3882,9 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         img->crop.y0 = video_src_rect.y0;
         img->crop.x1 = video_src_rect.x1;
         img->crop.y1 = video_src_rect.y1;
-		
-#ifdef PLACEBO_GL		
-		target->crop.x0 = dst_video_rect.x0;
+        
+#ifdef PLACEBO_GL       
+        target->crop.x0 = dst_video_rect.x0;
         target->crop.y1 = dst_video_rect.y0;
         target->crop.x1 = dst_video_rect.x1;
         target->crop.y0 = dst_video_rect.y1; 
@@ -3955,8 +3944,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
     render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
     render_params.color_adjustment = &colors;
-    render_params.deband_params = &deband;
-
+    
     colors.brightness = VideoBrightness;
     colors.contrast = VideoContrast;
     colors.saturation = VideoSaturation;
@@ -4000,7 +3988,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     }
 #endif
     
-    if (decoder->newchannel && current == 0) {
+      if (decoder->newchannel && current == 0) {
         colors.brightness = -1.0f;
         colors.contrast = 0.0f;
         if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
@@ -4011,10 +3999,12 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     }
 
     decoder->newchannel = 0;
-    
+//    uint64_t tt = GetusTicks();
     if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
         Debug(4, "Failed rendering frame!\n");
     }
+//   pl_gpu_finish(p->gpu);
+//printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) {              // left side test scaler
 #if PL_API_VER >= 100
@@ -4023,8 +4013,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         img->crop.y0 = video_src_rect.y0;
         img->crop.x1 = video_src_rect.x1 / 2;
         img->crop.y1 = video_src_rect.y1;
-#ifdef PLACEBO_GL		
-		target->crop.x0 = dst_video_rect.x0;
+#ifdef PLACEBO_GL       
+        target->crop.x0 = dst_video_rect.x0;
         target->crop.y1 = dst_video_rect.y0;
         target->crop.x1 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2;
         target->crop.y0 = dst_video_rect.y1; 
@@ -4111,7 +4101,7 @@ void make_osd_overlay(int x, int y, int width, int height)
     pl->repr.alpha = PL_ALPHA_INDEPENDENT;
 
     memcpy(&osdoverlay.color, &pl_color_space_srgb, sizeof(struct pl_color_space));
-#ifdef PLACEBO_GL	
+#ifdef PLACEBO_GL   
     pl->rect.x0 = x;
     pl->rect.y1 = VideoWindowHeight - y ;   // Boden von oben
     pl->rect.x1 = x + width;
@@ -4141,7 +4131,6 @@ static void CuvidDisplayFrame(void)
     int RTS_flag;
     int valid_frame = 0;
     float ldiff;
-    static int first = 1;
     float turnaround;
 
 #ifdef PLACEBO
@@ -4192,32 +4181,14 @@ static void CuvidDisplayFrame(void)
     }
 
     round_time = GetusTicks();
-#if 1
-    diff = (GetusTicks() - last_time) / 1000;
 
-    // last_time = GetusTicks();
-    // printf("Roundtrip Displayframe %d\n",diff);
-    if (diff < 5000 && diff > 0) {
-        // printf("Sleep %d\n",15000-diff);
-        usleep((5000 - diff));          // * 1000);
-    }
-
-#endif
     if (!p->swapchain)
         return;
 
 #ifdef CUVID
     VideoThreadLock();
-#if 0
-    if (!first) {
-        if (!pl_swapchain_submit_frame(p->swapchain))
-            Error(_("Failed to submit swapchain buffer\n"));
-        pl_swapchain_swap_buffers(p->swapchain);    // swap buffers
-    }
-#endif
 #endif
 
-    first = 0;
     last_time = GetusTicks();
 
     while (!pl_swapchain_start_frame(p->swapchain, &frame)) {   // get new frame wait for previous to swap
@@ -4234,7 +4205,7 @@ static void CuvidDisplayFrame(void)
     VideoThreadLock();
 #endif
     
-    pl_render_target_from_swapchain(&target, &frame);   // make target frame
+    pl_frame_from_swapchain(&target, &frame);   // make target frame
     
     if (VideoSurfaceModesChanged) {
         pl_renderer_destroy(&p->renderer);
@@ -4403,7 +4374,7 @@ static void CuvidDisplayFrame(void)
     }
 #endif
 
-	
+    
 #if defined PLACEBO //  && !defined PLACEBO_GL
     // first_time = GetusTicks();
     if (!pl_swapchain_submit_frame(p->swapchain))
@@ -5092,12 +5063,12 @@ static const VideoModule NoopModule = {
     .SetClock = (void(*const)(VideoHwDecoder *, int64_t))NoopSetClock,
     .GetClock = (int64_t(*const)(const VideoHwDecoder *))NoopGetClock,
     .SetClosing = (void(*const)(const VideoHwDecoder *))NoopSetClosing,
-    .ResetStart = (void(*const)(const VideoHwDecoder *))NoopResetStart,
     .SetTrickSpeed = (void(*const)(const VideoHwDecoder *, int))NoopSetTrickSpeed,
     .GrabOutput = NoopGrabOutputSurface,
     .GetStats = (void(*const)(VideoHwDecoder *, int *, int *, int *,
             int *, float *, int *, int *, int *, int *))NoopGetStats,
 #endif
+    .ResetStart = (void(*const)(const VideoHwDecoder *))NoopVoid,
     .SetBackground = NoopSetBackground,
     .SetVideoMode = NoopVoid,
 
@@ -5471,27 +5442,27 @@ void InitPlacebo()
     }
     
 #ifdef PLACEBO_GL
-//	eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
+//  eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     struct pl_opengl_params params = pl_opengl_default_params;
-	
-	params.egl_display = eglDisplay;
-	params.egl_context = eglContext;
+    
+    params.egl_display = eglDisplay;
+    params.egl_context = eglContext;
  
     p->gl = pl_opengl_create(p->ctx, &params);
     
-	if (!p->gl)
-		Fatal(_("Failed to create placebo opengl \n"));
-	
+    if (!p->gl)
+        Fatal(_("Failed to create placebo opengl \n"));
+    
     p->swapchain = pl_opengl_create_swapchain(p->gl, &(struct pl_opengl_swapchain_params) {
         .swap_buffers = (void (*)(void *)) CuvidSwapBuffer,
-		.framebuffer.flipped = true,
-		.framebuffer.id = 0,
-		.max_swapchain_depth = 2,
+        .framebuffer.flipped = true,
+        .framebuffer.id = 0,
+        .max_swapchain_depth = 3,
         .priv = VideoWindow,
     });
     
     p->gpu = p->gl->gpu;
-	
+    
 #else
     struct pl_vulkan_params params; 
     struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
@@ -5536,8 +5507,7 @@ void InitPlacebo()
         Fatal(_("Failed to create Vulkan Device"));
 
     p->gpu = p->vk->gpu;
-
-    // Create initial swapchain
+       // Create initial swapchain
     p->swapchain = pl_vulkan_create_swapchain(p->vk, &(struct pl_vulkan_swapchain_params) {
             .surface = p->pSurface,
             .present_mode = VK_PRESENT_MODE_FIFO_KHR,
@@ -5626,7 +5596,7 @@ void exit_display()
     }
  
     pl_swapchain_destroy(&p->swapchain);
-  
+      
 #ifdef PLACEBO_GL
     pl_opengl_destroy(&p->gl);
 #else
@@ -5681,10 +5651,10 @@ int redSize, greenSize, blueSize, alphaSize;
 #endif
 #if (defined VAAPI && !defined PLACEBO) || (defined VAAPI && defined PLACEBO_GL)
 #ifdef PLACEBO_GL
-	if (!eglBindAPI(EGL_OPENGL_API)) {
+    if (!eglBindAPI(EGL_OPENGL_API)) {
         Fatal(_(" Could not bind API!\n"));
     }
-	eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, eglAttrs);
+    eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, eglAttrs);
 #else
     eglThreadContext = eglCreateContext(eglDisplay, eglConfig, eglSharedContext, contextAttrs);
 #endif
