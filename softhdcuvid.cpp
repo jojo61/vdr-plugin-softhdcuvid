@@ -61,7 +61,7 @@ extern "C"
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.3.1"
+static const char *const VERSION = "3.3.2"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -2613,6 +2613,8 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode)
         case pmExtern_THIS_SHOULD_BE_AVOIDED:
             dsyslog("[softhddev] play mode external\n");
             // FIXME: what if already suspended?
+			Setup.CurrentVolume = cDevice::CurrentVolume();
+			Setup.Save();
             Suspend(1, 1, 0);
             SuspendMode = SUSPEND_EXTERNAL;
 #ifdef USE_OPENGLOSD
