@@ -123,17 +123,17 @@ static const struct gl_vao_entry vertex_vao[] = {
 char sh[SHADER_LENGTH];
 char shv[SHADER_LENGTH];
 
-GL_init()
+void GL_init()
 {
     sh[0] = 0;
 }
 
-GLV_init()
+void GLV_init()
 {
     shv[0] = 0;
 }
 
-pl_shader_append(const char *fmt, ...)
+void pl_shader_append(const char *fmt, ...)
 {
     char temp[1000];
     va_list ap;
@@ -148,7 +148,7 @@ pl_shader_append(const char *fmt, ...)
 
 }
 
-pl_shader_append_v(const char *fmt, ...)
+void pl_shader_append_v(const char *fmt, ...)
 {
     char temp[1000];
     va_list ap;

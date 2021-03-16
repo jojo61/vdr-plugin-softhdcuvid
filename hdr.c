@@ -1,5 +1,5 @@
 #include <libavutil/mastering_display_metadata.h>
-
+#if 0
 /**
  * struct hdr_metadata_infoframe - HDR Metadata Infoframe Data.
  *
@@ -85,7 +85,7 @@ struct hdr_output_metadata {
         struct hdr_metadata_infoframe hdmi_metadata_type1;
     };
 };
-
+#endif
 
 
 enum hdr_metadata_eotf {
@@ -336,8 +336,8 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     struct AVContentLightMetadata *ld = NULL;
 
     if (render->hdr_metadata == -1) { // Metadata not supported
-		return;
-	}
+        return;
+    }
 
     // clean up FFMEPG stuff
     if (trc == AVCOL_TRC_BT2020_10)
@@ -392,7 +392,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             break;
         case AVCOL_TRC_SMPTE2084:                               // 16
             eotf = EOTF_ST2084;
-			break;
+            break;
         default:
             eotf = EOTF_TRADITIONAL_GAMMA_SDR;
             break;
@@ -467,11 +467,11 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
                 eotf);
 
 
-
+    
     ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &render->hdr_blob_id);
     if (ret) {
         printf("DRM: HDR metadata: failed blob create \n");
-		render->hdr_blob_id = 0;
+        render->hdr_blob_id = 0;
         return;
     }
 
@@ -482,9 +482,10 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
 
         if (render->hdr_blob_id)
             drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
-		render->hdr_blob_id = 0;
+        render->hdr_blob_id = 0;
         return;
     }
+
     m_need_modeset = 1;
 
     Debug(3,"DRM: HDR metadata: prop set\n");

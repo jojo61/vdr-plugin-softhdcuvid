@@ -1793,7 +1793,7 @@ static void VideoStreamClose(VideoStream * stream, int delhw)
 */
 int VideoPollInput(VideoStream * stream)
 {
-    if (!stream->Decoder) {             // closing
+    if (!stream->Decoder || !stream->HwDecoder) {             // closing
 #ifdef DEBUG
         fprintf(stderr, "no decoder\n");
 #endif
@@ -1810,9 +1810,9 @@ int VideoPollInput(VideoStream * stream)
         stream->PacketRead = stream->PacketWrite;
         // FIXME: ->Decoder already checked
         Debug(3, "Clear buffer request in Poll\n");
-        if (stream->Decoder) {
+        if (stream->Decoder && stream->HwDecoder) {
             CodecVideoFlushBuffers(stream->Decoder);
-            VideoResetStart(stream->HwDecoder);
+//            VideoResetStart(stream->HwDecoder);
         }
         stream->ClearBuffers = 0;
         return 1;
@@ -3391,8 +3391,8 @@ void GetStats(int *missed, int *duped, int *dropped, int *counter, float *framet
     *frametime = 0.0f;
     *width = 0;
     *height = 0;
-    *color = NULL;
-    *eotf = NULL;
+    *color = 0;
+    *eotf = 0;
     if (MyVideoStream->HwDecoder) {
         VideoGetStats(MyVideoStream->HwDecoder, missed, duped, dropped, counter, frametime, width, height, color,
             eotf);

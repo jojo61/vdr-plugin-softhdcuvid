@@ -53,7 +53,9 @@ extern "C"
 #endif
 #if PLACEBO
 #include <libplacebo/filters.h>
+extern void ToggleLUT();
 #endif
+	
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -61,7 +63,7 @@ extern "C"
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.3.2"
+static const char *const VERSION = "3.4"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -2143,13 +2145,15 @@ void cSoftHdMenu::Create(void)
     } else {
         Add(new cOsdItem(hk(tr("Suspend SoftHdDevice")), osUser1));
     }
+#ifdef PLACEBO
+	Add(new cOsdItem(hk(tr("Toggle LUT on/off")), osUser2));
+#endif
 #ifdef USE_PIP
     if (PipReceiver) {
-        Add(new cOsdItem(hk(tr("PIP toggle on/off: off")), osUser2));
+        Add(new cOsdItem(hk(tr("PIP toggle on/off: off")), osUser3));
     } else {
-        Add(new cOsdItem(hk(tr("PIP toggle on/off: on")), osUser2));
+        Add(new cOsdItem(hk(tr("PIP toggle on/off: on")), osUser3));
     }
-    Add(new cOsdItem(hk(tr("PIP zapmode (not working)")), osUser3));
     Add(new cOsdItem(hk(tr("PIP channel +")), osUser4));
     Add(new cOsdItem(hk(tr("PIP channel -")), osUser5));
     if (PipReceiver) {
@@ -2163,6 +2167,7 @@ void cSoftHdMenu::Create(void)
         Add(new cOsdItem(hk(tr("PIP swap position: alternative")), osUser7));
     }
     Add(new cOsdItem(hk(tr("PIP close")), osUser8));
+
 #endif
     Add(new cOsdItem(NULL, osUnknown, false));
     Add(new cOsdItem(NULL, osUnknown, false));
@@ -2402,8 +2407,13 @@ eOSState cSoftHdMenu::ProcessKey(eKeys key)
                 }
             }
             return osEnd;
+#ifdef PLACEBO
+		case osUser2:
+			ToggleLUT();
+			return osEnd;
+#endif
 #ifdef USE_PIP
-        case osUser2:
+        case osUser3:
             TogglePip();
             return osEnd;
         case osUser4:

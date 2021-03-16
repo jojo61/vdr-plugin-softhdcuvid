@@ -140,6 +140,7 @@ typedef enum
 #endif
 
 #include <libavutil/hwcontext.h>
+#include <libavutil/mastering_display_metadata.h>
 #include <libavutil/pixdesc.h>
 
 #ifdef CUVID
@@ -185,6 +186,9 @@ typedef void *EGLImageKHR;
 #else
 #define VK_USE_PLATFORM_XCB_KHR
 #include <libplacebo/vulkan.h>
+#endif
+#if PL_API_VER >= 113
+#include <libplacebo/shaders/lut.h>
 #endif
 #include <libplacebo/renderer.h>
 #endif
@@ -455,6 +459,7 @@ static float VideoColorBlindnessFaktor = 1.0f;
 static char* shadersp[NUM_SHADERS];
 char MyConfigDir[200];
 static int num_shaders = 0;
+static int LUTon = -1;
 
 static xcb_atom_t WmDeleteWindowAtom;   ///< WM delete message atom
 static xcb_atom_t NetWmState;           ///< wm-state message atom
@@ -1391,7 +1396,7 @@ typedef struct _cuvid_decoder_
     int fds[(CODEC_SURFACES_MAX + 1) * 2];
 #endif
 #ifdef PLACEBO
-    struct pl_image pl_images[CODEC_SURFACES_MAX + 1];  // images for Placebo chain
+    struct pl_frame pl_frames[CODEC_SURFACES_MAX + 1];  // images for Placebo chain
     struct ext_buf ebuf[CODEC_SURFACES_MAX + 1];    // for managing vk buffer
 #endif
 
@@ -1430,17 +1435,27 @@ static CudaFunctions *cu;
 #endif
 
 #ifdef PLACEBO
+
+struct file
+{
+    void *data;
+    size_t size;
+};
+
 typedef struct priv
 {
     const struct pl_gpu *gpu;
     const struct pl_vulkan *vk;
     const struct pl_vk_inst *vk_inst;
     struct pl_context *ctx;
+#if PL_API_VER >= 113
+    struct pl_custom_lut *lut;
+#endif
     struct pl_renderer *renderer;
     struct pl_renderer *renderertest;
     const struct pl_swapchain *swapchain;
     struct pl_context_params context;
-    // struct pl_render_target r_target;
+    // struct pl_frame r_target;
     // struct pl_render_params r_params;
     // struct pl_tex      final_fbo;
 #ifndef PLACEBO_GL
@@ -1451,10 +1466,9 @@ typedef struct priv
 #ifdef PLACEBO_GL
     struct pl_opengl *gl;
 #endif
-#if PL_API_VER >= 58
     const struct pl_hook *hook[NUM_SHADERS];
     int num_shaders;
-#endif
+
 } priv;
 
 static priv *p;
@@ -1606,15 +1620,15 @@ static void CuvidDestroySurfaces(CuvidDecoder * decoder)
         }
         for (j = 0; j < Planes; j++) {
 #ifdef PLACEBO
-            if (decoder->pl_images[i].planes[j].texture) {
+            if (decoder->pl_frames[i].planes[j].texture) {
 
 #ifdef VAAPI
-                if (p->has_dma_buf && decoder->pl_images[i].planes[j].texture->params.shared_mem.handle.fd) {
-                    close(decoder->pl_images[i].planes[j].texture->params.shared_mem.handle.fd);
+                if (p->has_dma_buf && decoder->pl_frames[i].planes[j].texture->params.shared_mem.handle.fd) {
+                    close(decoder->pl_frames[i].planes[j].texture->params.shared_mem.handle.fd);
                 }
 #endif
                 SharedContext;
-                pl_tex_destroy(p->gpu, &decoder->pl_images[i].planes[j].texture);
+                pl_tex_destroy(p->gpu, &decoder->pl_frames[i].planes[j].texture);
                 NoContext;
             }
 #else
@@ -1717,17 +1731,17 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
 #ifdef PLACEBO
     SharedContext;
     if (p->has_dma_buf) {
-        if (decoder->pl_images[surface].planes[0].texture) {
-            if (decoder->pl_images[surface].planes[0].texture->params.shared_mem.handle.fd) {
-                close(decoder->pl_images[surface].planes[0].texture->params.shared_mem.handle.fd);
+        if (decoder->pl_frames[surface].planes[0].texture) {
+            if (decoder->pl_frames[surface].planes[0].texture->params.shared_mem.handle.fd) {
+                close(decoder->pl_frames[surface].planes[0].texture->params.shared_mem.handle.fd);
             }
-            pl_tex_destroy(p->gpu, &decoder->pl_images[surface].planes[0].texture);
+            pl_tex_destroy(p->gpu, &decoder->pl_frames[surface].planes[0].texture);
         }
-        if (decoder->pl_images[surface].planes[1].texture) {
-            if (decoder->pl_images[surface].planes[1].texture->params.shared_mem.handle.fd) {
-                close(decoder->pl_images[surface].planes[1].texture->params.shared_mem.handle.fd);
+        if (decoder->pl_frames[surface].planes[1].texture) {
+            if (decoder->pl_frames[surface].planes[1].texture->params.shared_mem.handle.fd) {
+                close(decoder->pl_frames[surface].planes[1].texture->params.shared_mem.handle.fd);
             }
-            pl_tex_destroy(p->gpu, &decoder->pl_images[surface].planes[1].texture);
+            pl_tex_destroy(p->gpu, &decoder->pl_frames[surface].planes[1].texture);
         }
     }
     NoContext;
@@ -1884,6 +1898,7 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext * o
     attribs = attributes10;
     *bpp = 10;
     if (!eglChooseConfig(display, attributes10, NULL, 0, &num_configs)) {   // try 10 Bit
+        EglCheck();
         Debug(3, " 10 Bit egl Failed\n");
         attribs = attributes8;
         *bpp = 8;
@@ -2266,7 +2281,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     int n, i, size = 1, fd;
     const struct pl_fmt *fmt;
     struct pl_tex *tex;
-    struct pl_image *img;
+    struct pl_frame *img;
     struct pl_plane *pl;
 
     SharedContext;
@@ -2289,17 +2304,17 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                 fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r16" : "rg16");   // 10 Bit YUV
                 size = 2;
             }
-            if (decoder->pl_images[i].planes[n].texture) {
+            if (decoder->pl_frames[i].planes[n].texture) {
 // #ifdef VAAPI
-                if (decoder->pl_images[i].planes[n].texture->params.shared_mem.handle.fd) {
-                    close(decoder->pl_images[i].planes[n].texture->params.shared_mem.handle.fd);
+                if (decoder->pl_frames[i].planes[n].texture->params.shared_mem.handle.fd) {
+                    close(decoder->pl_frames[i].planes[n].texture->params.shared_mem.handle.fd);
                 }
 // #endif
-                pl_tex_destroy(p->gpu, &decoder->pl_images[i].planes[n].texture);   // delete old texture
+                pl_tex_destroy(p->gpu, &decoder->pl_frames[i].planes[n].texture);   // delete old texture
             }
 
             if (p->has_dma_buf == 0) {
-                decoder->pl_images[i].planes[n].texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+                decoder->pl_frames[i].planes[n].texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
                         .w = n == 0 ? size_x : size_x / 2,
                         .h = n == 0 ? size_y : size_y / 2,
                         .d = 0,
@@ -2316,7 +2331,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
             }
             
             // make planes for image
-            pl = &decoder->pl_images[i].planes[n];
+            pl = &decoder->pl_frames[i].planes[n];
             pl->components = n == 0 ? 1 : 2;
             pl->shift_x = 0.0f;
             pl->shift_y = 0.0f;
@@ -2336,16 +2351,16 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                 Fatal(_("Unable to create placebo textures"));
             }
 #ifdef CUVID
-            fd = dup(decoder->pl_images[i].planes[n].texture->shared_mem.handle.fd);
+            fd = dup(decoder->pl_frames[i].planes[n].texture->shared_mem.handle.fd);
             CUDA_EXTERNAL_MEMORY_HANDLE_DESC ext_desc = {
                 .type = CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD,
                 .handle.fd = fd,
-                .size = decoder->pl_images[i].planes[n].texture->shared_mem.size,   // image_width * image_height * bytes,
+                .size = decoder->pl_frames[i].planes[n].texture->shared_mem.size,   // image_width * image_height * bytes,
                 .flags = 0,
             };
             checkCudaErrors(cu->cuImportExternalMemory(&decoder->ebuf[i * 2 + n].mem, &ext_desc));  // Import Memory segment
             CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC tex_desc = {
-                .offset = decoder->pl_images[i].planes[n].texture->shared_mem.offset,
+                .offset = decoder->pl_frames[i].planes[n].texture->shared_mem.offset,
                 .arrayDesc = {
                         .Width = n == 0 ? size_x : size_x / 2,
                         .Height = n == 0 ? size_y : size_y / 2,
@@ -2362,7 +2377,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
 #endif
         }
         // make image
-        img = &decoder->pl_images[i];
+        img = &decoder->pl_frames[i];
         img->signature = i;
         img->num_planes = 2;
         img->repr.sys = PL_COLOR_SYSTEM_BT_709; // overwritten later
@@ -2379,6 +2394,7 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
     }
     NoContext;
 }
+
 
 #ifdef VAAPI
 
@@ -2412,19 +2428,22 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
             printf("Fehler beim Import von Surface %d\n", index);
             return;
         }
-
+        
+//      fmt = pl_find_fourcc(p->gpu,desc.layers[n].drm_format);
+#if 1       
         if (decoder->PixFmt == AV_PIX_FMT_NV12) {
             fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r8" : "rg8"); // 8 Bit YUV
         } else {
             fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r16" : "rg16");   // 10 Bit YUV
         }
-        
+#endif      
+        assert(fmt != NULL);
 #ifdef PLACEBO_GL
         fmt->fourcc = desc.layers[n].drm_format;
 #endif
     
         struct pl_tex_params tex_params = {
-            .w = n == 0 ? image_width : image_width / 2, 
+            .w = n == 0 ? image_width : image_width / 2 , 
             .h = n == 0 ? image_height : image_height / 2,
             .d = 0,
             .format = fmt,
@@ -2441,23 +2460,20 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
                         },
                     .size = size,
                     .offset = offset,
-#ifdef PLACEBO_GL
+                    .stride_h = n == 0 ? image_height : image_height / 2,
                     .stride_w = desc.layers[n].pitch[0],
-#endif
-#if PL_API_VER > 87
-                    .drm_format_mod = DRM_FORMAT_MOD_INVALID,
-#endif
-                },
+                    .drm_format_mod = desc.objects[id].drm_format_modifier,
+             },
         };
 
         // printf("vor create  Object %d with fd %d import size %u offset  %d  %dx%d\n",id,fd,size,offset, tex_params.w,tex_params.h);
 
-        if (decoder->pl_images[index].planes[n].texture) {
-            pl_tex_destroy(p->gpu, &decoder->pl_images[index].planes[n].texture);
+        if (decoder->pl_frames[index].planes[n].texture) {
+            pl_tex_destroy(p->gpu, &decoder->pl_frames[index].planes[n].texture);
 
         }
 
-        decoder->pl_images[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
+        decoder->pl_frames[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
 
     }
     Unlock_and_NoContext;
@@ -3037,7 +3053,7 @@ int get_RGB(CuvidDecoder * decoder)
 
 #ifdef PLACEBO
     struct pl_render_params render_params = pl_render_default_params;
-    struct pl_render_target target = { 0 };
+    struct pl_frame target = { 0 };
     const struct pl_fmt *fmt;
 
     int offset, x1, y1, x0, y0;
@@ -3223,7 +3239,7 @@ int get_RGB(CuvidDecoder * decoder)
         target.num_overlays = 0;
     }
 
-    if (!pl_render_image(p->renderer, &decoder->pl_images[current], &target, &render_params)) {
+    if (!pl_render_image(p->renderer, &decoder->pl_frames[current], &target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
     pl_gpu_finish(p->gpu);
@@ -3456,6 +3472,15 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
     color = frame->colorspace;
     if (color == AVCOL_SPC_UNSPECIFIED) // if unknown
         color = AVCOL_SPC_BT709;
+    if (color == AVCOL_SPC_RGB)
+        color = AVCOL_SPC_BT470BG;  // fix ffmpeg libav failure
+    frame->colorspace = color;
+    // more libav fixes
+    if (frame->color_primaries == AVCOL_PRI_UNSPECIFIED)
+        frame->color_primaries = AVCOL_PRI_BT709;
+    if (frame->color_trc == AVCOL_TRC_UNSPECIFIED)
+        frame->color_trc = AVCOL_TRC_BT709;
+    
 #ifdef RASPI
     //
     //  Check image, format, size
@@ -3509,9 +3534,9 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
             output = av_frame_alloc();
             av_hwframe_transfer_data(output, frame, 0);
             av_frame_copy_props(output, frame);
-            // printf("Save Surface ID %d %p %p\n",surface,decoder->pl_images[surface].planes[0].texture,decoder->pl_images[surface].planes[1].texture);
+            // printf("Save Surface ID %d %p %p\n",surface,decoder->pl_frames[surface].planes[0].texture,decoder->pl_frames[surface].planes[1].texture);
             bool ok = pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params) {
-                    .tex = decoder->pl_images[surface].planes[0].texture,
+                    .tex = decoder->pl_frames[surface].planes[0].texture,
                     .stride_w = output->linesize[0],
                     .stride_h = h,
                     .ptr = output->data[0],
@@ -3520,7 +3545,7 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
                     .rc.z1 = 0,
                 });
             ok &= pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params) {
-                    .tex = decoder->pl_images[surface].planes[1].texture,
+                    .tex = decoder->pl_frames[surface].planes[1].texture,
                     .stride_w = output->linesize[0] / 2,
                     .stride_h = h / 2,
                     .ptr = output->data[1],
@@ -3698,7 +3723,7 @@ error:
 /// @param level    video surface level 0 = bottom
 ///
 #ifdef PLACEBO
-static void CuvidMixVideo(CuvidDecoder * decoder, int level, struct pl_render_target *target, struct pl_overlay *ovl)
+static void CuvidMixVideo(CuvidDecoder * decoder, int level, struct pl_frame *target, struct pl_overlay *ovl)
 #else
 static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     int level)
@@ -3712,10 +3737,10 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     struct pl_tex_vk *vkp;
     struct pl_plane *pl;
     const struct pl_fmt *fmt;
+    struct pl_tex *tex0,*tex1;
 
-    struct pl_image *img;
+    struct pl_frame *img;
     bool ok;
-
     VdpRect video_src_rect;
     VdpRect dst_rect;
     VdpRect dst_video_rect;
@@ -3726,7 +3751,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     float xcropf, ycropf;
     GLint texLoc;
     AVFrame *frame;
-    AVFrameSideData *FrameSideData = NULL;
+    AVFrameSideData *sd,*sd1,*sd2;
 
 #ifdef PLACEBO
     if (level) {
@@ -3760,8 +3785,8 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 #ifdef USE_DRM
     if (!decoder->Closing) {
         frame = decoder->frames[current];
-        AVFrameSideData *sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
-        AVFrameSideData *sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
+        sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
+        sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
 
         set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
     }
@@ -3802,15 +3827,21 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     glActiveTexture(GL_TEXTURE0);
 
 #else
-    img = &decoder->pl_images[current];
-    pl = &decoder->pl_images[current].planes[1];
+    img = &decoder->pl_frames[current];
+    pl = &decoder->pl_frames[current].planes[1];
 
     memcpy(&deband, &pl_deband_default_params, sizeof(deband));
     memcpy(&render_params, &pl_render_default_params, sizeof(render_params));
     render_params.deband_params = &deband;
     
+
+    frame = decoder->frames[current];
+
+    // Fix Color Parameters 
+
     switch (decoder->ColorSpace) {
         case AVCOL_SPC_RGB:            // BT 601 is reportet as RGB
+        case AVCOL_SPC_BT470BG:
             memcpy(&img->repr, &pl_color_repr_sdtv, sizeof(struct pl_color_repr));
             img->color.primaries = PL_COLOR_PRIM_BT_601_625;
             img->color.transfer = PL_COLOR_TRC_BT_1886;
@@ -3830,6 +3861,37 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             deband.grain = 0.0f;        // no grain in HDR
             img->color.sig_scale = 1.0f;
             pl->shift_x = -0.5f;
+            
+            if ((sd = av_frame_get_side_data(frame, AV_FRAME_DATA_ICC_PROFILE))) {
+                img->profile = (struct pl_icc_profile) {
+                    .data = sd->data,
+                    .len = sd->size,
+                };
+
+                // Needed to ensure profile uniqueness
+                pl_icc_profile_compute_signature(&img->profile);
+            }
+
+            if ((sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL))) {
+                const AVContentLightMetadata *clm = (AVContentLightMetadata *) sd->data;
+                img->color.sig_peak = clm->MaxCLL / PL_COLOR_SDR_WHITE;
+                img->color.sig_avg = clm->MaxFALL / PL_COLOR_SDR_WHITE;
+            }
+
+            // This overrides the CLL values above, if both are present
+            if ((sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA))) {
+                const AVMasteringDisplayMetadata *mdm = (AVMasteringDisplayMetadata *) sd->data;
+                if (mdm->has_luminance)
+                    img->color.sig_peak = av_q2d(mdm->max_luminance) / PL_COLOR_SDR_WHITE;
+            }
+
+            // Make sure this value is more or less legal
+            if (img->color.sig_peak < 1.0 || img->color.sig_peak > 50.0)
+                img->color.sig_peak = 0.0;
+#ifdef USE_DRM          
+            set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);       
+#endif
+
 #if defined  VAAPI || defined USE_DRM
             render_params.peak_detect_params = NULL;
             render_params.deband_params = NULL;
@@ -3844,9 +3906,11 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             pl->shift_x = -0.5f;
             break;
     }
+
+//printf("sys %d prim %d trc %d light %d\n",img->repr.sys,img->color.primaries,img->color.transfer,img->color.light);
     // Source crop
     if (VideoScalerTest) {              // right side defined scaler
-#if PL_API_VER >= 100
+
         //Input crop
         img->crop.x0 = video_src_rect.x1 / 2 + 1;
         img->crop.y0 = video_src_rect.y0;
@@ -3864,20 +3928,9 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         target->crop.x1 = dst_video_rect.x1;
         target->crop.y1 = dst_video_rect.y1; 
 #endif
-#else
-        // Input crop
-        img->src_rect.x0 = video_src_rect.x1 / 2 + 1;
-        img->src_rect.y0 = video_src_rect.y0;
-        img->src_rect.x1 = video_src_rect.x1;
-        img->src_rect.y1 = video_src_rect.y1;
-        // Output Scale
-        target->dst_rect.x0 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2 + 1;
-        target->dst_rect.y0 = dst_video_rect.y0;
-        target->dst_rect.x1 = dst_video_rect.x1;
-        target->dst_rect.y1 = dst_video_rect.y1;
-#endif
+
     } else {
-#if PL_API_VER >= 100
+
         img->crop.x0 = video_src_rect.x0;
         img->crop.y0 = video_src_rect.y0;
         img->crop.x1 = video_src_rect.x1;
@@ -3895,17 +3948,6 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         target->crop.y1 = dst_video_rect.y1; 
 #endif
 
-#else
-        img->src_rect.x0 = video_src_rect.x0;
-        img->src_rect.y0 = video_src_rect.y0;
-        img->src_rect.x1 = video_src_rect.x1;
-        img->src_rect.y1 = video_src_rect.y1;
-        
-        target->dst_rect.x0 = dst_video_rect.x0;
-        target->dst_rect.y0 = dst_video_rect.y0;
-        target->dst_rect.x1 = dst_video_rect.x1;
-        target->dst_rect.y1 = dst_video_rect.y1;  
-#endif
     }
 
 #if PL_API_VER < 100
@@ -3943,6 +3985,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 
     render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
     render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
+
     render_params.color_adjustment = &colors;
     
     colors.brightness = VideoBrightness;
@@ -3980,18 +4023,25 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         }
     }   
     render_params.hooks = &p->hook;
-    if (ovl || (video_src_rect.x1 > dst_video_rect.x1) || (video_src_rect.y1 > dst_video_rect.y1) ) {
-      render_params.num_hooks = 0;   // no user shaders when OSD activ or downward scaling
+    if (level || ovl || (video_src_rect.x1 > dst_video_rect.x1) || (video_src_rect.y1 > dst_video_rect.y1) ) {
+      render_params.num_hooks = 0;   // no user shaders when OSD activ or downward scaling or PIP
     }
     else {
       render_params.num_hooks = p->num_shaders;
     }
 #endif
-    
-      if (decoder->newchannel && current == 0) {
+#if PL_API_VER >= 113
+    // provide LUT Table
+    if (LUTon)
+        render_params.lut = p->lut;
+    else
+        render_params.lut = NULL;   
+#endif
+        
+    if (decoder->newchannel && current == 0) {
         colors.brightness = -1.0f;
         colors.contrast = 0.0f;
-        if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
+        if (!pl_render_image(p->renderer, &decoder->pl_frames[current], target, &render_params)) {
             Debug(3, "Failed rendering first frame!\n");
         }
         decoder->newchannel = 2;
@@ -4000,14 +4050,14 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
 
     decoder->newchannel = 0;
 //    uint64_t tt = GetusTicks();
-    if (!pl_render_image(p->renderer, &decoder->pl_images[current], target, &render_params)) {
+    if (!pl_render_image(p->renderer, &decoder->pl_frames[current], target, &render_params)) {
         Debug(4, "Failed rendering frame!\n");
     }
 //   pl_gpu_finish(p->gpu);
 //printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) {              // left side test scaler
-#if PL_API_VER >= 100
+
         // Source crop
         img->crop.x0 = video_src_rect.x0;
         img->crop.y0 = video_src_rect.y0;
@@ -4025,26 +4075,17 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
         target->crop.x1 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2;
         target->crop.y1 = dst_video_rect.y1;
 #endif
-#else
-        // Source crop
-        img->src_rect.x0 = video_src_rect.x0;
-        img->src_rect.y0 = video_src_rect.y0;
-        img->src_rect.x1 = video_src_rect.x1 / 2;
-        img->src_rect.y1 = video_src_rect.y1;
 
-        // Video aspect ratio
-        target->dst_rect.x0 = dst_video_rect.x0;
-        target->dst_rect.y0 = dst_video_rect.y0;
-        target->dst_rect.x1 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2;
-        target->dst_rect.y1 = dst_video_rect.y1;
-#endif
         render_params.upscaler = pl_named_filters[VideoScalerTest - 1].filter;
         render_params.downscaler = pl_named_filters[VideoScalerTest - 1].filter;
-
+    
+//      render_params.lut = NULL;
+        render_params.num_hooks = 0;
+        
         if (!p->renderertest)
             p->renderertest = pl_renderer_create(p->ctx, p->gpu);
 
-        if (!pl_render_image(p->renderertest, &decoder->pl_images[current], target, &render_params)) {
+        if (!pl_render_image(p->renderertest, &decoder->pl_frames[current], target, &render_params)) {
             Debug(4, "Failed rendering frame!\n");
         }
     } else if (p->renderertest) {
@@ -4137,7 +4178,7 @@ static void CuvidDisplayFrame(void)
     uint64_t diff;
     static float fdiff = 23000.0;
     struct pl_swapchain_frame frame;
-    struct pl_render_target target;
+    struct pl_frame target;
     bool ok;
 
 
@@ -5410,6 +5451,57 @@ void VideoSetVideoEventCallback(void (*videoEventCallback)(void))
 
 #ifdef PLACEBO
 
+
+
+static bool open_file(const char *path, struct file *out)
+{
+    if (!path || !path[0]) {
+        *out = (struct file) {0};
+        return true;
+    }
+
+    FILE *fp = NULL;
+    bool success = false;
+
+    fp = fopen(path, "rb");
+    if (!fp)
+        goto done;
+
+    if (fseeko(fp, 0, SEEK_END))
+        goto done;
+    off_t size = ftello(fp);
+    if (size < 0)
+        goto done;
+    if (fseeko(fp, 0, SEEK_SET))
+        goto done;
+
+    void *data = malloc(size);
+    if (!fread(data, size, 1, fp))
+        goto done;
+
+    *out = (struct file) {
+        .data = data,
+        .size = size,
+    };
+
+    success = true;
+done:
+    if (fp)
+        fclose(fp);
+    return success;
+}
+
+static void close_file(struct file *file)
+{
+    if (!file->data)
+        return;
+
+    free(file->data);
+    *file = (struct file) {0};
+}
+
+    
+    
 void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
 {
     static const char *prefix[] = {
@@ -5426,8 +5518,16 @@ void pl_log_intern(void *stream, enum pl_log_level level, const char *msg)
 
 void InitPlacebo()
 {
+    
+    static const char *lut_file = "lut/lut.cube";
+    
+    
     CuvidMessage(2,"Init Placebo mit API %d\n", PL_API_VER);
-
+#ifdef PLACEBO_GL
+    CuvidMessage(2,"Placebo mit opengl\n");
+#else
+    CuvidMessage(2,"Placebo mit vulkan\n");
+#endif
     p = calloc(1, sizeof(struct priv));
     if (!p)
         Fatal(_("Cant get memory for PLACEBO struct"));
@@ -5512,6 +5612,7 @@ void InitPlacebo()
             .surface = p->pSurface,
             .present_mode = VK_PRESENT_MODE_FIFO_KHR,
             .swapchain_depth = SWAP_BUFFER_SIZE,
+            .prefer_hdr = true,
         });
 
 #endif
@@ -5533,7 +5634,20 @@ void InitPlacebo()
         Fatal(_( "libplacebo: failed initializing swapchain\n"));
     } 
 #endif    
-    
+#if PL_API_VER >= 113
+    // load LUT File
+    struct file lutf;
+    char tmp[200];
+    sprintf(tmp,"%s/%s",MyConfigDir,lut_file);
+    if (open_file(tmp, &lutf) && lutf.size) {
+        if (!(p->lut = pl_lut_parse_cube(p->ctx, lutf.data, lutf.size)))
+            fprintf(stderr, "Failed parsing LUT.. continuing anyway\n");
+        close_file(&lutf);
+    }
+    else {
+        Debug(3, "Placebo: No LUT File used\n");
+    }
+#endif
     // create renderer
     p->renderer = pl_renderer_create(p->ctx, p->gpu);
     if (!p->renderer) {
@@ -5606,6 +5720,9 @@ void exit_display()
 #endif
  
     pl_context_destroy(&p->ctx);
+#if PL_API_VER >= 113
+    pl_lut_free(&p->lut);
+#endif
     free(p);
     p = NULL;
 #endif
@@ -6944,6 +7061,11 @@ void VideoSetScalerTest(int onoff)
 {
     VideoScalerTest = onoff;
     VideoSurfaceModesChanged = 1;
+}
+    
+void ToggleLUT()
+{
+    LUTon ^= -1;
 }
 
     ///

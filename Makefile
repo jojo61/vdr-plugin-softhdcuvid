@@ -36,7 +36,7 @@ LIBPLACEBO_GL ?= 0
 
 
 
-CONFIG :=  #-DDEBUG 		# remove # to enable debug output
+CONFIG :=  -DDEBUG 		# remove # to enable debug output
 
 
 
@@ -214,7 +214,7 @@ endif
 
 
 ifeq ($(CUVID),1)
-CONFIG += -DUSE_PIP			# PIP support
+#CONFIG += -DUSE_PIP			# PIP support
 CONFIG += -DCUVID			# enable CUVID decoder
 LIBS += -lEGL -lGL 
 ifeq ($(YADIF),1)
@@ -321,7 +321,7 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE $(CONFIG) \
 override CXXFLAGS += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
     -g  -W -Wextra -Winit-self -Werror=overloaded-virtual  -Wno-unused-parameter 
 override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
-    -g -W  -Wextra -Winit-self -Wdeclaration-after-statement
+    -g -W  -Wextra -Winit-self  -std=gnu99
 
 
 ### The object files (add further files here):
