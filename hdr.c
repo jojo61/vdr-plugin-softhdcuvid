@@ -1,5 +1,5 @@
 #include <libavutil/mastering_display_metadata.h>
-#if 0
+#ifndef _DRM_MODE_H
 /**
  * struct hdr_metadata_infoframe - HDR Metadata Infoframe Data.
  *
