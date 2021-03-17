@@ -3469,18 +3469,39 @@ static void CuvidRenderFrame(CuvidDecoder * decoder, const AVCodecContext * vide
         CuvidUpdateOutput(decoder);
     }
 
-    color = frame->colorspace;
-    if (color == AVCOL_SPC_UNSPECIFIED) // if unknown
-        color = AVCOL_SPC_BT709;
-    if (color == AVCOL_SPC_RGB)
-        color = AVCOL_SPC_BT470BG;  // fix ffmpeg libav failure
-    frame->colorspace = color;
-    // more libav fixes
-    if (frame->color_primaries == AVCOL_PRI_UNSPECIFIED)
-        frame->color_primaries = AVCOL_PRI_BT709;
-    if (frame->color_trc == AVCOL_TRC_UNSPECIFIED)
-        frame->color_trc = AVCOL_TRC_BT709;
     
+//	printf("Orig colorspace %d Primaries %d TRC %d  ------- ",frame->colorspace,frame->color_primaries,frame->color_trc);
+	
+	// Fix libav colorspace failure
+	color = frame->colorspace;
+    if (color == AVCOL_SPC_UNSPECIFIED) 				// failure with RTL HD and all SD channels with vaapi
+		if (frame->width > 720) 
+        	color = AVCOL_SPC_BT709;
+		else
+			color = AVCOL_SPC_BT470BG;
+    if (color == AVCOL_SPC_RGB)   						// Cuvid decoder failure with SD channels
+        color = AVCOL_SPC_BT470BG;  
+    frame->colorspace = color;
+    
+	// Fix libav Color primaries failures
+	if (frame->color_primaries == AVCOL_PRI_UNSPECIFIED) // failure with RTL HD and all SD channels with vaapi
+		if (frame->width > 720)
+        	frame->color_primaries = AVCOL_PRI_BT709;
+		else
+			frame->color_primaries = AVCOL_PRI_BT470BG;
+	if (frame->color_primaries == AVCOL_PRI_RESERVED0) 	// cuvid decoder failure with SD channels
+		frame->color_primaries = AVCOL_PRI_BT470BG;
+	
+	// Fix libav Color TRC failures
+    if (frame->color_trc == AVCOL_TRC_UNSPECIFIED)      // failure with RTL HD and all SD channels with vaapi
+		if (frame->width > 720) 
+        	frame->color_trc = AVCOL_TRC_BT709;
+		else
+			frame->color_trc = AVCOL_TRC_SMPTE170M;
+	if (frame->color_trc == AVCOL_TRC_RESERVED0)    	    // cuvid decoder failure with SD channels
+			frame->color_trc = AVCOL_TRC_SMPTE170M;
+	
+//    printf("Patched  colorspace %d Primaries %d TRC %d\n",frame->colorspace,frame->color_primaries,frame->color_trc);
 #ifdef RASPI
     //
     //  Check image, format, size
@@ -3751,7 +3772,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     float xcropf, ycropf;
     GLint texLoc;
     AVFrame *frame;
-    AVFrameSideData *sd,*sd1,*sd2;
+    AVFrameSideData *sd,*sd1=NULL,*sd2=NULL;
 
 #ifdef PLACEBO
     if (level) {
@@ -3888,9 +3909,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             // Make sure this value is more or less legal
             if (img->color.sig_peak < 1.0 || img->color.sig_peak > 50.0)
                 img->color.sig_peak = 0.0;
-#ifdef USE_DRM          
-            set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);       
-#endif
+
 
 #if defined  VAAPI || defined USE_DRM
             render_params.peak_detect_params = NULL;
@@ -3906,7 +3925,70 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
             pl->shift_x = -0.5f;
             break;
     }
+	
+	target->repr.sys = PL_COLOR_SYSTEM_RGB;
+    if (VideoStudioLevels)
+        target->repr.levels = PL_COLOR_LEVELS_PC;
+    else
+        target->repr.levels = PL_COLOR_LEVELS_TV;
+    target->repr.alpha = PL_ALPHA_UNKNOWN;
 
+    // target.repr.bits.sample_depth = 16;
+    // target.repr.bits.color_depth = 16;
+    // target.repr.bits.bit_shift =0;
+	
+#if USE_DRM
+	switch (VulkanTargetColorSpace) {
+		case 0:  // Monitor
+			memcpy(&target->color, &pl_color_space_monitor, sizeof(struct pl_color_space));
+			break;
+		case 1:  // sRGB
+			memcpy(&target->color, &pl_color_space_srgb, sizeof(struct pl_color_space));
+			break;
+		case 2:  // HD TV
+			set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2); 
+			if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
+				target->color.primaries = PL_COLOR_PRIM_BT_601_625;
+            	target->color.transfer = PL_COLOR_TRC_BT_1886;
+            	target->color.light = PL_COLOR_LIGHT_DISPLAY;
+			} else  {
+				memcpy(&target->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
+			}
+			break;
+		case 3:  // HDR TV
+			set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2); 
+			if (decoder->ColorSpace == AVCOL_SPC_BT2020_NCL) {
+				memcpy(&target->color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
+			} else if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
+				target->color.primaries = PL_COLOR_PRIM_BT_601_625;
+            	target->color.transfer = PL_COLOR_TRC_BT_1886;
+            	target->color.light = PL_COLOR_LIGHT_DISPLAY;;
+			} else  {
+				memcpy(&target->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
+			}
+			break;
+		default:
+			memcpy(&target->color, &pl_color_space_monitor, sizeof(struct pl_color_space));
+            break;
+	}
+#else		
+    switch (VulkanTargetColorSpace) {
+        case 0:  // Monitor
+            memcpy(&target->color, &pl_color_space_monitor, sizeof(struct pl_color_space));
+            break;
+        case 1:  // sRGB
+            memcpy(&target->color, &pl_color_space_srgb, sizeof(struct pl_color_space));
+            break;
+        case 2:  // HD TV
+        case 3:  // UHD HDR TV
+			memcpy(&target->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
+            break;
+        default:
+            memcpy(&target->color, &pl_color_space_monitor, sizeof(struct pl_color_space));
+            break;
+    }
+#endif
+	
 //printf("sys %d prim %d trc %d light %d\n",img->repr.sys,img->color.primaries,img->color.transfer,img->color.light);
     // Source crop
     if (VideoScalerTest) {              // right side defined scaler
@@ -4258,37 +4340,9 @@ static void CuvidDisplayFrame(void)
         VideoSurfaceModesChanged = 0;
     }
 
-    target.repr.sys = PL_COLOR_SYSTEM_RGB;
-    if (VideoStudioLevels)
-        target.repr.levels = PL_COLOR_LEVELS_PC;
-    else
-        target.repr.levels = PL_COLOR_LEVELS_TV;
-    target.repr.alpha = PL_ALPHA_UNKNOWN;
 
-    // target.repr.bits.sample_depth = 16;
-    // target.repr.bits.color_depth = 16;
-    // target.repr.bits.bit_shift =0;
 
-    switch (VulkanTargetColorSpace) {
-        case 0:
-            memcpy(&target.color, &pl_color_space_monitor, sizeof(struct pl_color_space));
-            break;
-        case 1:
-            memcpy(&target.color, &pl_color_space_srgb, sizeof(struct pl_color_space));
-            break;
-        case 2:
-            memcpy(&target.color, &pl_color_space_bt709, sizeof(struct pl_color_space));
-            break;
-        case 3:
-            memcpy(&target.color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
-            break;
-        case 4:
-            memcpy(&target.color, &pl_color_space_hdr10, sizeof(struct pl_color_space));
-            break;
-        default:
-            memcpy(&target.color, &pl_color_space_monitor, sizeof(struct pl_color_space));
-            break;
-    }
+
 #ifdef GAMMA
 //    target.color.transfer = PL_COLOR_TRC_LINEAR;
 #endif

@@ -335,17 +335,12 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
     struct AVMasteringDisplayMetadata *md = NULL;
     struct AVContentLightMetadata *ld = NULL;
 
-    if (render->hdr_metadata == -1) { // Metadata not supported
-        return;
-    }
+
 
     // clean up FFMEPG stuff
     if (trc == AVCOL_TRC_BT2020_10)
         trc = AVCOL_TRC_ARIB_STD_B67;
-    if (trc == AVCOL_TRC_UNSPECIFIED)
-        trc = AVCOL_TRC_BT709;
-    if (color == AVCOL_PRI_UNSPECIFIED)
-        color = AVCOL_PRI_BT709;
+
 
     if ((old_color == color && old_trc == trc && !sd1 && !sd2) || !render->hdr_metadata)
         return;  // nothing to do
@@ -371,12 +366,15 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
 
     Debug(3,"Update HDR to TRC %d color %d\n",trc,color);
 
-    if (trc == AVCOL_TRC_BT2020_10)
-        trc = AVCOL_TRC_ARIB_STD_B67;
-
     old_color = color;
     old_trc = trc;
 
+
+    if (VulkanTargetColorSpace != 3) { // no HDR TV
+		m_need_modeset = 1;   // change in colorsettings
+		return;
+	}
+	
     if (render->hdr_blob_id)
         drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
 
@@ -392,7 +390,7 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
             break;
         case AVCOL_TRC_SMPTE2084:                               // 16
             eotf = EOTF_ST2084;
-            break;
+			break;
         default:
             eotf = EOTF_TRADITIONAL_GAMMA_SDR;
             break;
@@ -467,24 +465,24 @@ static void set_hdr_metadata(int color,int trc, AVFrameSideData *sd1, AVFrameSid
                 eotf);
 
 
-    
-    ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &render->hdr_blob_id);
-    if (ret) {
-        printf("DRM: HDR metadata: failed blob create \n");
-        render->hdr_blob_id = 0;
-        return;
-    }
+	
+	ret = drmModeCreatePropertyBlob(render->fd_drm, &data, sizeof(data), &render->hdr_blob_id);
+	if (ret) {
+		printf("DRM: HDR metadata: failed blob create \n");
+		render->hdr_blob_id = 0;
+		return;
+	}
 
-    ret = drmModeConnectorSetProperty(render->fd_drm, render->connector_id,
-                      render->hdr_metadata, render->hdr_blob_id);
-    if (ret) {
-        printf("DRM: HDR metadata: failed property set %d\n",ret);
+	ret = drmModeConnectorSetProperty(render->fd_drm, render->connector_id,
+					  render->hdr_metadata, render->hdr_blob_id);
+	if (ret) {
+		printf("DRM: HDR metadata: failed property set %d\n",ret);
 
-        if (render->hdr_blob_id)
-            drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
-        render->hdr_blob_id = 0;
-        return;
-    }
+		if (render->hdr_blob_id)
+			drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
+		render->hdr_blob_id = 0;
+		return;
+	}
 
     m_need_modeset = 1;
 

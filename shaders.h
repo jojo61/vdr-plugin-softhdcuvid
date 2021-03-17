@@ -280,6 +280,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
 
     switch (colorspace) {
         case AVCOL_SPC_RGB:
+		case AVCOL_SPC_BT470BG:
             m = &yuv_bt601.m[0][0];
             c = &yuv_bt601.c[0];
             Debug(3, "BT601 Colorspace used\n");
@@ -339,8 +340,9 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
         GLSL("color.rgb = max(color.rgb, 0.0);           \n");
 //      GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
 //      GLSL("color.rgb = pow(color.rgb, vec3(2.4));     \n");
-//      GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(%f)) * vec3(1.0/%f)) + vec3(%f),bvec3(lessThan(vec3(0.5), color.rgb)));\n",HLG_C, HLG_A, HLG_B);
+//      GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(%f))         * vec3(1.0/%f))         + vec3(%f)        , bvec3(lessThan(vec3(0.5), color.rgb)));\n",HLG_C, HLG_A, HLG_B);
         GLSL("color.rgb = mix(vec3(4.0) * color.rgb * color.rgb,exp((color.rgb - vec3(0.55991073)) * vec3(1.0/0.17883277)) + vec3(0.28466892), bvec3(lessThan(vec3(0.5), color.rgb)));\n");
+		GLSL("color.rgb *= vec3(1.0/3.17955);            \n");  // PL_COLOR_SDR_WHITE_HLG
         GLSL("// color mapping                           \n");
         GLSL("color.rgb = cms_matrix * color.rgb;        \n");
 #ifndef GAMMA
@@ -348,6 +350,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace)
         GLSL("color.rgb = max(color.rgb, 0.0);           \n");
 //      GLSL("color.rgb = clamp(color.rgb, 0.0, 1.0);    \n");
 //      GLSL("color.rgb = pow(color.rgb, vec3(1.0/2.4)); \n");
+		GLSL("color.rgb *= vec3(3.17955);                \n");  // PL_COLOR_SDR_WHITE_HLG
         GLSL("color.rgb = mix(vec3(0.5) * sqrt(color.rgb), vec3(0.17883277) * log(color.rgb - vec3(0.28466892)) + vec3(0.55991073), bvec3(lessThan(vec3(1.0), color.rgb))); \n");
 
 #endif

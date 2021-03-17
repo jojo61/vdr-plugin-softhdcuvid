@@ -82,9 +82,9 @@ You have to adapt the Makefile. There are 3 possible Version that you can build:
     softhddrm (DRM=1)
     This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
-    I recommend to use libplacebo and set LIBPLCEBO_GL=1 in the Makefile.
+    I recommend to use libplacebo and set LIBPLACEBO_GL=1 in the Makefile.
     
-    Libplacebo API Version >= 107 is needed.
+    Libplacebo API Version >= 113 is needed.
     
     
 Install:
@@ -116,8 +116,10 @@ Beginners Guide for libplacebo:
     Resolution setting. There is as small black line between the halfs to remaind you that Scaler Test
     is activ.
 
-    Then you should set the Monitor Colorspace to "sRGB". This guarantees you the best colors on your screen.
+    Then you should set the Monitor Type to "sRGB". This guarantees you the best colors on your screen.
     At the moment all calculations internaly are done in RGB space and all cards output also RGB.
+    If you use the softhddrm Version then you should set the Monitor Type to HD TV or UHD-HDR TV if you have
+    connected one of those.
 
     If you are colorblind you could try to remedy this with the Colorblind Settings. Realy only needed
     in rare cases.
@@ -128,9 +130,17 @@ Beginners Guide for libplacebo:
     The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is 
     provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start  
     vdr -P 'softhdcuvid -S filmgrain.glsl ...'
-    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect picture for me.
+    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect 
+    picture for me.
     
-
+    You can also use a custon LUT File. It is located in $ConfigDir/shaders/lut/lut.cube. If you provide there 
+    a lut file it will be automaticly used. In the Mainmenue you can switch LUT on and off.
+    
+Konfig Guide for softhddrm Version
+----------------------------------
+    You should set the Monitor Type to HD TV or UHD-HDR TV depending on your TV Set
+    With softhddrm and a HDR TV Set you can view HDR-HLG content. This is tested with Kernel 5.12 and a Intel NUC.
+    
 
 
 Setup:	environment

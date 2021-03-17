@@ -63,7 +63,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.4"
+static const char *const VERSION = "3.4.1"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -1109,10 +1109,11 @@ void cMenuSetupSoft::Create(void)
     static const char *const resolution[RESOLUTIONS] = {
         "576i", "720p", "fake 1080", "1080", "2160p"
     };
-#ifdef PLACEBO
+
     static const char *const target_colorspace[] = {
-        "Monitor", "sRGB", "BT709", "HDR-HLG", "HDR10",
+        "default Monitor", "sRGB Monitor", "HD TV (BT.709)", "UHD-HDR TV (BT.2020)", 
     };
+#ifdef PLACEBO	
     static const char *const target_colorblindness[] = {
         "None", "Protanomaly", "Deuteranomaly", "Tritanomaly", "Monochromacy",
     };
@@ -1201,12 +1202,12 @@ void cMenuSetupSoft::Create(void)
         Add(new cMenuEditIntItem(tr("Saturation (0..100)"), &Saturation, 0, 100, tr("min"), tr("max")));
         Add(new cMenuEditIntItem(tr("Gamma (0..100)"), &Gamma, 0, 100, tr("min"), tr("max")));
         Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314, 314, tr("min"), tr("max")));
-        Add(new cMenuEditStraItem(tr("Monitor Colorspace"), &TargetColorSpace, 5, target_colorspace));
+        
         Add(new cMenuEditStraItem(tr("Color Blindness"), &ColorBlindness, 5, target_colorblindness));
         Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100, 100, tr("min"),
                 tr("max")));
 #endif
-
+		Add(new cMenuEditStraItem(tr("Monitor Type"), &TargetColorSpace, 4, target_colorspace));
         for (i = 0; i < RESOLUTIONS; ++i) {
             cString msg;
 
