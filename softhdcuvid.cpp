@@ -63,7 +63,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.4.1"
+static const char *const VERSION = "3.4.2"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -2645,7 +2645,7 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode)
         Resume();
         SuspendMode = NOT_SUSPENDED;
     }
-
+    SetVolume(cDevice::CurrentVolume(), true);
     return::SetPlayMode(play_mode);
 }
 
