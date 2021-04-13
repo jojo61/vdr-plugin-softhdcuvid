@@ -5618,8 +5618,9 @@ void InitPlacebo()
     p->gpu = p->gl->gpu;
     
 #else
-    struct pl_vulkan_params params; 
+    struct pl_vulkan_params params = {0}; 
     struct pl_vk_inst_params iparams = pl_vk_inst_default_params;
+	
     VkXcbSurfaceCreateInfoKHR xcbinfo; 
 
     char xcbext[] = { "VK_KHR_xcb_surface" };
@@ -5652,7 +5653,7 @@ void InitPlacebo()
     params.instance = p->vk_inst->instance;
     params.async_transfer = true;
     params.async_compute = true;
-    params.queue_count = 16;
+    params.queue_count = 1;
     params.surface = p->pSurface;
     params.allow_software = false;
 

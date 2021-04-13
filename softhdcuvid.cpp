@@ -51,7 +51,7 @@ extern "C"
 #include "video.h"
 #include "codec.h"
 #endif
-#if PLACEBO
+#ifdef PLACEBO
 #include <libplacebo/filters.h>
 extern void ToggleLUT();
 #endif
@@ -63,7 +63,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.4.3"
+static const char *const VERSION = "3.4.4"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -1128,7 +1128,7 @@ void cMenuSetupSoft::Create(void)
 
     if (scalers == 0) {
         scalingtest[0] = (char *)"Off";
-        for (scalers = 0; pl_named_filters[scalers].filter != NULL; scalers++) {
+        for (scalers = 0; pl_named_filters[scalers].name != NULL; scalers++) {
             scaling[scalers] = (char *)pl_named_filters[scalers].name;
             scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
             // printf("Scaler %s\n",pl_named_filters[scalers].name);
