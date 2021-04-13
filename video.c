@@ -3043,6 +3043,12 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder * decoder, AVCodecContex
 }
 
 #ifdef USE_GRAB
+void swapc(unsigned char *x, unsigned char *y)
+{
+    unsigned char temp = *x;
+    *x = *y;
+    *y = temp;
+}
 #ifdef PLACEBO
 int get_RGB(CuvidDecoder * decoder, struct pl_overlay *ovl)
 {
@@ -3186,7 +3192,12 @@ int get_RGB(CuvidDecoder * decoder)
 #else // Placebo
     faktorx = (float)width / (float)VideoWindowWidth;
     faktory = (float)height / (float)VideoWindowHeight;
-    fmt = pl_find_named_fmt(p->gpu, "bgra8");
+#ifdef PLACEBO_GL
+    fmt = pl_find_named_fmt(p->gpu, "rgba8");   // bgra8 not supported
+#else
+	fmt = pl_find_named_fmt(p->gpu, "bgra8");
+#endif
+
     target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
             .w = width,
             .h = height,
@@ -3225,7 +3236,17 @@ int get_RGB(CuvidDecoder * decoder)
     if (ovl) {
         target.overlays = ovl;
         target.num_overlays = 1;
+#ifdef PLACEBO_GL
         x0 = ovl->rect.x0;
+        y1 = ovl->rect.y0;
+        x1 = ovl->rect.x1;
+        y0 = ovl->rect.y1;
+        ovl->rect.x0 = (float)x0 *faktorx;
+        ovl->rect.y0 = (float)y0 *faktory;
+        ovl->rect.x1 = (float)x1 *faktorx;
+        ovl->rect.y1 = (float)y1 *faktory;
+#else
+		x0 = ovl->rect.x0;
         y0 = ovl->rect.y0;
         x1 = ovl->rect.x1;
         y1 = ovl->rect.y1;
@@ -3233,6 +3254,7 @@ int get_RGB(CuvidDecoder * decoder)
         ovl->rect.y0 = (float)y0 *faktory;
         ovl->rect.x1 = (float)x1 *faktorx;
         ovl->rect.y1 = (float)y1 *faktory;
+#endif
 
     } else {
         target.overlays = 0;
@@ -3242,13 +3264,21 @@ int get_RGB(CuvidDecoder * decoder)
     if (!pl_render_image(p->renderer, &decoder->pl_frames[current], &target, &render_params)) {
         Fatal(_("Failed rendering frame!\n"));
     }
+
     pl_gpu_finish(p->gpu);
 
     if (ovl) {
+#ifdef PLACEBO_GL
         ovl->rect.x0 = x0;
+        ovl->rect.y0 = y1;
+        ovl->rect.x1 = x1;
+        ovl->rect.y1 = y0;
+#else
+		ovl->rect.x0 = x0;
         ovl->rect.y0 = y0;
         ovl->rect.x1 = x1;
         ovl->rect.y1 = y1;
+#endif
     }
 
     pl_tex_download(p->gpu, &(struct pl_tex_transfer_params) {  // download Data
@@ -3257,6 +3287,11 @@ int get_RGB(CuvidDecoder * decoder)
         });
 
     pl_tex_destroy(p->gpu, &target.fbo);
+#ifdef PLACEBO_GL
+	unsigned char *b = base;
+	for (int i = 0 ; i < width * height * 4; i+=4)
+		swapc(&b[i+0],&b[i+2]);
+#endif
 #endif
     return 0;
 }
