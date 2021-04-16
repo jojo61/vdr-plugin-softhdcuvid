@@ -116,6 +116,9 @@ extern void VideoSetSaturation(int);
 /// Set Gamma.
 extern void VideoSetGamma(int);
 
+/// Set Color Temp.
+extern void VideoSetTemperature(int);
+
 /// Set ColorSpace.
 extern void VideoSetTargetColor(int);
 

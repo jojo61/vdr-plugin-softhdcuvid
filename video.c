@@ -451,6 +451,7 @@ static float VideoContrast = 1.0f;
 static float VideoSaturation = 1.0f;
 static float VideoHue = 0.0f;
 static float VideoGamma = 1.0f;
+static float VideoTemperature = 0.0f;
 static int VulkanTargetColorSpace = 0;
 static int VideoScalerTest = 0;
 static int VideoColorBlindness = 0;
@@ -4110,6 +4111,7 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     colors.saturation = VideoSaturation;
     colors.hue = VideoHue;
     colors.gamma = VideoGamma;
+	colors.temperature = VideoTemperature;
 
     if (ovl) {
         target->overlays = ovl;
@@ -6772,7 +6774,16 @@ void VideoSetGamma(int gamma)
 {
     VideoGamma = (float)gamma / 100.0f;
 }
-
+///
+/// Set Color Temperature adjustment.
+///
+/// @param offset   between -3500k and 3500k.
+///     100 represents no modification
+///
+void VideoSetTemperature(int temp)
+{
+    VideoTemperature = (float)temp / 35.0f;
+}
     ///
 /// Set TargetColorSpace.
 ///

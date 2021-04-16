@@ -63,7 +63,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.4.4"
+static const char *const VERSION = "3.5"
 #ifdef GIT_REV
     "-GIT" GIT_REV
 #endif
@@ -108,7 +108,8 @@ static int ConfigVideoBrightness;       ///< config video brightness
 static int ConfigVideoContrast = 100;   ///< config video contrast
 static int ConfigVideoSaturation = 100; ///< config video saturation
 static int ConfigVideoHue;              ///< config video hue
-static int ConfigGamma=100;                 ///< config Gamma
+static int ConfigGamma=100;             ///< config Gamma
+static int ConfigTemperature=0;         ///< config Temperature
 static int ConfigTargetColorSpace;      ///< config Target Colrospace
 static int ConfigScalerTest;            /// Test for Scalers
 static int ConfigColorBlindness;
@@ -979,6 +980,7 @@ class cMenuSetupSoft:public cMenuSetupPage
     int Saturation;
     int Hue;
     int Gamma;
+	int Temperature;
     int TargetColorSpace;
     int ScalerTest;
     int ColorBlindnessFaktor;
@@ -1202,10 +1204,10 @@ void cMenuSetupSoft::Create(void)
         Add(new cMenuEditIntItem(tr("Saturation (0..100)"), &Saturation, 0, 100, tr("min"), tr("max")));
         Add(new cMenuEditIntItem(tr("Gamma (0..100)"), &Gamma, 0, 100, tr("min"), tr("max")));
         Add(new cMenuEditIntItem(tr("Hue (-314..314) "), &Hue, -314, 314, tr("min"), tr("max")));
-        
+        Add(new cMenuEditIntItem(tr("Temperature 6500K + x * 100K"), &Temperature, -35, 35, NULL, NULL));
+		
         Add(new cMenuEditStraItem(tr("Color Blindness"), &ColorBlindness, 5, target_colorblindness));
-        Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100, 100, tr("min"),
-                tr("max")));
+        Add(new cMenuEditIntItem(tr("Color Correction (-100..100) "), &ColorBlindnessFaktor, -100, 100, tr("min"), tr("max")));
 #endif
 		Add(new cMenuEditStraItem(tr("Monitor Type"), &TargetColorSpace, 4, target_colorspace));
         for (i = 0; i < RESOLUTIONS; ++i) {
@@ -1402,6 +1404,7 @@ cMenuSetupSoft::cMenuSetupSoft(void)
     Saturation = ConfigVideoSaturation;
     Hue = ConfigVideoHue;
     Gamma = ConfigGamma;
+	Temperature = ConfigTemperature;
     TargetColorSpace = ConfigTargetColorSpace;
     ColorBlindness = ConfigColorBlindness;
     ColorBlindnessFaktor = ConfigColorBlindnessFaktor;
@@ -1534,6 +1537,8 @@ void cMenuSetupSoft::Store(void)
     VideoSetSaturation(ConfigVideoSaturation);
     SetupStore("Gamma", ConfigGamma = Gamma);
     VideoSetGamma(ConfigGamma);
+	SetupStore("Temperature", ConfigTemperature = Temperature);
+    VideoSetTemperature(ConfigTemperature);
     SetupStore("TargetColorSpace", ConfigTargetColorSpace = TargetColorSpace);
     VideoSetTargetColor(ConfigTargetColorSpace);
     SetupStore("Hue", ConfigVideoHue = Hue);
@@ -3324,6 +3329,14 @@ bool cPluginSoftHdDevice::SetupParse(const char *name, const char *value)
         i = atoi(value);
         ConfigGamma = i > 100 ? 100 : i;
         VideoSetGamma(ConfigGamma);
+        return true;
+    }
+	if (!strcasecmp(name, "Temperature")) {
+        int i;
+
+        i = atoi(value);
+        ConfigTemperature = i > 100 ? 100 : i;
+        VideoSetTemperature(ConfigTemperature);
         return true;
     }
     if (!strcasecmp(name, "TargetColorSpace")) {
