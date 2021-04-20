@@ -4111,7 +4111,9 @@ static void CuvidMixVideo(CuvidDecoder * decoder, __attribute__((unused))
     colors.saturation = VideoSaturation;
     colors.hue = VideoHue;
     colors.gamma = VideoGamma;
+#if PL_API_VER >= 119
 	colors.temperature = VideoTemperature;
+#endif
 
     if (ovl) {
         target->overlays = ovl;
@@ -5690,7 +5692,7 @@ void InitPlacebo()
     params.instance = p->vk_inst->instance;
     params.async_transfer = true;
     params.async_compute = true;
-    params.queue_count = 1;
+    params.queue_count = 16;
     params.surface = p->pSurface;
     params.allow_software = false;
 
