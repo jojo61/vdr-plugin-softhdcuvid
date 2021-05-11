@@ -2027,7 +2027,7 @@ void cOglPixmap::DrawBitmap(const cPoint & Point, const cBitmap & Bitmap, tColor
                     1 ? ColorFg : Bitmap.Color(index)) : Bitmap.Color(index));
         }
 
-    oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Bitmap.Width(), Bitmap.Height(), Point.X(), Point.Y(), Overlay));
+    oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Bitmap.Width(), Bitmap.Height(), Point.X(), Point.Y(), true));
     SetDirty();
     MarkDrawPortDirty(cRect(Point, cSize(Bitmap.Width(), Bitmap.Height())).Intersected(DrawPort().Size()));
 }
