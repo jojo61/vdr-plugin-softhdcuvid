@@ -2435,7 +2435,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         if (decoder->PixFmt == AV_PIX_FMT_NV12) {
             fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r8" : "rg8"); // 8 Bit YUV
         } else {
-            fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r16" : "rg16");   // 10 Bit YUV
+			fmt = pl_find_fourcc(p->gpu, n == 0 ? 0x20363152 : 0x32335247);   // 10 Bit YUV
         }
 #endif      
         assert(fmt != NULL);
@@ -4249,7 +4249,7 @@ void make_osd_overlay(int x, int y, int width, int height)
             });
     }
     // make overlay
-    pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
+    //pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
     pl->plane.components = 4;
     pl->plane.shift_x = 0.0f;
     pl->plane.shift_y = 0.0f;
