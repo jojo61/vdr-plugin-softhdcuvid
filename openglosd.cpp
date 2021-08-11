@@ -1806,9 +1806,10 @@ bool cOglThread::InitOpenGL(void)
     GLenum err = glewInit();
 
     if (err != GLEW_OK) {
-        esyslog("[softhddev]glewInit failed, aborting\n");
-        return false;
+		esyslog("[softhddev]glewInit failed:  %s   Using Version: %s\n",glewGetErrorString(err),glewGetString(GLEW_VERSION));
+//        return false;
     }
+
 #endif
 
     VertexBuffers[vbText]->EnableBlending();
