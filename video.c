@@ -7263,6 +7263,15 @@ void VideoInit(const char *display_name)
         // if no environment variable, use :0.0 as default display name
         display_name = ":0.0";
     }
+    
+    if (!getenv("DISPLAY")) {
+        //force set DISPLAY environment variable, otherwise nvidia driver
+        //has problems at libplace-swapchain-init
+        Debug(3, "video: setting ENV DISPLAY=%s\n",display_name);
+        setenv("DISPLAY",display_name,0);
+        //Debug(3, "video: ENV:(%s)\n",getenv("DISPLAY"));
+    }
+    
 
     if (!(XlibDisplay = XOpenDisplay(display_name))) {
         Error(_("video: Can't connect to X11 server on '%s'\n"), display_name);
