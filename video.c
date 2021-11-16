@@ -2323,8 +2323,10 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
                         .sampleable = true,
                         .host_writable = true,
                         .blit_dst = true,
+#if PL_API_VER < 159
                         .sample_mode = PL_TEX_SAMPLE_LINEAR,
                         .address_mode = PL_TEX_ADDRESS_CLAMP,
+#endif
 #if !defined PLACEBO_GL
                         .export_handle = PL_HANDLE_FD,
 #endif
@@ -2379,7 +2381,11 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
         }
         // make image
         img = &decoder->pl_frames[i];
+#if PL_API_VER < 159
         img->signature = i;
+        img->width = size_x;
+        img->height = size_y;
+#endif
         img->num_planes = 2;
         img->repr.sys = PL_COLOR_SYSTEM_BT_709; // overwritten later
         img->repr.levels = PL_COLOR_LEVELS_TV;
@@ -2389,8 +2395,6 @@ void createTextureDst(CuvidDecoder * decoder, int anz, unsigned int size_x, unsi
         img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;   // needs config ???
         img->color.sig_peak = 0.0f;     // needs config  ????
         img->color.sig_avg = 0.0f;
-        img->width = size_x;
-        img->height = size_y;
         img->num_overlays = 0;
     }
     NoContext;
@@ -2435,9 +2439,10 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         if (decoder->PixFmt == AV_PIX_FMT_NV12) {
             fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r8" : "rg8"); // 8 Bit YUV
         } else {
-			fmt = pl_find_fourcc(p->gpu, n == 0 ? 0x20363152 : 0x32335247);   // 10 Bit YUV
+            fmt = pl_find_fourcc(p->gpu, n == 0 ? 0x20363152 : 0x32335247);   // 10 Bit YUV
         }
-#endif      
+#endif 
+    
         assert(fmt != NULL);
 #ifdef PLACEBO_GL
         fmt->fourcc = desc.layers[n].drm_format;
@@ -2452,8 +2457,10 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
             .host_writable = false,
             .blit_dst = true,
             .renderable = true,
+#if PL_API_VER < 159
             .address_mode = PL_TEX_ADDRESS_CLAMP ,
             .sample_mode = PL_TEX_SAMPLE_LINEAR,
+#endif
             .import_handle = PL_HANDLE_DMA_BUF,
             .shared_mem = (struct pl_shared_mem) {
                     .handle = {
@@ -3198,8 +3205,18 @@ int get_RGB(CuvidDecoder * decoder)
 #else
 	fmt = pl_find_named_fmt(p->gpu, "bgra8");
 #endif
-
+#if PL_API_VER < 159
     target.fbo = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+#else
+    target.num_planes = 1;
+    target.planes[0].components = 4;
+    target.planes[0].component_mapping[0] = PL_CHANNEL_R;
+    target.planes[0].component_mapping[1] = PL_CHANNEL_G;
+    target.planes[0].component_mapping[2] = PL_CHANNEL_B;
+    target.planes[0].component_mapping[3] = PL_CHANNEL_A;
+    target.planes[0].texture = pl_tex_create(p->gpu, &(struct pl_tex_params) {
+
+#endif
             .w = width,
             .h = height,
             .d = 0,
@@ -3208,8 +3225,10 @@ int get_RGB(CuvidDecoder * decoder)
             .renderable = true,
             .blit_dst = true,
             .host_readable = true,
+#if PL_API_VER < 159	    
             .sample_mode = PL_TEX_SAMPLE_LINEAR,
             .address_mode = PL_TEX_ADDRESS_CLAMP,
+#endif
         });
 #if PL_API_VER >= 100    
     target.crop.x0 = (float)decoder->OutputX * faktorx;
@@ -3283,11 +3302,18 @@ int get_RGB(CuvidDecoder * decoder)
     }
 
     pl_tex_download(p->gpu, &(struct pl_tex_transfer_params) {  // download Data
+#if PL_API_VER < 159
             .tex = target.fbo,
+#else
+	    .tex = target.planes[0].texture,
+#endif
             .ptr = base,
         });
-
+#if PL_API_VER < 159
     pl_tex_destroy(p->gpu, &target.fbo);
+#else
+    pl_tex_destroy(p->gpu, &target.planes[0].texture);
+#endif
 #ifdef PLACEBO_GL
 	unsigned char *b = base;
 	for (int i = 0 ; i < width * height * 4; i+=4)
@@ -4244,12 +4270,14 @@ void make_osd_overlay(int x, int y, int width, int height)
                 .sampleable = true,
                 .host_writable = true,
                 .blit_dst = true,
+#if PL_API_VER < 159
                 .sample_mode = PL_TEX_SAMPLE_LINEAR,
                 .address_mode = PL_TEX_ADDRESS_CLAMP,
+#endif
             });
     }
     // make overlay
-    //pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
+    pl_tex_clear(p->gpu, pl->plane.texture, (float[4]) { 0 });
     pl->plane.components = 4;
     pl->plane.shift_x = 0.0f;
     pl->plane.shift_y = 0.0f;
