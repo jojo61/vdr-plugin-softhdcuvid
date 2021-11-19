@@ -1751,15 +1751,12 @@ static void CuvidReleaseSurface(CuvidDecoder * decoder, int surface)
     if (decoder->images[surface * Planes]) {
         DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes]);
         DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes + 1]);
-#ifdef RASPI
-        DestroyImageKHR(eglGetCurrentDisplay(), decoder->images[surface * Planes + 2]);
-#endif
+
         if (decoder->fds[surface * Planes]) {
             close(decoder->fds[surface * Planes]);
-//              close(decoder->fds[surface*Planes+1]);
-#ifdef RASPI
-            close(decoder->fds[surface * Planes + 2]);
-#endif
+        }
+		if (decoder->fds[surface * Planes + 1]) {
+              close(decoder->fds[surface*Planes+1]);
         }
     }
     decoder->fds[surface * Planes] = 0;
@@ -2627,24 +2624,6 @@ void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame
         ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
         ADD_PLANE_ATTRIBS(0);
 #endif
-#ifdef RASPI
-        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8);
-        ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
-        ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
-        if (n == 0) {
-            fd = dup(desc.objects[0].fd);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, fd);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, desc.layers[0].planes[n].offset);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, desc.layers[0].planes[n].pitch);
-        } else {
-            fd = dup(desc.objects[0].fd);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_FD_EXT, fd);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_OFFSET_EXT, desc.layers[0].planes[n].offset);
-            ADD_ATTRIB(EGL_DMA_BUF_PLANE0_PITCH_EXT, desc.layers[0].planes[n].pitch);
-        }
-//      Debug(3,"n %d fd %d nb_planes %d nb_layers %d plane %d offeset %d offset2 %d pitch %d \n",n, fd,
-//            desc.layers[0].nb_planes,desc.nb_layers,n,desc.layers[0].planes[n].offset,desc.layers[0].planes[n+1].offset,desc.layers[0].planes[n].pitch);
-#endif
 
         decoder->images[index * Planes + n] =
             CreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attribs);
@@ -2654,11 +2633,9 @@ void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame
 
         glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index * Planes + n]);
         EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * Planes + n]);
-#ifdef RASPI
-        decoder->fds[index * Planes + n] = fd;
-#endif
+        decoder->fds[index * Planes + n] = desc.objects[n].fd;
     }
-    decoder->fds[index * Planes] = desc.objects[0].fd;
+    
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
