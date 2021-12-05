@@ -2408,7 +2408,8 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
     int toggle = 0;
     uint64_t first_time;
     VADRMPRIMESurfaceDescriptor desc;
-
+    
+    vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
     status =
         vaExportSurfaceHandle(decoder->VaDisplay, (unsigned int)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
         VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
@@ -2417,7 +2418,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
         printf("Fehler beim export VAAPI Handle\n");
         return;
     }
-    vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
+    //vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
     Lock_and_SharedContext;
     for (n = 0; n < 2; n++) {           //  Set DMA_BUF from VAAPI decoder to Textures
         int id = desc.layers[n].object_index[0];
@@ -2430,6 +2431,11 @@ void generateVAAPIImage(CuvidDecoder * decoder, int index, const AVFrame * frame
             printf("Fehler beim Import von Surface %d\n", index);
             return;
         }
+
+		if (!size) {
+			size = n==0 ?  desc.width * desc.height: desc.width * desc.height /2 ;
+		}
+		
         
 //      fmt = pl_find_fourcc(p->gpu,desc.layers[n].drm_format);
 #if 1       
@@ -2592,6 +2598,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame
 #if defined  (VAAPI) && !defined (RASPI)
     VADRMPRIMESurfaceDescriptor desc;
 
+    vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3]);
     status =
         vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3],
         VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS,
@@ -2601,7 +2608,7 @@ void generateVAAPIImage(CuvidDecoder * decoder, VASurfaceID index, const AVFrame
         printf("Fehler beim export VAAPI Handle\n");
         return;
     }
-    vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3]);
+    //vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t) frame->data[3]);
 #endif
 #ifdef RASPI
     AVDRMFrameDescriptor desc;
