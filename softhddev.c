@@ -2720,7 +2720,7 @@ void StillPicture(const uint8_t * data, int size)
 
             VideoNextPacket(MyVideoStream, MyVideoStream->CodecID); // terminate last packet
         } else {                        // ES packet
-            if (0 && MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
+            if (MyVideoStream->CodecID != AV_CODEC_ID_MPEG2VIDEO) {
                 VideoNextPacket(MyVideoStream, AV_CODEC_ID_NONE);   // close last stream
                 MyVideoStream->CodecID = AV_CODEC_ID_MPEG2VIDEO;
             }
