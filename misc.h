@@ -24,9 +24,9 @@
 /// @addtogroup misc
 /// @{
 
-#include <syslog.h>
 #include <stdarg.h>
-#include <time.h>                       // clock_gettime
+#include <syslog.h>
+#include <time.h> // clock_gettime
 
 //////////////////////////////////////////////////////////////////////////////
 //  Defines
@@ -40,23 +40,22 @@
 //  Variables
 //////////////////////////////////////////////////////////////////////////////
 
-extern int SysLogLevel;                 ///< how much information wanted
+extern int SysLogLevel; ///< how much information wanted
 
 //////////////////////////////////////////////////////////////////////////////
 //  Prototypes
 //////////////////////////////////////////////////////////////////////////////
 
-static inline void Syslog(const int, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
+static inline void Syslog(const int, const char *format, ...) __attribute__((format(printf, 2, 3)));
 
 //////////////////////////////////////////////////////////////////////////////
 //  Inlines
 //////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG
-#define DebugLevel 4                    /// private debug level
+#define DebugLevel 4 /// private debug level
 #else
-#define DebugLevel 0                    /// private debug level
+#define DebugLevel 0 /// private debug level
 #endif
 
 /**
@@ -67,8 +66,7 @@ static inline void Syslog(const int, const char *format, ...)
 **	- 2	info
 **	- 3	important debug and fixme's
 */
-static inline void Syslog(const int level, const char *format, ...)
-{
+static inline void Syslog(const int level, const char *format, ...) {
     if (SysLogLevel > level || DebugLevel > level) {
         va_list ap;
 
@@ -81,30 +79,34 @@ static inline void Syslog(const int level, const char *format, ...)
 /**
 **	Show error.
 */
-#define Error(fmt...)	Syslog(LOG_ERR, fmt)
+#define Error(fmt...) Syslog(LOG_ERR, fmt)
 
 /**
 **	Show fatal error.
 */
-#define Fatal(fmt...)	do { Error(fmt); abort(); } while (0)
+#define Fatal(fmt...)                                                                                                 \
+    do {                                                                                                              \
+        Error(fmt);                                                                                                   \
+        abort();                                                                                                      \
+    } while (0)
 
 /**
 **	Show warning.
 */
-#define Warning(fmt...)	Syslog(LOG_WARNING, fmt)
+#define Warning(fmt...) Syslog(LOG_WARNING, fmt)
 
 /**
 **	Show info.
 */
-#define Info(fmt...)	Syslog(LOG_INFO, fmt)
+#define Info(fmt...) Syslog(LOG_INFO, fmt)
 
 /**
 **	Show debug.
 */
 #ifdef DEBUG
-#define Debug(level, fmt...)	Syslog(level, fmt)
+#define Debug(level, fmt...) Syslog(level, fmt)
 #else
-#define Debug(level, fmt...)            /* disabled */
+#define Debug(level, fmt...) /* disabled */
 #endif
 
 #ifndef AV_NOPTS_VALUE
@@ -116,17 +118,16 @@ static inline void Syslog(const int level, const char *format, ...)
 **
 **	@param ts	dvb time stamp
 */
-static inline const char *Timestamp2String(int64_t ts)
-{
+static inline const char *Timestamp2String(int64_t ts) {
     static char buf[4][16];
     static int idx;
 
-    if (ts == (int64_t) AV_NOPTS_VALUE) {
+    if (ts == (int64_t)AV_NOPTS_VALUE) {
         return "--:--:--.---";
     }
     idx = (idx + 1) % 3;
     snprintf(buf[idx], sizeof(buf[idx]), "%2d:%02d:%02d.%03d", (int)(ts / (90 * 3600000)),
-        (int)((ts / (90 * 60000)) % 60), (int)((ts / (90 * 1000)) % 60), (int)((ts / 90) % 1000));
+             (int)((ts / (90 * 60000)) % 60), (int)((ts / (90 * 1000)) % 60), (int)((ts / 90) % 1000));
 
     return buf[idx];
 }
@@ -136,8 +137,7 @@ static inline const char *Timestamp2String(int64_t ts)
 **
 **	@returns ticks in ms,
 */
-static inline uint32_t GetMsTicks(void)
-{
+static inline uint32_t GetMsTicks(void) {
 #ifdef CLOCK_MONOTONIC
     struct timespec tspec;
 
@@ -153,14 +153,13 @@ static inline uint32_t GetMsTicks(void)
 #endif
 }
 
-static inline uint64_t GetusTicks(void)
-{
+static inline uint64_t GetusTicks(void) {
 
 #ifdef CLOCK_MONOTONIC
     struct timespec tspec;
 
     clock_gettime(CLOCK_MONOTONIC, &tspec);
-    return (uint64_t) (tspec.tv_sec * 1000000) + (tspec.tv_nsec);
+    return (uint64_t)(tspec.tv_sec * 1000000) + (tspec.tv_nsec);
 #else
     struct timeval tval;
 

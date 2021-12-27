@@ -1,7 +1,7 @@
 ///
 /// @file video.h   @brief Video module header file
 ///
-/// Copyright (c) 2009 - 2015 by Johns.  All Rights Reserved.
+/// Copyright (c) 2009 - 2015 by Johns.	 All Rights Reserved.
 ///
 /// Contributor(s):
 ///
@@ -40,11 +40,12 @@ typedef struct __video_stream__ VideoStream;
 //  Variables
 //----------------------------------------------------------------------------
 
-extern signed char VideoHardwareDecoder;    ///< flag use hardware decoder
-extern char VideoIgnoreRepeatPict;      ///< disable repeat pict warning
-extern int VideoAudioDelay;             ///< audio/video delay
-extern char ConfigStartX11Server;       ///< flag start the x11 server
+extern signed char VideoHardwareDecoder; ///< flag use hardware decoder
+extern char VideoIgnoreRepeatPict;       ///< disable repeat pict warning
+extern int VideoAudioDelay;              ///< audio/video delay
+extern char ConfigStartX11Server;        ///< flag start the x11 server
 extern char MyConfigDir[];
+
 //----------------------------------------------------------------------------
 //  Prototypes
 //----------------------------------------------------------------------------
@@ -224,11 +225,11 @@ extern void VideoGetStats(VideoHwDecoder *, int *, int *, int *, int *, float *,
 /// Get video stream size
 extern void VideoGetVideoSize(VideoHwDecoder *, int *, int *, int *, int *);
 
-extern void VideoOsdInit(void);         ///< Setup osd.
-extern void VideoOsdExit(void);         ///< Cleanup osd.
+extern void VideoOsdInit(void); ///< Setup osd.
+extern void VideoOsdExit(void); ///< Cleanup osd.
 
-extern void VideoInit(const char *);    ///< Setup video module.
-extern void VideoExit(void);            ///< Cleanup and exit video module.
+extern void VideoInit(const char *); ///< Setup video module.
+extern void VideoExit(void);         ///< Cleanup and exit video module.
 
 /// Poll video input buffers.
 extern int VideoPollInput(VideoStream *);

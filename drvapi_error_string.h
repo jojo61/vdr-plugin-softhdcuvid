@@ -14,12 +14,11 @@
 #define _DRVAPI_ERROR_STRING_H_
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Error Code string definitions here
-typedef struct
-{
+typedef struct {
     char const *error_string;
     unsigned int error_id;
 } s_CudaErrorStr;
@@ -62,30 +61,30 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
     /**
      * This indicates profiling APIs are called while application is running
      * in visual profiler mode.
-    */
+     */
     {"CUDA_ERROR_PROFILER_DISABLED", 5},
 
     /**
      * This indicates profiling has not been initialized for this context.
      * Call cuProfilerInitialize() to resolve this.
-    */
+     */
     {"CUDA_ERROR_PROFILER_NOT_INITIALIZED", 6},
 
     /**
      * This indicates profiler has already been started and probably
      * cuProfilerStart() is incorrectly called.
-    */
+     */
     {"CUDA_ERROR_PROFILER_ALREADY_STARTED", 7},
 
     /**
      * This indicates profiler has already been stopped and probably
      * cuProfilerStop() is incorrectly called.
-    */
+     */
     {"CUDA_ERROR_PROFILER_ALREADY_STOPPED", 8},
 
     /**
-     * This indicates that no CUDA-capable devices were detected by the installed
-     * CUDA driver.
+     * This indicates that no CUDA-capable devices were detected by the
+     * installed CUDA driver.
      */
     {"CUDA_ERROR_NO_DEVICE (no CUDA-capable devices were detected)", 100},
 
@@ -207,9 +206,9 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
     {"CUDA_ERROR_INVALID_GRAPHICS_CONTEXT", 219},
 
     /**
-    * This indicates that an uncorrectable NVLink error was detected during the
-    * execution.
-    */
+     * This indicates that an uncorrectable NVLink error was detected during the
+     * execution.
+     */
     {"CUDA_ERROR_NVLINK_UNCORRECTABLE", 220},
 
     /**
@@ -256,18 +255,19 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
 
     /**
      * This indicates that asynchronous operations issued previously have not
-     * completed yet. This result is not actually an error, but must be indicated
-     * differently than ::CUDA_SUCCESS (which indicates completion). Calls that
-     * may return this value include ::cuEventQuery() and ::cuStreamQuery().
+     * completed yet. This result is not actually an error, but must be
+     * indicated differently than ::CUDA_SUCCESS (which indicates completion).
+     * Calls that may return this value include ::cuEventQuery() and
+     * ::cuStreamQuery().
      */
     {"CUDA_ERROR_NOT_READY", 600},
 
     /**
      * While executing a kernel, the device encountered a
      * load or store instruction on an invalid memory address.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
-     * and relaunched.
+     * This leaves the process in an inconsistent state and any further CUDA
+     * work will return the same error. To continue using CUDA, the process must
+     * be terminated and relaunched.
      */
     {"CUDA_ERROR_ILLEGAL_ADDRESS", 700},
 
@@ -342,8 +342,8 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
     {"CUDA_ERROR_TOO_MANY_PEERS", 711},
 
     /**
-     * This error indicates that the memory range passed to ::cuMemHostRegister()
-     * has already been registered.
+     * This error indicates that the memory range passed to
+     * ::cuMemHostRegister() has already been registered.
      */
     {"CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED", 712},
 
@@ -356,25 +356,25 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
     /**
      * While executing a kernel, the device encountered a stack error.
      * This can be due to stack corruption or exceeding the stack size limit.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
-     * and relaunched.
+     * This leaves the process in an inconsistent state and any further CUDA
+     * work will return the same error. To continue using CUDA, the process must
+     * be terminated and relaunched.
      */
     {"CUDA_ERROR_HARDWARE_STACK_ERROR", 714},
 
     /**
      * While executing a kernel, the device encountered an illegal instruction.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
-     * and relaunched.
+     * This leaves the process in an inconsistent state and any further CUDA
+     * work will return the same error. To continue using CUDA, the process must
+     * be terminated and relaunched.
      */
     {"CUDA_ERROR_ILLEGAL_INSTRUCTION", 715},
 
     /**
-     * While executing a kernel, the device encountered a load or store instruction
-     * on a memory address which is not aligned.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
+     * While executing a kernel, the device encountered a load or store
+     * instruction on a memory address which is not aligned. This leaves the
+     * process in an inconsistent state and any further CUDA work will return
+     * the same error. To continue using CUDA, the process must be terminated
      * and relaunched.
      */
     {"CUDA_ERROR_MISALIGNED_ADDRESS", 716},
@@ -384,17 +384,17 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
      * which can only operate on memory locations in certain address spaces
      * (global, shared, or local), but was supplied a memory address not
      * belonging to an allowed address space.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
-     * and relaunched.
+     * This leaves the process in an inconsistent state and any further CUDA
+     * work will return the same error. To continue using CUDA, the process must
+     * be terminated and relaunched.
      */
     {"CUDA_ERROR_INVALID_ADDRESS_SPACE", 717},
 
     /**
-     * While executing a kernel, the device program counter wrapped its address space.
-     * This leaves the process in an inconsistent state and any further CUDA work
-     * will return the same error. To continue using CUDA, the process must be terminated
-     * and relaunched.
+     * While executing a kernel, the device program counter wrapped its address
+     * space. This leaves the process in an inconsistent state and any further
+     * CUDA work will return the same error. To continue using CUDA, the process
+     * must be terminated and relaunched.
      */
     {"CUDA_ERROR_INVALID_PC", 718},
 
@@ -409,11 +409,13 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
     {"CUDA_ERROR_LAUNCH_FAILED", 719},
 
     /**
-     * This error indicates that the number of blocks launched per grid for a kernel that was
-     * launched via either ::cuLaunchCooperativeKernel or ::cuLaunchCooperativeKernelMultiDevice
-     * exceeds the maximum number of blocks as allowed by ::cuOccupancyMaxActiveBlocksPerMultiprocessor
-     * or ::cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors
-     * as specified by the device attribute ::CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT.
+     * This error indicates that the number of blocks launched per grid for a
+     * kernel that was launched via either ::cuLaunchCooperativeKernel or
+     * ::cuLaunchCooperativeKernelMultiDevice exceeds the maximum number of
+     * blocks as allowed by ::cuOccupancyMaxActiveBlocksPerMultiprocessor or
+     * ::cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number
+     * of multiprocessors as specified by the device attribute
+     * ::CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT.
      */
     {"CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE", 720},
 
@@ -432,13 +434,11 @@ s_CudaErrorStr sCudaDrvErrorString[] = {
      * This indicates that an unknown internal error has occurred.
      */
     {"CUDA_ERROR_UNKNOWN", 999},
-    {NULL, -1}
-};
+    {NULL, -1}};
 
 // This is just a linear search through the array, since the error_id's are not
 // always ocurring consecutively
-static inline const char *getCudaDrvErrorString(CUresult error_id)
-{
+static inline const char *getCudaDrvErrorString(CUresult error_id) {
     int index = 0;
 
     while (sCudaDrvErrorString[index].error_id != error_id && (int)sCudaDrvErrorString[index].error_id != -1) {

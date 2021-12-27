@@ -27,16 +27,15 @@
 //  Defines
 //----------------------------------------------------------------------------
 
-#define CodecPCM 0x01                   ///< PCM bit mask
-#define CodecMPA 0x02                   ///< MPA bit mask (planned)
-#define CodecAC3 0x04                   ///< AC-3 bit mask
-#define CodecEAC3 0x08                  ///< E-AC-3 bit mask
-#define CodecDTS 0x10                   ///< DTS bit mask (planned)
+#define CodecPCM 0x01  ///< PCM bit mask
+#define CodecMPA 0x02  ///< MPA bit mask (planned)
+#define CodecAC3 0x04  ///< AC-3 bit mask
+#define CodecEAC3 0x08 ///< E-AC-3 bit mask
+#define CodecDTS 0x10  ///< DTS bit mask (planned)
 
 #define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000
 
-enum HWAccelID
-{
+enum HWAccelID {
     HWACCEL_NONE = 0,
     HWACCEL_AUTO,
     HWACCEL_VDPAU,
@@ -53,19 +52,18 @@ extern AVBufferRef *hw_device_ctx;
 ///
 /// Video decoder structure.
 ///
-struct _video_decoder_
-{
-    VideoHwDecoder *HwDecoder;          ///< video hardware decoder
+struct _video_decoder_ {
+    VideoHwDecoder *HwDecoder; ///< video hardware decoder
 
-    int GetFormatDone;                  ///< flag get format called!
-    AVCodec *VideoCodec;                ///< video codec
-    AVCodecContext *VideoCtx;           ///< video codec context
+    int GetFormatDone;        ///< flag get format called!
+    AVCodec *VideoCodec;      ///< video codec
+    AVCodecContext *VideoCtx; ///< video codec context
     // #ifdef FFMPEG_WORKAROUND_ARTIFACTS
-    int FirstKeyFrame;                  ///< flag first frame
+    int FirstKeyFrame; ///< flag first frame
     // #endif
-    // AVFrame *Frame;             ///< decoded video frame
+    // AVFrame *Frame;		   ///< decoded video frame
 
-    int filter;                         // flag for deint filter
+    int filter; // flag for deint filter
 
     /* hwaccel options */
     enum HWAccelID hwaccel_id;
@@ -75,9 +73,9 @@ struct _video_decoder_
     /* hwaccel context */
     enum HWAccelID active_hwaccel_id;
     void *hwaccel_ctx;
-    void (*hwaccel_uninit)(AVCodecContext * s);
-    int (*hwaccel_get_buffer)(AVCodecContext * s, AVFrame * frame, int flags);
-    int (*hwaccel_retrieve_data)(AVCodecContext * s, AVFrame * frame);
+    void (*hwaccel_uninit)(AVCodecContext *s);
+    int (*hwaccel_get_buffer)(AVCodecContext *s, AVFrame *frame, int flags);
+    int (*hwaccel_retrieve_data)(AVCodecContext *s, AVFrame *frame);
     enum AVPixelFormat hwaccel_pix_fmt;
     enum AVPixelFormat hwaccel_retrieved_pix_fmt;
     AVBufferRef *hw_frames_ctx;
@@ -87,7 +85,6 @@ struct _video_decoder_
     double cached_hdr_peak;
     // From VO
     struct mp_hwdec_devices *hwdec_devs;
-
 };
 
 //----------------------------------------------------------------------------

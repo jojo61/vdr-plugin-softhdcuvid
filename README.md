@@ -83,10 +83,10 @@ You have to adapt the Makefile. There are 3 possible Version that you can build:
     This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
     I recommend to use libplacebo and set LIBPLACEBO_GL=1 in the Makefile.
-    
+
     Libplacebo API Version >= 113 is needed.
-    
-    
+
+
 Install:
 --------
 	1a) git
@@ -125,22 +125,22 @@ Beginners Guide for libplacebo:
     in rare cases.
 
     All other settings can be in their default state.
-    
+
     Beginning with libplacebo API 58 user shaders from mpv are supported. Use -S parameter to set the shader.
-    The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is 
-    provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start  
+    The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is
+    provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start
     vdr -P 'softhdcuvid -S filmgrain.glsl ...'
-    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect 
+    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect
     picture for me.
-    
-    You can also use a custon LUT File. It is located in $ConfigDir/shaders/lut/lut.cube. If you provide there 
+
+    You can also use a custon LUT File. It is located in $ConfigDir/shaders/lut/lut.cube. If you provide there
     a lut file it will be automaticly used. In the Mainmenue you can switch LUT on and off.
-    
+
 Konfig Guide for softhddrm Version
 ----------------------------------
     You should set the Monitor Type to HD TV or UHD-HDR TV depending on your TV Set
     With softhddrm and a HDR TV Set you can view HDR-HLG content. This is tested with Kernel 5.12 and a Intel NUC.
-    
+
 
 
 Setup:	environment

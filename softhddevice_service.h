@@ -1,7 +1,7 @@
 ///
 /// @file softhddev_service.h @brief software HD device service header file.
 ///
-/// Copyright (c) 2012 by durchflieger.  All Rights Reserved.
+/// Copyright (c) 2012 by durchflieger.	 All Rights Reserved.
 ///
 /// Contributor(s):
 ///
@@ -22,15 +22,13 @@
 
 #pragma once
 
-#define ATMO_GRAB_SERVICE	"SoftHDDevice-AtmoGrabService-v1.0"
-#define ATMO1_GRAB_SERVICE	"SoftHDDevice-AtmoGrabService-v1.1"
-#define OSD_3DMODE_SERVICE	"SoftHDDevice-Osd3DModeService-v1.0"
+#define ATMO_GRAB_SERVICE "SoftHDDevice-AtmoGrabService-v1.0"
+#define ATMO1_GRAB_SERVICE "SoftHDDevice-AtmoGrabService-v1.1"
+#define OSD_3DMODE_SERVICE "SoftHDDevice-Osd3DModeService-v1.0"
 
-enum
-{ GRAB_IMG_RGBA_FORMAT_B8G8R8A8 };
+enum { GRAB_IMG_RGBA_FORMAT_B8G8R8A8 };
 
-typedef struct
-{
+typedef struct {
     int structSize;
 
     // request data
@@ -45,13 +43,11 @@ typedef struct
     void *img;
 } SoftHDDevice_AtmoGrabService_v1_0_t;
 
-typedef struct
-{
+typedef struct {
     int Mode;
 } SoftHDDevice_Osd3DModeService_v1_0_t;
 
-typedef struct
-{
+typedef struct {
     // request/reply data
 
     int width;

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2020-04-15 18:57+0200\n"
+"POT-Creation-Date: 2021-12-27 13:13+0100\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -408,13 +408,16 @@ msgstr ""
 msgid "Hue (-314..314) "
 msgstr ""
 
-msgid "Monitor Colorspace"
+msgid "Temperature 6500K + x * 100K"
 msgstr ""
 
 msgid "Color Blindness"
 msgstr ""
 
 msgid "Color Correction (-100..100) "
+msgstr ""
+
+msgid "Monitor Type"
 msgstr ""
 
 msgid "Scaling"
@@ -574,14 +577,14 @@ msgstr ""
 msgid "Suspend SoftHdDevice"
 msgstr "Unterbreche SoftHdDevice"
 
+msgid "Toggle LUT on/off"
+msgstr ""
+
 msgid "PIP toggle on/off: off"
 msgstr "PIP deaktivieren"
 
 msgid "PIP toggle on/off: on"
 msgstr "PIP aktivieren"
-
-msgid "PIP zapmode (not working)"
-msgstr ""
 
 msgid "PIP channel +"
 msgstr "PIP Kanal +"
@@ -713,6 +716,10 @@ msgid "[softhddev] invalid still video packet\n"
 msgstr ""
 
 msgid "[softhddev] no codec known for still picture\n"
+msgstr ""
+
+#, c-format
+msgid "Too much shaders definded\n"
 msgstr ""
 
 #, c-format
@@ -884,6 +891,9 @@ msgstr ""
 msgid "Failed initializing libplacebo\n"
 msgstr ""
 
+msgid "Failed to create placebo opengl \n"
+msgstr ""
+
 msgid "Failed to create XCB Surface\n"
 msgstr ""
 
@@ -891,6 +901,9 @@ msgid "Failed to create Vulkan Device"
 msgstr ""
 
 msgid "Failed creating vulkan swapchain!"
+msgstr ""
+
+msgid "libplacebo: failed initializing swapchain\n"
 msgstr ""
 
 msgid "Failed initializing libplacebo renderer\n"

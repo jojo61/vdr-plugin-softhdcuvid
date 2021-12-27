@@ -1,6 +1,6 @@
 #
 # Makefile for a Video Disk Recorder plugin
-# 
+#
 # $Id: 2a41981a57e5e83036463c6a08c84b86ed9d2be3 $
 
 # The official name of this plugin.
@@ -11,7 +11,7 @@
 ### Configuration (edit this for your needs)
 #  comment out if not needed
 
-# what kind of decoder do we make - 
+# what kind of decoder do we make -
 # if VAAPI is enabled the pluginname is softhdvaapi
 # if CUVID is enabled the pluginname is softhdcuvid
 # if DRM   is enabled the pluginname is softhddrm
@@ -19,28 +19,21 @@ VAAPI ?= 0
 CUVID ?= 0
 
 # if you enable DRM then the plugin will only run without X server
-# only valid for VAAPI 
+# only valid for VAAPI
 DRM ?= 0
 
-
-# use libplacebo - 
-# available for all decoders but for DRM you need LIBPLACEBO_GL  
+# use libplacebo -
+# available for all decoders but for DRM you need LIBPLACEBO_GL
 LIBPLACEBO ?= 1
 LIBPLACEBO_GL ?= 0
 
 # use YADIF deint - only available with cuvid
-#YADIF=1
+#YADIF = 1
 
 # use gamma correction
 #GAMMA ?= 0
 
-
-
-CONFIG :=  -DDEBUG 		# remove # to enable debug output
-
-
-
-
+CONFIG := -DDEBUG 		# remove '#' to enable debug output
 
 
 #--------------------- no more config needed past this point--------------------------------
@@ -76,9 +69,9 @@ endif
 
 endif # MAKECMDGOALS!=indent
 endif # MAKECMDGOALS!=clean
+
+
 #--------------------------
-
-
 
 PLUGIN = softhdcuvid
 
@@ -136,7 +129,7 @@ TMPDIR ?= /tmp
 
 ### The compiler options:
 
-export CFLAGS	= $(call PKGCFG,cflags) 
+export CFLAGS	= $(call PKGCFG,cflags)
 export CXXFLAGS = $(call PKGCFG,cxxflags)
 
 ifeq ($(CFLAGS),)
@@ -153,8 +146,6 @@ APIVERSION = $(call PKGCFG,apiversion)
 ### Allow user defined options to overwrite defaults:
 
 -include $(PLGCFG)
-
-
 
 ### Parse softhddevice config
 
@@ -180,29 +171,29 @@ endif
 ifeq ($(OPENGL),1)
 CONFIG += -DUSE_GLX
 _CFLAGS += $(shell pkg-config --cflags gl glu glew)
-#LIBS += $(shell pkg-config --libs glu  glew)
+#LIBS += $(shell pkg-config --libs glu glew)
 _CFLAGS += $(shell pkg-config --cflags freetype2)
 LIBS   += $(shell pkg-config --libs freetype2)
 endif
 
 ifeq ($(VAAPI),1)
-CONFIG += -DVAAPI 
+CONFIG += -DVAAPI
 #LIBPLACEBO=1
 PLUGIN = softhdvaapi
 endif
 
 ifeq ($(LIBPLACEBO_GL),1)
 CONFIG += -DPLACEBO_GL -DPLACEBO
-LIBS += -lepoxy  
-LIBS += -lplacebo 
+LIBS += -lepoxy
+LIBS += -lplacebo
 else
-LIBS += -lEGL  
+LIBS += -lEGL
 endif
 
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
-LIBS += -lEGL  
-LIBS += -lplacebo 
+LIBS += -lEGL
+LIBS += -lplacebo
 endif
 
 ifeq ($(DRM),1)
@@ -212,20 +203,18 @@ _CFLAGS += $(shell pkg-config --cflags libdrm)
 LIBS += -lgbm -ldrm -lEGL
 endif
 
-
 ifeq ($(CUVID),1)
 #CONFIG += -DUSE_PIP			# PIP support
 CONFIG += -DCUVID			# enable CUVID decoder
-LIBS += -lEGL -lGL 
+LIBS += -lEGL -lGL
 ifeq ($(YADIF),1)
 CONFIG += -DYADIF			# Yadif only with CUVID
 endif
 endif
 
 ifeq ($(GAMMA),1)
-CONFIG  += -DGAMMA
+CONFIG += -DGAMMA
 endif
-
 
 ARCHIVE = $(PLUGIN)-$(VERSION)
 PACKAGE = vdr-$(ARCHIVE)
@@ -234,9 +223,8 @@ PACKAGE = vdr-$(ARCHIVE)
 
 SOFILE = libvdr-$(PLUGIN).so
 
-
 #
-# Test that libswresample is available 
+# Test that libswresample is available
 #
 #ifneq (exists, $(shell pkg-config libswresample && echo exists))
 #  $(warning ******************************************************************)
@@ -245,7 +233,7 @@ SOFILE = libvdr-$(PLUGIN).so
 #endif
 
 #
-# Test and set config for libavutil 
+# Test and set config for libavutil
 #
 ifneq (exists, $(shell pkg-config libavutil && echo exists))
   $(warning ******************************************************************)
@@ -256,7 +244,7 @@ _CFLAGS += $(shell pkg-config --cflags libavutil)
 LIBS += $(shell pkg-config --libs libavutil)
 
 #
-# Test and set config for libswscale 
+# Test and set config for libswscale
 #
 ifneq (exists, $(shell pkg-config libswscale && echo exists))
   $(warning ******************************************************************)
@@ -296,8 +284,8 @@ endif
 
 #_CFLAGS += $(shell pkg-config --cflags libavcodec x11 x11-xcb xcb xcb-icccm)
 #LIBS += -lrt $(shell pkg-config --libs libavcodec x11 x11-xcb xcb xcb-icccm)
-_CFLAGS += $(shell pkg-config --cflags  x11 x11-xcb xcb xcb-icccm)
-LIBS += -lrt $(shell pkg-config --libs  x11 x11-xcb xcb xcb-icccm)
+_CFLAGS += $(shell pkg-config --cflags x11 x11-xcb xcb xcb-icccm)
+LIBS += -lrt $(shell pkg-config --libs x11 x11-xcb xcb xcb-icccm)
 
 _CFLAGS += -I./opengl -I./
 
@@ -305,10 +293,11 @@ LIBS += -L/usr/lib64
 
 
 ifeq ($(CUVID),1)
-LIBS +=  -lcuda  -lnvcuvid  
+LIBS += -lcuda -lnvcuvid
 endif
 
-LIBS += -lGLEW -lGLU  -ldl -lglut 
+LIBS += -lGLEW -lGLU  -ldl -lglut
+
 ### Includes and Defines (add further entries here):
 
 INCLUDES +=
@@ -319,16 +308,15 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE $(CONFIG) \
 ### Make it standard
 
 override CXXFLAGS += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
-    -g  -W -Wextra -Winit-self -Werror=overloaded-virtual  -Wno-unused-parameter 
+    -g -W -Wextra -Werror=overloaded-virtual -Wno-unused-parameter
 override CFLAGS	  += $(_CFLAGS) $(DEFINES) $(INCLUDES) \
-    -g -W  -Wextra -Winit-self  -std=gnu99
-
+    -g -W -Wextra
 
 ### The object files (add further files here):
 
-OBJS = softhdcuvid.o softhddev.o video.o audio.o codec.o ringbuffer.o openglosd.o 
+OBJS = softhdcuvid.o softhddev.o video.o audio.o codec.o ringbuffer.o openglosd.o
 ifeq ($(GAMMA),1)
-OBJS += colorramp.o 
+OBJS += colorramp.o
 ifeq ($(DRM),1)
 OBJS += gamma-drm.o
 else
@@ -383,9 +371,8 @@ install-i18n: $(I18Nmsgs)
 
 $(OBJS): Makefile
 
-
 $(SOFILE): $(OBJS) shaders.h
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(OBJS) $(LIBS)  -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared  $(OBJS) $(LIBS) -o $@
 
 install-lib: $(SOFILE)
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
@@ -404,16 +391,13 @@ clean:
 	@-rm -f $(PODIR)/*.mo $(PODIR)/*.pot
 	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
 
-## Private Targets:
-
-HDRS=	$(wildcard *.h)
-
+HDRS = $(wildcard *.h)
 indent:
 	for i in $(SRCS) $(HDRS); do \
-		indent $$i; \
-		unexpand -a $$i | sed -e s/constconst/const/ > $$i.up; \
-		mv $$i.up $$i; \
+	  clang-format -i $$i; \
 	done
+
+## Private Targets:
 
 video_test: video.c Makefile
 	$(CC) -DVIDEO_TEST -DVERSION='"$(VERSION)"' $(CFLAGS) $(LDFLAGS) $< \
