@@ -393,7 +393,7 @@ clean:
 
 HDRS = $(wildcard *.h)
 indent:
-	for i in $(SRCS) $(HDRS); do \
+	for i in $(SRCS) drm.c hdr.c $(HDRS); do \
 	  clang-format -i $$i; \
 	done
 
