@@ -139,6 +139,7 @@ typedef enum
 #include <GL/freeglut_ext.h>
 #endif
 
+#include <libavcodec/avcodec.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/mastering_display_metadata.h>
 #include <libavutil/pixdesc.h>
@@ -154,7 +155,9 @@ typedef enum
 #ifdef VAAPI
 
 #include <va/va_drmcommon.h>
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57,74,100)
 #include <libavcodec/vaapi.h>
+#endif
 #include <libdrm/drm_fourcc.h>
 #ifdef RASPI
 #include <libavutil/hwcontext_drm.h>
@@ -193,7 +196,6 @@ typedef void *EGLImageKHR;
 #include <libplacebo/renderer.h>
 #endif
 
-#include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 
 #if defined(YADIF) || defined (VAAPI)
