@@ -36,10 +36,6 @@
 #define USE_AUDIO_DRIFT_CORRECTION
 /// compile AC-3 audio drift correction support (very experimental)
 #define USE_AC3_DRIFT_CORRECTION
-/// use ffmpeg libswresample API (autodected, Makefile)
-#define noUSE_SWRESAMPLE
-/// use libav libavresample API (autodected, Makefile)
-#define noUSE_AVRESAMPLE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,17 +58,8 @@
 #include <libavutil/mem.h>
 #include <libavutil/opt.h>
 
-#ifdef USE_SWRESAMPLE
 #include <libswresample/swresample.h>
-#endif
-#ifdef USE_AVRESAMPLE
-#include <libavresample/avresample.h>
-#include <libavutil/opt.h>
-#endif
 
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
 #include <pthread.h>
 
 // clang-format off
@@ -672,18 +659,8 @@ struct _audio_decoder_ {
     int HwSampleRate; ///< hw sample rate
     int HwChannels;   ///< hw channels
 
-    AVFrame *Frame; ///< decoded audio frame buffer
-
-#ifdef USE_SWRESAMPLE
-#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(0, 15, 100)
-    struct SwrContext *Resample; ///< ffmpeg software resample context
-#else
+    AVFrame *Frame;       ///< decoded audio frame buffer
     SwrContext *Resample; ///< ffmpeg software resample context
-#endif
-#endif
-#ifdef USE_AVRESAMPLE
-    AVAudioResampleContext *Resample; ///< libav software resample context
-#endif
 
     uint16_t Spdif[24576 / 2]; ///< SPDIF output buffer
     int SpdifIndex;            ///< index into SPDIF output buffer
@@ -810,16 +787,9 @@ void CodecAudioOpen(AudioDecoder *audio_decoder, int codec_id) {
 void CodecAudioClose(AudioDecoder *audio_decoder) {
     // FIXME: output any buffered data
 
-#ifdef USE_SWRESAMPLE
     if (audio_decoder->Resample) {
         swr_free(&audio_decoder->Resample);
     }
-#endif
-#ifdef USE_AVRESAMPLE
-    if (audio_decoder->Resample) {
-        avresample_free(&audio_decoder->Resample);
-    }
-#endif
     if (audio_decoder->AudioCtx) {
         pthread_mutex_lock(&CodecLockMutex);
         avcodec_close(audio_decoder->AudioCtx);
@@ -1094,8 +1064,6 @@ static int CodecAudioPassthroughHelper(AudioDecoder *audio_decoder, const AVPack
     return 0;
 }
 
-#if defined(USE_SWRESAMPLE) || defined(USE_AVRESAMPLE)
-
 /**
 **  Set/update audio pts clock.
 **
@@ -1175,7 +1143,6 @@ static void CodecAudioSetClock(AudioDecoder *audio_decoder, int64_t pts) {
         }
     }
 
-#ifdef USE_SWRESAMPLE
     if (audio_decoder->Resample && audio_decoder->DriftCorr) {
         int distance;
 
@@ -1189,17 +1156,6 @@ static void CodecAudioSetClock(AudioDecoder *audio_decoder, int64_t pts) {
             Debug(3, "codec/audio: swr_set_compensation failed\n");
         }
     }
-#endif
-#ifdef USE_AVRESAMPLE
-    if (audio_decoder->Resample && audio_decoder->DriftCorr) {
-        int distance;
-
-        distance = (pts_diff * audio_decoder->HwSampleRate) / (900 * 1000);
-        if (avresample_set_compensation(audio_decoder->Resample, audio_decoder->DriftCorr / 10, distance)) {
-            Debug(3, "codec/audio: swr_set_compensation failed\n");
-        }
-    }
-#endif
     if (1) {
         static int c;
 
@@ -1239,7 +1195,6 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
     }
 #endif
 
-#ifdef USE_SWRESAMPLE
     audio_decoder->Resample = swr_alloc_set_opts(audio_decoder->Resample, audio_ctx->channel_layout, AV_SAMPLE_FMT_S16,
                                                  audio_decoder->HwSampleRate, audio_ctx->channel_layout,
                                                  audio_ctx->sample_fmt, audio_ctx->sample_rate, 0, NULL);
@@ -1248,27 +1203,6 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
     } else {
         Error(_("codec/audio: can't setup resample\n"));
     }
-#endif
-#ifdef USE_AVRESAMPLE
-    if (!(audio_decoder->Resample = avresample_alloc_context())) {
-        Error(_("codec/audio: can't setup resample\n"));
-        return;
-    }
-
-    av_opt_set_int(audio_decoder->Resample, "in_channel_layout", audio_ctx->channel_layout, 0);
-    av_opt_set_int(audio_decoder->Resample, "in_sample_fmt", audio_ctx->sample_fmt, 0);
-    av_opt_set_int(audio_decoder->Resample, "in_sample_rate", audio_ctx->sample_rate, 0);
-    av_opt_set_int(audio_decoder->Resample, "out_channel_layout", audio_ctx->channel_layout, 0);
-    av_opt_set_int(audio_decoder->Resample, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-    av_opt_set_int(audio_decoder->Resample, "out_sample_rate", audio_decoder->HwSampleRate, 0);
-
-    if (avresample_open(audio_decoder->Resample)) {
-        avresample_free(&audio_decoder->Resample);
-        audio_decoder->Resample = NULL;
-        Error(_("codec/audio: can't open resample\n"));
-        return;
-    }
-#endif
 }
 
 /**
@@ -1339,8 +1273,6 @@ void CodecAudioDecode(AudioDecoder *audio_decoder, const AVPacket *avpkt) {
         }
     }
 }
-
-#endif
 
 /**
 **  Flush the audio decoder.

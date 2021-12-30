@@ -54,7 +54,7 @@ endif
 
 ifeq ($(CUVID),1)
 ifeq ($(DRM),1)
-$(error Missmatch in Plugin selection)
+$(error Mismatch in Plugin selection)
 exit 1;
 endif
 endif
@@ -62,7 +62,7 @@ endif
 
 ifeq ($(CUVID),1)
 ifeq ($(VAAPI),1)
-$(error Missmatch in Plugin selection)
+$(error Mismatch in Plugin selection)
 exit 1;
 endif
 endif
@@ -78,25 +78,10 @@ PLUGIN = softhdcuvid
 # support OPENGLOSD always needed
 OPENGLOSD=1
 
-# support alsa audio output module
-ALSA ?= $(shell pkg-config --exists alsa && echo 1)
-    # support OSS audio output module
-OSS ?= 1
-
 # use DMPS
 SCREENSAVER=1
 
 OPENGL=1
-
-# use ffmpeg libswresample
-SWRESAMPLE ?= $(shell pkg-config --exists libswresample && echo 1)
-SWRESAMPLE = 1
-
-# use libav libavresample
-#ifneq ($(SWRESAMPLE),1)
-#AVRESAMPLE ?= $(shell pkg-config --exists libavresample && echo 1#)
-#AVRESAMPLE = 1
-#endif
 
 CONFIG += -DHAVE_GL			# needed for mpv libs
 #CONFIG += -DSTILL_DEBUG=2		# still picture debug verbose level
@@ -148,16 +133,6 @@ APIVERSION = $(call PKGCFG,apiversion)
 -include $(PLGCFG)
 
 ### Parse softhddevice config
-
-ifeq ($(ALSA),1)
-CONFIG += -DUSE_ALSA
-_CFLAGS += $(shell pkg-config --cflags alsa)
-LIBS += $(shell pkg-config --libs alsa)
-endif
-
-ifeq ($(OSS),1)
-CONFIG += -DUSE_OSS
-endif
 
 ifeq ($(OPENGL),1)
 #_CFLAGS += $(shell pkg-config --cflags libva-glx)
@@ -226,11 +201,13 @@ SOFILE = libvdr-$(PLUGIN).so
 #
 # Test that libswresample is available
 #
-#ifneq (exists, $(shell pkg-config libswresample && echo exists))
-#  $(warning ******************************************************************)
-#  $(warning 'libswresample' not found!)
-#  $(error ******************************************************************)
-#endif
+ifneq (exists, $(shell pkg-config libswresample && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'libswresample' not found!)
+  $(error ******************************************************************)
+endif
+_CFLAGS += $(shell pkg-config --cflags libswresample)
+LIBS += $(shell pkg-config --libs libswresample)
 
 #
 # Test and set config for libavutil
@@ -265,21 +242,21 @@ endif
 _CFLAGS += $(shell pkg-config --cflags libavcodec)
 LIBS += $(shell pkg-config --libs libavcodec libavfilter)
 
+#
+# Test and set config for alsa
+#
+ifneq (exists, $(shell pkg-config alsa && echo exists))
+  $(warning ******************************************************************)
+  $(warning 'alsa' not found!)
+  $(error ******************************************************************)
+endif
+_CFLAGS += $(shell pkg-config --cflags alsa)
+LIBS += $(shell pkg-config --libs alsa)
 
 ifeq ($(SCREENSAVER),1)
 CONFIG += -DUSE_SCREENSAVER
 _CFLAGS += $(shell pkg-config --cflags xcb-screensaver xcb-dpms)
 LIBS += $(shell pkg-config --libs xcb-screensaver xcb-dpms)
-endif
-ifeq ($(SWRESAMPLE),1)
-CONFIG += -DUSE_SWRESAMPLE
-_CFLAGS += $(shell pkg-config --cflags libswresample)
-LIBS += $(shell pkg-config --libs libswresample)
-endif
-ifeq ($(AVRESAMPLE),1)
-CONFIG += -DUSE_AVRESAMPLE
-_CFLAGS += $(shell pkg-config --cflags libavresample)
-LIBS += $(shell pkg-config --libs libavresample)
 endif
 
 #_CFLAGS += $(shell pkg-config --cflags libavcodec x11 x11-xcb xcb xcb-icccm)

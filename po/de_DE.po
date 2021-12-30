@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2021-12-27 13:13+0100\n"
+"POT-Creation-Date: 2021-12-30 10:23+0100\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -141,91 +141,6 @@ msgid "snd_pcm_drop(): %s\n"
 msgstr ""
 
 #, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_GETOSPACE): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: write error: %s\n"
-msgstr ""
-
-msgid "audio/oss: error not all bytes written\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_HALT_OUTPUT): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: error poll %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: using %sdevice '%s'\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: can't open dsp device '%s': %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(MIXER_WRITE): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: can't open mixer device '%s': %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SOUND_MIXER_READ_DEVMASK): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: channel '%s' not supported\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: channel '%s' not found\n"
-msgstr ""
-
-msgid "audio/oss: should not happen\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_GETODELAY): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_SETFMT): %s\n"
-msgstr ""
-
-msgid "audio/oss: device doesn't support 16 bit sample format.\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_CHANNELS): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: device doesn't support %d channels.\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_SPEED): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: device doesn't support %dHz sample rate.\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: ioctl(SNDCTL_DSP_POLICY): %s\n"
-msgstr ""
-
-#, c-format
-msgid "audio/oss: delay %ums\n"
-msgstr ""
-
-#, c-format
 msgid "audio: can't set channels %d sample-rate %dHz\n"
 msgstr ""
 
@@ -304,9 +219,6 @@ msgid "codec/audio: decoded data smaller than encoded\n"
 msgstr ""
 
 msgid "codec/audio: can't setup resample\n"
-msgstr ""
-
-msgid "codec/audio: can't open resample\n"
 msgstr ""
 
 msgid "A software and GPU emulated UHD device"
