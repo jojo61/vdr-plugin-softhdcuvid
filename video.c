@@ -3996,9 +3996,9 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         // Output scale
 #ifdef PLACEBO_GL
         target->crop.x0 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2 + 1;
-        target->crop.y1 = dst_video_rect.y0;
+        target->crop.y0 = VideoWindowHeight - dst_video_rect.y0;
         target->crop.x1 = dst_video_rect.x1;
-        target->crop.y0 = dst_video_rect.y1;
+        target->crop.y1 = VideoWindowHeight - dst_video_rect.y1;
 #else
         target->crop.x0 = dst_video_rect.x1 / 2 + dst_video_rect.x0 / 2 + 1;
         target->crop.y0 = dst_video_rect.y0;
@@ -4015,9 +4015,9 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
 #ifdef PLACEBO_GL
         target->crop.x0 = dst_video_rect.x0;
-        target->crop.y1 = dst_video_rect.y0;
+        target->crop.y0 = VideoWindowHeight - dst_video_rect.y0;
         target->crop.x1 = dst_video_rect.x1;
-        target->crop.y0 = dst_video_rect.y1;
+        target->crop.y1 = VideoWindowHeight - dst_video_rect.y1;
 #else
         target->crop.x0 = dst_video_rect.x0;
         target->crop.y0 = dst_video_rect.y0;
