@@ -25,14 +25,13 @@ A software and GPU emulated UHD output device plugin for VDR.
 
     o Video decoder CUVID or VAAPI
     o Video output opengl or DRM
-    o Audio FFMpeg / Alsa / Analog
-    o Audio FFMpeg / Alsa / Digital
-    o Audio FFMpeg / OSS / Analog
+    o Audio FFMpeg / ALSA / Analog
+    o Audio FFMpeg / ALSA / Digital
     o HDMI/SPDIF pass-through
     o Software volume, compression, normalize and channel resample
     o VDR ScaleVideo API
     o CUDA deinterlacer
-    o Suspend / Dettach
+    o Suspend / Detach
     o Support for ambilight
     o Support for Screencopy
     o PIP (Picture-in-Picture) (only for CUVID)
@@ -83,10 +82,10 @@ You have to adapt the Makefile. There are 3 possible Version that you can build:
     This is for INTEL cards and also uses Vaapi as decoder. It uses the DRM API for output and
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
     I recommend to use libplacebo and set LIBPLACEBO_GL=1 in the Makefile.
-    
+
     Libplacebo API Version >= 113 is needed.
-    
-    
+
+
 Install:
 --------
 	1a) git
@@ -95,9 +94,6 @@ Install:
 	cd vdr-plugin-softhdcuvid
 	make
 	make install
-
-	You can edit Makefile to enable/disable  Alsa / OSS
-	support.  The default is to autodetect as much as possible.
 
 	You have to start vdr with -P 'softhdcuvid -d :0.0  ..<more option>.. '
 
@@ -125,22 +121,22 @@ Beginners Guide for libplacebo:
     in rare cases.
 
     All other settings can be in their default state.
-    
+
     Beginning with libplacebo API 58 user shaders from mpv are supported. Use -S parameter to set the shader.
-    The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is 
-    provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start  
+    The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is
+    provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start
     vdr -P 'softhdcuvid -S filmgrain.glsl ...'
-    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect 
+    I use KrigBilateral for UV scaling and then adaptive-sharpen for sharpening. This results in a perfect
     picture for me.
-    
-    You can also use a custon LUT File. It is located in $ConfigDir/shaders/lut/lut.cube. If you provide there 
+
+    You can also use a custon LUT File. It is located in $ConfigDir/shaders/lut/lut.cube. If you provide there
     a lut file it will be automaticly used. In the Mainmenue you can switch LUT on and off.
-    
+
 Konfig Guide for softhddrm Version
 ----------------------------------
     You should set the Monitor Type to HD TV or UHD-HDR TV depending on your TV Set
     With softhddrm and a HDR TV Set you can view HDR-HLG content. This is tested with Kernel 5.12 and a Intel NUC.
-    
+
 
 
 Setup:	environment
@@ -148,27 +144,17 @@ Setup:	environment
 	Following is supported:
 
 	DISPLAY=:0.0
-		x11 display name
+		X11 display name
 
-    only if alsa is configured
+    ALSA configuration:
 	ALSA_DEVICE=default
-		alsa PCM device name
+		ALSA PCM device name
 	ALSA_PASSTHROUGH_DEVICE=
-		alsa pass-though (AC-3,E-AC-3,DTS,...) device name
+		ALSA pass-though (AC-3,E-AC-3,DTS,...) device name
 	ALSA_MIXER=default
-		alsa control device name
+		ALSA control device name
 	ALSA_MIXER_CHANNEL=PCM
-		alsa control channel name
-
-    only if oss is configured
-	OSS_AUDIODEV=/dev/dsp
-		oss dsp device name
-	OSS_PASSTHROUGHDEV=
-		oss pass-though (AC-3,E-AC-3,DTS,...) device name
-	OSS_MIXERDEV=/dev/mixer
-		oss mixer device name
-	OSS_MIXER_CHANNEL=pcm
-		oss mixer channel name
+		ALSA control channel name
 
 Setup: /etc/vdr/setup.conf
 ------
@@ -197,7 +183,7 @@ Setup: /etc/vdr/setup.conf
 	(only 0, 1, 4 supported with VA-API)
 
 	softhddevice.<res>.SkipChromaDeinterlace = 0
-	0 = disabled, 1 = enabled (for slower cards, poor qualität)
+	0 = disabled, 1 = enabled (for slower cards, poor qualitï¿½t)
 
 	softhddevice.<res>.InverseTelecine = 0
 	0 = disabled, 1 = enabled
@@ -336,10 +322,7 @@ Commandline:
 
 	Selects audio output module and device.
 	""		to disable audio output
-	/...		to use oss audio module (if compiled with oss
-			support)
-	other		to use alsa audio module (if compiled with alsa
-			support)
+	other		to use ALSA audio module
 
 SVDRP:
 ------

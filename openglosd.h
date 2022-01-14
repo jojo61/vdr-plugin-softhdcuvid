@@ -1,6 +1,7 @@
 #ifndef __SOFTHDDEVICE_OPENGLOSD_H
 #define __SOFTHDDEVICE_OPENGLOSD_H
 
+// clang-format off
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <GL/gl.h>
@@ -17,9 +18,9 @@
 #include FT_STROKER_H
 
 #undef __FTERRORS_H__
-#define FT_ERRORDEF( e, v, s )	{ e, s },
-#define FT_ERROR_START_LIST	{
-#define FT_ERROR_END_LIST	{ 0, 0 } };
+#define FT_ERRORDEF( e, v, s )  { e, s },
+#define FT_ERROR_START_LIST     {
+#define FT_ERROR_END_LIST       { 0, 0 } };
 const struct
 {
     int code;
@@ -36,17 +37,15 @@ extern "C"
 {
 #include <stdint.h>
 #include <libavcodec/avcodec.h>
-
 #include "audio.h"
 #include "video.h"
 #include "codec.h"
-
 }
+// clang-format on
 
 extern "C" pthread_mutex_t OSDMutex;
 
-struct sOglImage
-{
+struct sOglImage {
     GLuint texture;
     GLint width;
     GLint height;
@@ -54,54 +53,42 @@ struct sOglImage
 };
 
 /****************************************************************************************
-* Helpers
-****************************************************************************************/
+ * Helpers
+ ****************************************************************************************/
 
-void ConvertColor(const GLint & colARGB, glm::vec4 & col);
+void ConvertColor(const GLint &colARGB, glm::vec4 &col);
 
 /****************************************************************************************
-* cShader
-****************************************************************************************/
-enum eShaderType
-{
-    stRect,
-    stTexture,
-    stText,
-    stCount
-};
+ * cShader
+ ****************************************************************************************/
+enum eShaderType { stRect, stTexture, stText, stCount };
 
-class cShader
-{
+class cShader {
   private:
     eShaderType type;
     GLuint id;
     bool Compile(const char *vertexCode, const char *fragmentCode);
     bool CheckCompileErrors(GLuint object, bool program = false);
+
   public:
-     cShader(void)
-    {
-    };
-    virtual ~ cShader(void)
-    {
-    };
+    cShader(void){};
+    virtual ~cShader(void){};
     bool Load(eShaderType type);
     void Use(void);
-    void SetFloat(const GLchar * name, GLfloat value);
-    void SetInteger(const GLchar * name, GLint value);
-    void SetVector2f(const GLchar * name, GLfloat x, GLfloat y);
-    void SetVector3f(const GLchar * name, GLfloat x, GLfloat y, GLfloat z);
-    void SetVector4f(const GLchar * name, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
-    void SetMatrix4(const GLchar * name, const glm::mat4 & matrix);
+    void SetFloat(const GLchar *name, GLfloat value);
+    void SetInteger(const GLchar *name, GLint value);
+    void SetVector2f(const GLchar *name, GLfloat x, GLfloat y);
+    void SetVector3f(const GLchar *name, GLfloat x, GLfloat y, GLfloat z);
+    void SetVector4f(const GLchar *name, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+    void SetMatrix4(const GLchar *name, const glm::mat4 &matrix);
 };
 
 /****************************************************************************************
-* cOglGlyph
-****************************************************************************************/
-class cOglGlyph:public cListObject
-{
+ * cOglGlyph
+ ****************************************************************************************/
+class cOglGlyph : public cListObject {
   private:
-    struct tKerning
-    {
+    struct tKerning {
       public:
         tKerning(FT_ULong prevSym, GLfloat kerning = 0.0f) {
             this->prevSym = prevSym;
@@ -117,47 +104,28 @@ class cOglGlyph:public cListObject
     int height;
     int advanceX;
 
-    cVector < tKerning > kerningCache;
+    cVector<tKerning> kerningCache;
     GLuint texture;
     void LoadTexture(FT_BitmapGlyph ftGlyph);
 
   public:
     cOglGlyph(FT_ULong charCode, FT_BitmapGlyph ftGlyph);
-    virtual ~ cOglGlyph();
-    FT_ULong CharCode(void)
-    {
-        return charCode;
-    }
-    int AdvanceX(void)
-    {
-        return advanceX;
-    }
-    int BearingLeft(void) const
-    {
-        return bearingLeft;
-    }
-    int BearingTop(void) const
-    {
-        return bearingTop;
-    }
-    int Width(void) const
-    {
-        return width;
-    }
-    int Height(void) const
-    {
-        return height;
-    }
+    virtual ~cOglGlyph();
+    FT_ULong CharCode(void) { return charCode; }
+    int AdvanceX(void) { return advanceX; }
+    int BearingLeft(void) const { return bearingLeft; }
+    int BearingTop(void) const { return bearingTop; }
+    int Width(void) const { return width; }
+    int Height(void) const { return height; }
     int GetKerningCache(FT_ULong prevSym);
     void SetKerningCache(FT_ULong prevSym, int kerning);
     void BindTexture(void);
 };
 
 /****************************************************************************************
-* cOglFont
-****************************************************************************************/
-class cOglFont:public cListObject
-{
+ * cOglFont
+ ****************************************************************************************/
+class cOglFont : public cListObject {
   private:
     static bool initiated;
     cString name;
@@ -166,40 +134,28 @@ class cOglFont:public cListObject
     int bottom;
     static FT_Library ftLib;
     FT_Face face;
-    static cList < cOglFont > *fonts;
-    mutable cList < cOglGlyph > glyphCache;
-     cOglFont(const char *fontName, int charHeight);
+    static cList<cOglFont> *fonts;
+    mutable cList<cOglGlyph> glyphCache;
+    cOglFont(const char *fontName, int charHeight);
     static void Init(void);
+
   public:
-     virtual ~ cOglFont(void);
+    virtual ~cOglFont(void);
     static cOglFont *Get(const char *name, int charHeight);
     static void Cleanup(void);
-    const char *Name(void)
-    {
-        return *name;
-    };
-    int Size(void)
-    {
-        return size;
-    };
-    int Bottom(void)
-    {
-        return bottom;
-    };
-    int Height(void)
-    {
-        return height;
-    };
+    const char *Name(void) { return *name; };
+    int Size(void) { return size; };
+    int Bottom(void) { return bottom; };
+    int Height(void) { return height; };
     cOglGlyph *Glyph(FT_ULong charCode) const;
-    int Kerning(cOglGlyph * glyph, FT_ULong prevSym) const;
+    int Kerning(cOglGlyph *glyph, FT_ULong prevSym) const;
 };
 
 /****************************************************************************************
-* cOglFb
-* Framebuffer Object - OpenGL part of a Pixmap
-****************************************************************************************/
-class cOglFb
-{
+ * cOglFb
+ * Framebuffer Object - OpenGL part of a Pixmap
+ ****************************************************************************************/
+class cOglFb {
   protected:
     bool initiated;
     // GLuint fb;
@@ -207,16 +163,14 @@ class cOglFb
     GLint width, height;
     GLint viewPortWidth, viewPortHeight;
     bool scrollable;
+
   public:
-     GLuint fb;
+    GLuint fb;
     GLuint texture;
 
-     cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHeight);
-     virtual ~ cOglFb(void);
-    bool Initiated(void)
-    {
-        return initiated;
-    }
+    cOglFb(GLint width, GLint height, GLint viewPortWidth, GLint viewPortHeight);
+    virtual ~cOglFb(void);
+    bool Initiated(void) { return initiated; }
     virtual bool Init(void);
     void Bind(void);
     void BindRead(void);
@@ -224,64 +178,42 @@ class cOglFb
     virtual void Unbind(void);
     bool BindTexture(void);
     void Blit(GLint destX1, GLint destY1, GLint destX2, GLint destY2);
-    GLint Width(void)
-    {
-        return width;
-    };
-    GLint Height(void)
-    {
-        return height;
-    };
-    bool Scrollable(void)
-    {
-        return scrollable;
-    };
-    GLint ViewportWidth(void)
-    {
-        return viewPortWidth;
-    };
-    GLint ViewportHeight(void)
-    {
-        return viewPortHeight;
-    };
+    GLint Width(void) { return width; };
+    GLint Height(void) { return height; };
+    bool Scrollable(void) { return scrollable; };
+    GLint ViewportWidth(void) { return viewPortWidth; };
+    GLint ViewportHeight(void) { return viewPortHeight; };
 };
 
 /****************************************************************************************
-* cOglOutputFb
-* Output Framebuffer Object - holds Vdpau Output Surface which is our "output framebuffer"
-****************************************************************************************/
-class cOglOutputFb:public cOglFb
-{
+ * cOglOutputFb
+ * Output Framebuffer Object - holds Vdpau Output Surface which is our "output
+ *framebuffer"
+ ****************************************************************************************/
+class cOglOutputFb : public cOglFb {
   protected:
     bool initiated;
+
   private:
-     GLvdpauSurfaceNV surface;
+    GLvdpauSurfaceNV surface;
+
   public:
-     GLuint fb;
+    GLuint fb;
     GLuint texture;
-     cOglOutputFb(GLint width, GLint height);
-     virtual ~ cOglOutputFb(void);
+    cOglOutputFb(GLint width, GLint height);
+    virtual ~cOglOutputFb(void);
     virtual bool Init(void);
     virtual void BindWrite(void);
     virtual void Unbind(void);
 };
 
 /****************************************************************************************
-* cOglVb
-* Vertex Buffer - OpenGl Vertices for the different drawing commands
-****************************************************************************************/
-enum eVertexBufferType
-{
-    vbRect,
-    vbEllipse,
-    vbSlope,
-    vbTexture,
-    vbText,
-    vbCount
-};
+ * cOglVb
+ * Vertex Buffer - OpenGl Vertices for the different drawing commands
+ ****************************************************************************************/
+enum eVertexBufferType { vbRect, vbEllipse, vbSlope, vbTexture, vbText, vbCount };
 
-class cOglVb
-{
+class cOglVb {
   private:
     eVertexBufferType type;
     eShaderType shader;
@@ -291,9 +223,10 @@ class cOglVb
     int sizeVertex2;
     int numVertices;
     GLuint drawMode;
+
   public:
-     cOglVb(int type);
-     virtual ~ cOglVb(void);
+    cOglVb(int type);
+    virtual ~cOglVb(void);
     bool Init(void);
     void Bind(void);
     void Unbind(void);
@@ -303,148 +236,106 @@ class cOglVb
     void SetShaderColor(GLint color);
     void SetShaderAlpha(GLint alpha);
     void SetShaderProjectionMatrix(GLint width, GLint height);
-    void SetVertexData(GLfloat * vertices, int count = 0);
+    void SetVertexData(GLfloat *vertices, int count = 0);
     void DrawArrays(int count = 0);
 };
 
 /****************************************************************************************
-* cOpenGLCmd
-****************************************************************************************/
-class cOglCmd
-{
+ * cOpenGLCmd
+ ****************************************************************************************/
+class cOglCmd {
   protected:
-    cOglFb * fb;
+    cOglFb *fb;
+
   public:
-    cOglCmd(cOglFb * fb)
-    {
-        this->fb = fb;
-    };
-    virtual ~ cOglCmd(void)
-    {
-    };
+    cOglCmd(cOglFb *fb) { this->fb = fb; };
+    virtual ~cOglCmd(void){};
     virtual const char *Description(void) = 0;
     virtual bool Execute(void) = 0;
 };
 
-class cOglCmdInitOutputFb:public cOglCmd
-{
+class cOglCmdInitOutputFb : public cOglCmd {
   private:
-    cOglOutputFb * oFb;
+    cOglOutputFb *oFb;
+
   public:
-    cOglCmdInitOutputFb(cOglOutputFb * oFb);
-    virtual ~ cOglCmdInitOutputFb(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "InitOutputFramebuffer";
-    }
+    cOglCmdInitOutputFb(cOglOutputFb *oFb);
+    virtual ~cOglCmdInitOutputFb(void){};
+    virtual const char *Description(void) { return "InitOutputFramebuffer"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdInitFb:public cOglCmd
-{
+class cOglCmdInitFb : public cOglCmd {
   private:
-    cCondWait * wait;
+    cCondWait *wait;
+
   public:
-    cOglCmdInitFb(cOglFb * fb, cCondWait * wait = NULL);
-    virtual ~ cOglCmdInitFb(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "InitFramebuffer";
-    }
+    cOglCmdInitFb(cOglFb *fb, cCondWait *wait = NULL);
+    virtual ~cOglCmdInitFb(void){};
+    virtual const char *Description(void) { return "InitFramebuffer"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDeleteFb:public cOglCmd
-{
+class cOglCmdDeleteFb : public cOglCmd {
   public:
-    cOglCmdDeleteFb(cOglFb * fb);
-    virtual ~ cOglCmdDeleteFb(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "DeleteFramebuffer";
-    }
+    cOglCmdDeleteFb(cOglFb *fb);
+    virtual ~cOglCmdDeleteFb(void){};
+    virtual const char *Description(void) { return "DeleteFramebuffer"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdRenderFbToBufferFb:public cOglCmd
-{
+class cOglCmdRenderFbToBufferFb : public cOglCmd {
   private:
-    cOglFb * buffer;
+    cOglFb *buffer;
     GLfloat x, y;
     GLfloat drawPortX, drawPortY;
     GLint transparency;
+
   public:
-     cOglCmdRenderFbToBufferFb(cOglFb * fb, cOglFb * buffer, GLint x, GLint y, GLint transparency, GLint drawPortX,
-        GLint drawPortY);
-     virtual ~ cOglCmdRenderFbToBufferFb(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "Render Framebuffer to Buffer";
-    }
+    cOglCmdRenderFbToBufferFb(cOglFb *fb, cOglFb *buffer, GLint x, GLint y, GLint transparency, GLint drawPortX,
+                              GLint drawPortY);
+    virtual ~cOglCmdRenderFbToBufferFb(void){};
+    virtual const char *Description(void) { return "Render Framebuffer to Buffer"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdCopyBufferToOutputFb:public cOglCmd
-{
+class cOglCmdCopyBufferToOutputFb : public cOglCmd {
   private:
-    cOglOutputFb * oFb;
+    cOglOutputFb *oFb;
     GLint x, y;
+
   public:
-     cOglCmdCopyBufferToOutputFb(cOglFb * fb, cOglOutputFb * oFb, GLint x, GLint y);
-     virtual ~ cOglCmdCopyBufferToOutputFb(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "Copy buffer to OutputFramebuffer";
-    }
+    cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputFb *oFb, GLint x, GLint y);
+    virtual ~cOglCmdCopyBufferToOutputFb(void){};
+    virtual const char *Description(void) { return "Copy buffer to OutputFramebuffer"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdFill:public cOglCmd
-{
+class cOglCmdFill : public cOglCmd {
   private:
     GLint color;
+
   public:
-    cOglCmdFill(cOglFb * fb, GLint color);
-    virtual ~ cOglCmdFill(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "Fill";
-    }
+    cOglCmdFill(cOglFb *fb, GLint color);
+    virtual ~cOglCmdFill(void){};
+    virtual const char *Description(void) { return "Fill"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawRectangle:public cOglCmd
-{
+class cOglCmdDrawRectangle : public cOglCmd {
   private:
     GLint x, y;
     GLint width, height;
     GLint color;
+
   public:
-     cOglCmdDrawRectangle(cOglFb * fb, GLint x, GLint y, GLint width, GLint height, GLint color);
-     virtual ~ cOglCmdDrawRectangle(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "DrawRectangle";
-    }
+    cOglCmdDrawRectangle(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color);
+    virtual ~cOglCmdDrawRectangle(void){};
+    virtual const char *Description(void) { return "DrawRectangle"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawEllipse:public cOglCmd
-{
+class cOglCmdDrawEllipse : public cOglCmd {
   private:
     GLint x, y;
     GLint width, height;
@@ -453,39 +344,29 @@ class cOglCmdDrawEllipse:public cOglCmd
     GLfloat *CreateVerticesFull(int &numVertices);
     GLfloat *CreateVerticesQuadrant(int &numVertices);
     GLfloat *CreateVerticesHalf(int &numVertices);
+
   public:
-     cOglCmdDrawEllipse(cOglFb * fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint quadrants);
-     virtual ~ cOglCmdDrawEllipse(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "DrawEllipse";
-    }
+    cOglCmdDrawEllipse(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint quadrants);
+    virtual ~cOglCmdDrawEllipse(void){};
+    virtual const char *Description(void) { return "DrawEllipse"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawSlope:public cOglCmd
-{
+class cOglCmdDrawSlope : public cOglCmd {
   private:
     GLint x, y;
     GLint width, height;
     GLint color;
     GLint type;
+
   public:
-     cOglCmdDrawSlope(cOglFb * fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint type);
-     virtual ~ cOglCmdDrawSlope(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "DrawSlope";
-    }
+    cOglCmdDrawSlope(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint type);
+    virtual ~cOglCmdDrawSlope(void){};
+    virtual const char *Description(void) { return "DrawSlope"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawText:public cOglCmd
-{
+class cOglCmdDrawText : public cOglCmd {
   private:
     GLint x, y;
     GLint limitX;
@@ -493,97 +374,78 @@ class cOglCmdDrawText:public cOglCmd
     cString fontName;
     int fontSize;
     unsigned int *symbols;
+
   public:
-     cOglCmdDrawText(cOglFb * fb, GLint x, GLint y, unsigned int *symbols, GLint limitX, const char *name,
-        int fontSize, tColor colorText);
-     virtual ~ cOglCmdDrawText(void);
-    virtual const char *Description(void)
-    {
-        return "DrawText";
-    }
+    cOglCmdDrawText(cOglFb *fb, GLint x, GLint y, unsigned int *symbols, GLint limitX, const char *name, int fontSize,
+                    tColor colorText);
+    virtual ~cOglCmdDrawText(void);
+    virtual const char *Description(void) { return "DrawText"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawImage:public cOglCmd
-{
+class cOglCmdDrawImage : public cOglCmd {
   private:
-    tColor * argb;
+    tColor *argb;
     GLint x, y, width, height;
     bool overlay;
     GLfloat scaleX, scaleY;
+
   public:
-     cOglCmdDrawImage(cOglFb * fb, tColor * argb, GLint width, GLint height, GLint x, GLint y, bool overlay =
-        true, double scaleX = 1.0f, double scaleY = 1.0f);
-     virtual ~ cOglCmdDrawImage(void);
-    virtual const char *Description(void)
-    {
-        return "Draw Image";
-    }
+    cOglCmdDrawImage(cOglFb *fb, tColor *argb, GLint width, GLint height, GLint x, GLint y, bool overlay = true,
+                     double scaleX = 1.0f, double scaleY = 1.0f);
+    virtual ~cOglCmdDrawImage(void);
+    virtual const char *Description(void) { return "Draw Image"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDrawTexture:public cOglCmd
-{
+class cOglCmdDrawTexture : public cOglCmd {
   private:
-    sOglImage * imageRef;
+    sOglImage *imageRef;
     GLint x, y;
+
   public:
-     cOglCmdDrawTexture(cOglFb * fb, sOglImage * imageRef, GLint x, GLint y);
-     virtual ~ cOglCmdDrawTexture(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "Draw Texture";
-    }
+    cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y);
+    virtual ~cOglCmdDrawTexture(void){};
+    virtual const char *Description(void) { return "Draw Texture"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdStoreImage:public cOglCmd
-{
+class cOglCmdStoreImage : public cOglCmd {
   private:
-    sOglImage * imageRef;
+    sOglImage *imageRef;
     tColor *data;
+
   public:
-     cOglCmdStoreImage(sOglImage * imageRef, tColor * argb);
-     virtual ~ cOglCmdStoreImage(void);
-    virtual const char *Description(void)
-    {
-        return "Store Image";
-    }
+    cOglCmdStoreImage(sOglImage *imageRef, tColor *argb);
+    virtual ~cOglCmdStoreImage(void);
+    virtual const char *Description(void) { return "Store Image"; }
     virtual bool Execute(void);
 };
 
-class cOglCmdDropImage:public cOglCmd
-{
+class cOglCmdDropImage : public cOglCmd {
   private:
-    sOglImage * imageRef;
+    sOglImage *imageRef;
     cCondWait *wait;
+
   public:
-     cOglCmdDropImage(sOglImage * imageRef, cCondWait * wait);
-     virtual ~ cOglCmdDropImage(void)
-    {
-    };
-    virtual const char *Description(void)
-    {
-        return "Drop Image";
-    }
+    cOglCmdDropImage(sOglImage *imageRef, cCondWait *wait);
+    virtual ~cOglCmdDropImage(void){};
+    virtual const char *Description(void) { return "Drop Image"; }
     virtual bool Execute(void);
 };
 
 /******************************************************************************
-* cOglThread
-******************************************************************************/
+ * cOglThread
+ ******************************************************************************/
 #define OGL_MAX_OSDIMAGES 256
 #define OGL_CMDQUEUE_SIZE 100
 
-class cOglThread:public cThread
-{
+class cOglThread : public cThread {
   private:
-    cCondWait * startWait;
+    cCondWait *startWait;
     cCondWait *wait;
     bool stalled;
-     std::queue < cOglCmd * >commands;
+    std::queue<cOglCmd *> commands;
     GLint maxTextureSize;
     sOglImage imageCache[OGL_MAX_OSDIMAGES];
     long memCached;
@@ -597,96 +459,81 @@ class cOglThread:public cThread
     void Cleanup(void);
     int GetFreeSlot(void);
     void ClearSlot(int slot);
+
   protected:
-     virtual void Action(void);
+    virtual void Action(void);
+
   public:
-     cOglThread(cCondWait * startWait, int maxCacheSize);
-     virtual ~ cOglThread();
+    cOglThread(cCondWait *startWait, int maxCacheSize);
+    virtual ~cOglThread();
     void Stop(void);
-    void DoCmd(cOglCmd * cmd);
-    int StoreImage(const cImage & image);
+    void DoCmd(cOglCmd *cmd);
+    int StoreImage(const cImage &image);
     void DropImageData(int imageHandle);
     sOglImage *GetImageRef(int slot);
-    int MaxTextureSize(void)
-    {
-        return maxTextureSize;
-    };
+    int MaxTextureSize(void) { return maxTextureSize; };
 };
 
 /****************************************************************************************
-* cOglPixmap
-****************************************************************************************/
-class cOglPixmap:public cPixmap
-{
+ * cOglPixmap
+ ****************************************************************************************/
+class cOglPixmap : public cPixmap {
   private:
-    cOglFb * fb;
-    std::shared_ptr < cOglThread > oglThread;
+    cOglFb *fb;
+    std::shared_ptr<cOglThread> oglThread;
     bool dirty;
+
   public:
-     cOglPixmap(std::shared_ptr < cOglThread > oglThread, int Layer, const cRect & ViewPort, const cRect & DrawPort =
-        cRect::Null);
-     virtual ~ cOglPixmap(void);
-    cOglFb *Fb(void)
-    {
-        return fb;
-    };
-    int X(void)
-    {
-        return ViewPort().X();
-    };
-    int Y(void)
-    {
-        return ViewPort().Y();
-    };
-    virtual bool IsDirty(void)
-    {
-        return dirty;
-    }
-    virtual void SetDirty(bool dirty = true) {
-        this->dirty = dirty;
-    }
+    cOglPixmap(std::shared_ptr<cOglThread> oglThread, int Layer, const cRect &ViewPort,
+               const cRect &DrawPort = cRect::Null);
+    virtual ~cOglPixmap(void);
+    cOglFb *Fb(void) { return fb; };
+    int X(void) { return ViewPort().X(); };
+    int Y(void) { return ViewPort().Y(); };
+    virtual bool IsDirty(void) { return dirty; }
+    virtual void SetDirty(bool dirty = true) { this->dirty = dirty; }
     virtual void SetAlpha(int Alpha);
     virtual void SetTile(bool Tile);
-    virtual void SetViewPort(const cRect & Rect);
-    virtual void SetDrawPortPoint(const cPoint & Point, bool Dirty = true);
+    virtual void SetViewPort(const cRect &Rect);
+    virtual void SetDrawPortPoint(const cPoint &Point, bool Dirty = true);
     virtual void Clear(void);
     virtual void Fill(tColor Color);
-    virtual void DrawImage(const cPoint & Point, const cImage & Image);
-    virtual void DrawImage(const cPoint & Point, int ImageHandle);
-    virtual void DrawPixel(const cPoint & Point, tColor Color);
-    virtual void DrawBitmap(const cPoint & Point, const cBitmap & Bitmap, tColor ColorFg = 0, tColor ColorBg =
-        0, bool Overlay = false);
-    virtual void DrawText(const cPoint & Point, const char *s, tColor ColorFg, tColor ColorBg, const cFont * Font,
-        int Width = 0, int Height = 0, int Alignment = taDefault);
-    virtual void DrawRectangle(const cRect & Rect, tColor Color);
-    virtual void DrawEllipse(const cRect & Rect, tColor Color, int Quadrants = 0);
-    virtual void DrawSlope(const cRect & Rect, tColor Color, int Type);
-    virtual void Render(const cPixmap * Pixmap, const cRect & Source, const cPoint & Dest);
-    virtual void Copy(const cPixmap * Pixmap, const cRect & Source, const cPoint & Dest);
-    virtual void Scroll(const cPoint & Dest, const cRect & Source = cRect::Null);
-    virtual void Pan(const cPoint & Dest, const cRect & Source = cRect::Null);
+    virtual void DrawImage(const cPoint &Point, const cImage &Image);
+    virtual void DrawImage(const cPoint &Point, int ImageHandle);
+    virtual void DrawPixel(const cPoint &Point, tColor Color);
+    virtual void DrawBitmap(const cPoint &Point, const cBitmap &Bitmap, tColor ColorFg = 0, tColor ColorBg = 0,
+                            bool Overlay = false);
+    virtual void DrawText(const cPoint &Point, const char *s, tColor ColorFg, tColor ColorBg, const cFont *Font,
+                          int Width = 0, int Height = 0, int Alignment = taDefault);
+    virtual void DrawRectangle(const cRect &Rect, tColor Color);
+    virtual void DrawEllipse(const cRect &Rect, tColor Color, int Quadrants = 0);
+    virtual void DrawSlope(const cRect &Rect, tColor Color, int Type);
+    virtual void Render(const cPixmap *Pixmap, const cRect &Source, const cPoint &Dest);
+    virtual void Copy(const cPixmap *Pixmap, const cRect &Source, const cPoint &Dest);
+    virtual void Scroll(const cPoint &Dest, const cRect &Source = cRect::Null);
+    virtual void Pan(const cPoint &Dest, const cRect &Source = cRect::Null);
 };
 
 /******************************************************************************
-* cOglOsd
-******************************************************************************/
-class cOglOsd:public cOsd
-{
+ * cOglOsd
+ ******************************************************************************/
+class cOglOsd : public cOsd {
   private:
-    cOglFb * bFb;
-    std::shared_ptr < cOglThread > oglThread;
-    cVector < cOglPixmap * >oglPixmaps;
+    cOglFb *bFb;
+    std::shared_ptr<cOglThread> oglThread;
+    cVector<cOglPixmap *> oglPixmaps;
     bool isSubtitleOsd;
+
   protected:
   public:
-     cOglOsd(int Left, int Top, uint Level, std::shared_ptr < cOglThread > oglThread);
-     virtual ~ cOglOsd();
-    virtual eOsdError SetAreas(const tArea * Areas, int NumAreas);
-    virtual cPixmap *CreatePixmap(int Layer, const cRect & ViewPort, const cRect & DrawPort = cRect::Null);
-    virtual void DestroyPixmap(cPixmap * Pixmap);
+    cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglThread);
+    virtual ~cOglOsd();
+    virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
+    virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null);
+    virtual void DestroyPixmap(cPixmap *Pixmap);
     virtual void Flush(void);
-    virtual void DrawScaledBitmap(int x, int y, const cBitmap & Bitmap, double FactorX, double FactorY,
-        bool AntiAlias = false);
+    virtual void DrawScaledBitmap(int x, int y, const cBitmap &Bitmap, double FactorX, double FactorY,
+                                  bool AntiAlias = false);
     static cOglOutputFb *oFb;
 };
 
