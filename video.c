@@ -4272,6 +4272,7 @@ static void CuvidDisplayFrame(void) {
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
     EglCheck();
 #endif
+    usleep(5000);
     glClear(GL_COLOR_BUFFER_BIT);
 
 #else // PLACEBO
