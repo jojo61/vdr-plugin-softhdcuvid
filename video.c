@@ -4271,7 +4271,10 @@ static void CuvidDisplayFrame(void) {
 #else
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
     EglCheck();
+    
+#ifndef USE_DRM    
     usleep(5000);
+#endif
 #endif
    
     glClear(GL_COLOR_BUFFER_BIT);
