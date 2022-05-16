@@ -3124,7 +3124,7 @@ int get_RGB(CuvidDecoder *decoder) {
         glActiveTexture(GL_TEXTURE0);
     }
     glFlush();
-    Debug(3, "Read pixels %d %d\n", width, height);
+    //Debug(3, "Read pixels %d %d\n", width, height);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -7022,6 +7022,14 @@ void VideoInit(const char *display_name) {
     if (!display_name && !(display_name = getenv("DISPLAY"))) {
         // if no environment variable, use :0.0 as default display name
         display_name = ":0.0";
+    
+    }
+    if (!getenv("DISPLAY")) {
+        //force set DISPLAY environment variable, otherwise nvidia driver
+        //has problems at libplace-swapchain-init
+        Debug(3, "video: setting ENV DISPLAY=%s\n",display_name);
+        setenv("DISPLAY",display_name,0);
+        //Debug(3, "video: ENV:(%s)\n",getenv("DISPLAY"));
     }
 
     if (!(XlibDisplay = XOpenDisplay(display_name))) {
