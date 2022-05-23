@@ -20,11 +20,7 @@ void ConvertColor(const GLint &colARGB, glm::vec4 &col) {
 #ifdef CUVID
 const char *glversion = "#version 330 core ";
 #else
-#ifdef RASPI
-const char *glversion = "#version 300 es";
-#else
 const char *glversion = "#version 300 es  ";
-#endif
 #endif
 
 const char *rectVertexShader = "%s\n \
