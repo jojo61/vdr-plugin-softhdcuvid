@@ -1951,7 +1951,7 @@ void AudioSetVolume(int volume) {
     }
     AudioAmplifier = volume;
     if (!AudioSoftVolume) {
-        AudioUsedModule->SetVolume(volume);
+        //AudioUsedModule->SetVolume(volume);
     }
 }
 
@@ -2173,6 +2173,22 @@ found:
     AudioDoingInit = 1;
     AudioRingInit();
     AudioUsedModule->Init();
+
+#if 1
+    for (u = 0; u < AudioRatesMax; ++u) {
+       
+        AudioChannelMatrix[u][1]=AudioChannelMatrix[u][2]=AudioChannelMatrix[u][3]=AudioChannelMatrix[u][4]=\
+        AudioChannelMatrix[u][5]=AudioChannelMatrix[u][6]=AudioChannelMatrix[u][7]=AudioChannelMatrix[u][8]=2;
+        //printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+        //    AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
+        //    AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
+
+    }
+
+    AudioChannelsInHw[1]=AudioChannelsInHw[3]=AudioChannelsInHw[4]=AudioChannelsInHw[5]=AudioChannelsInHw[6]=AudioChannelsInHw[7]=AudioChannelsInHw[8]=0;
+    AudioChannelsInHw[2]=2;
+
+#else
     //
     //	Check which channels/rates/formats are supported
     //	FIXME: we force 44.1Khz and 48Khz must be supported equal
@@ -2294,6 +2310,7 @@ found:
              AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
              AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
     }
+#endif
 #ifdef USE_AUDIO_THREAD
     if (AudioUsedModule->Thread) { // supports threads
         AudioInitThread();
