@@ -1216,7 +1216,7 @@ static void EglExit(void) {
     // must destroy glx
     // if (glXGetCurrentContext() == glxContext) {
     // if currently used, set to none
-    glXMakeCurrent(XlibDisplay, None, NULL);
+    // glXMakeCurrent(XlibDisplay, None, NULL);
     // }
     if (OSDcontext) {
         glXDestroyContext(XlibDisplay, OSDcontext);
