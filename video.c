@@ -155,15 +155,12 @@ typedef enum {
 #endif
 
 #ifdef VAAPI
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57,74,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 74, 100)
 #include <libavcodec/vaapi.h>
 #endif
+#include <libavutil/hwcontext_vaapi.h>
 #include <libdrm/drm_fourcc.h>
 #include <va/va_drmcommon.h>
-#ifdef RASPI
-#include <libavutil/hwcontext_drm.h>
-#endif
-#include <libavutil/hwcontext_vaapi.h>
 #define TO_AVHW_DEVICE_CTX(x) ((AVHWDeviceContext *)x->data)
 #define TO_AVHW_FRAMES_CTX(x) ((AVHWFramesContext *)x->data)
 #define TO_VAAPI_DEVICE_CTX(x) ((AVVAAPIDeviceContext *)TO_AVHW_DEVICE_CTX(x)->hwctx)
@@ -341,16 +338,12 @@ typedef struct {
 
 #define NUM_SHADERS 5 // Number of supported user shaders with placebo
 
-#if defined VAAPI && !defined RASPI
+#if defined VAAPI
 #define PIXEL_FORMAT AV_PIX_FMT_VAAPI
 #define SWAP_BUFFER_SIZE 3
 #endif
 #ifdef CUVID
 #define PIXEL_FORMAT AV_PIX_FMT_CUDA
-#define SWAP_BUFFER_SIZE 3
-#endif
-#if defined RASPI
-#define PIXEL_FORMAT AV_PIX_FMT_MMAL
 #define SWAP_BUFFER_SIZE 3
 #endif
 //----------------------------------------------------------------------------
@@ -359,11 +352,7 @@ typedef struct {
 AVBufferRef *HwDeviceContext; ///< ffmpeg HW device context
 char VideoIgnoreRepeatPict;   ///< disable repeat pict warning
 
-#ifdef RASPI
-int Planes = 3;
-#else
 int Planes = 2;
-#endif
 
 unsigned char *posd;
 
@@ -1866,7 +1855,6 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext *ou
                              EGL_NONE};
     EGLint num_configs = 0;
 
-#ifndef RASPI
     attribs = attributes10;
     *bpp = 10;
     if (!eglChooseConfig(display, attributes10, NULL, 0,
@@ -1879,9 +1867,7 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext *ou
                              &num_configs)) { // try 8 Bit
             num_configs = 0;
         }
-    } else
-#endif
-        if (num_configs == 0) {
+    } else if (num_configs == 0) {
         EglCheck();
         Debug(3, " 10 Bit egl Failed\n");
         attribs = attributes8;
@@ -2014,22 +2000,20 @@ static CuvidDecoder *CuvidNewHwDecoder(VideoStream *stream) {
         Fatal("codec: can't allocate HW video codec context err %04x", i);
     }
 #endif
-#if defined(VAAPI) && !defined(RASPI)
+#if defined(VAAPI)
     // if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI,
     // ":0.0" , NULL, 0)) != 0 ) {
     if ((i = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, "/dev/dri/renderD128", NULL, 0)) != 0) {
         Fatal("codec: can't allocate HW video codec context err %04x", i);
     }
 #endif
-#ifndef RASPI
     HwDeviceContext = av_buffer_ref(hw_device_ctx);
-#endif
 
     if (!(decoder = calloc(1, sizeof(*decoder)))) {
         Error(_("video/cuvid: out of memory\n"));
         return NULL;
     }
-#if defined(VAAPI) && !defined(RASPI)
+#if defined(VAAPI)
     VaDisplay = TO_VAAPI_DEVICE_CTX(HwDeviceContext)->display;
     decoder->VaDisplay = VaDisplay;
 #endif
@@ -2495,21 +2479,12 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#ifdef RASPI
-            if (PixFmt == AV_PIX_FMT_NV12)
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, n == 0 ? size_x : size_x / 2, n == 0 ? size_y : size_y / 2, 0,
-                             GL_RED, GL_UNSIGNED_BYTE, NULL);
-            else
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_R16, n == 0 ? size_x : size_x / 2, n == 0 ? size_y : size_y / 2, 0,
-                             GL_RED, GL_UNSIGNED_SHORT, NULL);
-#else
             if (PixFmt == AV_PIX_FMT_NV12)
                 glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R8 : GL_RG8, n == 0 ? size_x : size_x / 2,
                              n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_BYTE, NULL);
             else
                 glTexImage2D(GL_TEXTURE_2D, 0, n == 0 ? GL_R16 : GL_RG16, n == 0 ? size_x : size_x / 2,
                              n == 0 ? size_y : size_y / 2, 0, n == 0 ? GL_RED : GL_RG, GL_UNSIGNED_SHORT, NULL);
-#endif
             SDK_CHECK_ERROR_GL();
             // register this texture with CUDA
 #ifdef CUVID
@@ -2555,7 +2530,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
 
     uint64_t first_time;
 
-#if defined(VAAPI) && !defined(RASPI)
+#if defined(VAAPI)
     VADRMPRIMESurfaceDescriptor desc;
 
     vaSyncSurface(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3]);
@@ -2570,12 +2545,6 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
     // vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t)
     // frame->data[3]);
 #endif
-#ifdef RASPI
-    AVDRMFrameDescriptor desc;
-
-    memcpy(&desc, frame->data[0], sizeof(desc));
-
-#endif
 
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     EglCheck();
@@ -2585,7 +2554,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
         uint num_attribs = 0;
         int fd;
 
-#if defined(VAAPI) && !defined(RASPI)
+#if defined(VAAPI)
         ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
         ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
         ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
@@ -3060,18 +3029,10 @@ int get_RGB(CuvidDecoder *decoder) {
     glUniform1i(texLoc, 0);
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
-#ifdef RASPI
-    texLoc = glGetUniformLocation(gl_prog, "texture2");
-    glUniform1i(texLoc, 2);
-#endif
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);
-#ifdef RASPI
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
-#endif
     glBindFramebuffer(GL_FRAMEBUFFER, fb);
 
     render_pass_quad(1, 0.0, 0.0);
@@ -3124,7 +3085,7 @@ int get_RGB(CuvidDecoder *decoder) {
         glActiveTexture(GL_TEXTURE0);
     }
     glFlush();
-    //Debug(3, "Read pixels %d %d\n", width, height);
+    // Debug(3, "Read pixels %d %d\n", width, height);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -3499,34 +3460,12 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
     if (frame->color_trc == AVCOL_TRC_RESERVED0) // cuvid decoder failure with SD channels
         frame->color_trc = AVCOL_TRC_SMPTE170M;
 
-//    printf("Patched  colorspace %d Primaries %d TRC
-//    %d\n",frame->colorspace,frame->color_primaries,frame->color_trc);
-#ifdef RASPI
-    //
-    //	Check image, format, size
-    //
-    if ( // decoder->PixFmt != video_ctx->pix_fmt
-        video_ctx->width != decoder->InputWidth
-        //	|| decoder->ColorSpace != color
-        || video_ctx->height != decoder->InputHeight) {
-        Debug(3, "fmt %02d:%02d	 width %d:%d hight %d:%d\n", decoder->ColorSpace, frame->colorspace, video_ctx->width,
-              decoder->InputWidth, video_ctx->height, decoder->InputHeight);
-        decoder->PixFmt = AV_PIX_FMT_NV12;
-        decoder->InputWidth = video_ctx->width;
-        decoder->InputHeight = video_ctx->height;
-        CuvidCleanup(decoder);
-        decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
-        CuvidSetupOutput(decoder);
-    }
-#endif
+    //    printf("Patched  colorspace %d Primaries %d TRC
+    //    %d\n",frame->colorspace,frame->color_primaries,frame->color_trc);
     //
     //	Copy data from frame to image
     //
-#ifdef RASPI
-    if (video_ctx->pix_fmt == 0) {
-#else
     if (video_ctx->pix_fmt == PIXEL_FORMAT) {
-#endif
         int w = decoder->InputWidth;
         int h = decoder->InputHeight;
 
@@ -3821,19 +3760,11 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     glUniform1i(texLoc, 0);
     texLoc = glGetUniformLocation(gl_prog, "texture1");
     glUniform1i(texLoc, 1);
-#ifdef RASPI
-    texLoc = glGetUniformLocation(gl_prog, "texture2");
-    glUniform1i(texLoc, 2);
-#endif
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 1]);
-#ifdef RASPI
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[current * Planes + 2]);
-#endif
 
     render_pass_quad(0, xcropf, ycropf);
 
@@ -4271,12 +4202,12 @@ static void CuvidDisplayFrame(void) {
 #else
     eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglThreadContext);
     EglCheck();
-    
-#ifndef USE_DRM    
+
+#ifndef USE_DRM
     usleep(5000);
 #endif
 #endif
-   
+
     glClear(GL_COLOR_BUFFER_BIT);
 
 #else // PLACEBO
@@ -7022,14 +6953,13 @@ void VideoInit(const char *display_name) {
     if (!display_name && !(display_name = getenv("DISPLAY"))) {
         // if no environment variable, use :0.0 as default display name
         display_name = ":0.0";
-    
     }
     if (!getenv("DISPLAY")) {
-        //force set DISPLAY environment variable, otherwise nvidia driver
-        //has problems at libplace-swapchain-init
-        Debug(3, "video: setting ENV DISPLAY=%s\n",display_name);
-        setenv("DISPLAY",display_name,0);
-        //Debug(3, "video: ENV:(%s)\n",getenv("DISPLAY"));
+        // force set DISPLAY environment variable, otherwise nvidia driver
+        // has problems at libplace-swapchain-init
+        Debug(3, "video: setting ENV DISPLAY=%s\n", display_name);
+        setenv("DISPLAY", display_name, 0);
+        // Debug(3, "video: ENV:(%s)\n",getenv("DISPLAY"));
     }
 
     if (!(XlibDisplay = XOpenDisplay(display_name))) {
