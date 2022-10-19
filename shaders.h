@@ -4,11 +4,7 @@
 #ifdef CUVID
 const char *gl_version = "#version 330";
 #else
-#ifdef RASPI
-const char *gl_version = "#version 300 es";
-#else
 const char *gl_version = "#version 300 es ";
-#endif
 #endif
 
 /* Color conversion matrix: RGB = m * YUV + c

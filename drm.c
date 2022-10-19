@@ -206,11 +206,7 @@ static int FindDevice(VideoRender *render) {
     int i, ii = 0;
     char connectorstr[10];
     int found = 0;
-#ifdef RASPI
-    render->fd_drm = open("/dev/dri/card1", O_RDWR);
-#else
     render->fd_drm = open("/dev/dri/card0", O_RDWR);
-#endif
     if (render->fd_drm < 0) {
         fprintf(stderr, "FindDevice: cannot open /dev/dri/card0: %m\n");
         return -errno;
@@ -372,11 +368,7 @@ static int FindDevice(VideoRender *render) {
         for (k = 0; k < plane->count_formats; k++) {
             if (encoder->possible_crtcs & plane->possible_crtcs) {
                 switch (plane->formats[k]) {
-#ifdef RASPI
-                    case DRM_FORMAT_ARGB8888:
-#else
                     case DRM_FORMAT_XRGB2101010:
-#endif
                         if (!render->video_plane) {
                             render->video_plane = plane->plane_id;
                         }
