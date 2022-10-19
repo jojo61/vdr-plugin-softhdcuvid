@@ -1951,7 +1951,7 @@ void AudioSetVolume(int volume) {
     }
     AudioAmplifier = volume;
     if (!AudioSoftVolume) {
-        //AudioUsedModule->SetVolume(volume);
+        AudioUsedModule->SetVolume(volume);
     }
 }
 
