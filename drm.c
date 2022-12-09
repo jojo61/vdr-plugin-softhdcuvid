@@ -168,6 +168,7 @@ void set_video_mode(int width, int height) {
     drmModeConnector *connector;
     drmModeModeInfo *mode;
     int ii;
+    printf("Set video mode %d &%d\n",width,height);
     if (height != 1080 && height != 2160)
         return;
     connector = drmModeGetConnector(render->fd_drm, render->connector_id);
@@ -274,6 +275,8 @@ static int FindDevice(VideoRender *render) {
                 connector->connector_type_id);
         printf("Connector >%s< is %sconnected\n", connectorstr,
                connector->connection == DRM_MODE_CONNECTED ? "" : "not ");
+        Debug(3,"Connector >%s< is %sconnected\n", connectorstr,
+               connector->connection == DRM_MODE_CONNECTED ? "" : "not ");
         if (DRMConnector && strcmp(DRMConnector, connectorstr))
             continue;
 
@@ -305,7 +308,7 @@ static int FindDevice(VideoRender *render) {
                 mode = &connector->modes[ii];
 
                 printf("Mode %d %dx%d Rate %d\n", ii, mode->hdisplay, mode->vdisplay, mode->vrefresh);
-
+                Debug(3,"Mode %d %dx%d Rate %d\n", ii, mode->hdisplay, mode->vdisplay, mode->vrefresh);
                 if (VideoWindowWidth && VideoWindowHeight) { // preset by command line
                     if (VideoWindowWidth == mode->hdisplay && VideoWindowHeight == mode->vdisplay &&
                         mode->vrefresh == DRMRefresh && !(mode->flags & DRM_MODE_FLAG_INTERLACE)) {
@@ -324,11 +327,16 @@ static int FindDevice(VideoRender *render) {
             found = 1;
             i = resources->count_connectors; // uuuuhh
         }
-        VideoWindowWidth = render->mode.hdisplay;
-        VideoWindowHeight = render->mode.vdisplay;
-        if (found)
+
+        if (found) {
+            VideoWindowWidth = render->mode.hdisplay;
+            VideoWindowHeight = render->mode.vdisplay;
+        
             printf("Use Mode %d %dx%d Rate %d\n", ii, render->mode.hdisplay, render->mode.vdisplay,
                    render->mode.vrefresh);
+            Debug(3,"Use Mode %d %dx%d Rate %d\n", ii, render->mode.hdisplay, render->mode.vdisplay,
+                   render->mode.vrefresh);
+        }
         drmModeFreeConnector(connector);
     }
     if (!found) {
