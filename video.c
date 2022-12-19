@@ -617,6 +617,8 @@ char *eglErrorString(EGLint error) {
 static void VideoSetPts(int64_t *pts_p, int interlaced, const AVCodecContext *video_ctx, const AVFrame *frame) {
     int64_t pts;
     int duration;
+    static int64_t lastpts;
+
 
     //
     //	Get duration for this frame.
@@ -664,11 +666,12 @@ static void VideoSetPts(int64_t *pts_p, int interlaced, const AVCodecContext *vi
             Debug(3, "++++++++++++++++++++++++++++++++++++starte audio\n");
             AudioVideoReady(pts);
         }
-        if (*pts_p != pts) {
+        if (*pts_p != pts && lastpts != pts) {
             Debug(4, "video: %#012" PRIx64 "->%#012" PRIx64 " delta=%4" PRId64 " pts\n", *pts_p, pts, pts - *pts_p);
             *pts_p = pts;
         }
     }
+    lastpts = pts;
 }
 
 int CuvidMessage(int level, const char *format, ...);
