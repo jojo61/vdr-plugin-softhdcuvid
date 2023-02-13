@@ -298,7 +298,9 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
     }
     //    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
     //	  Fatal(_("VAAPI Refcounts invalid\n"));
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,8,100)
     decoder->VideoCtx->thread_safe_callbacks = 0;
+#endif
 
 #endif
 
