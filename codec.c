@@ -268,7 +268,9 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 #ifdef YADIF
     deint = 2;
 #endif
+
 #if defined VAAPI
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,8,100)
     // decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
@@ -279,6 +281,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
         Debug(3, "codec: supports truncated packets");
         // decoder->VideoCtx->flags |= CODEC_FLAG_TRUNCATED;
     }
+#endif
     // FIXME: own memory management for video frames.
     if (video_codec->capabilities & AV_CODEC_CAP_DR1) {
         Debug(3, "codec: can use own buffer management");
