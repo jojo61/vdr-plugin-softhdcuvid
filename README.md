@@ -37,7 +37,6 @@ A software and GPU emulated UHD output device plugin for VDR.
     o PIP (Picture-in-Picture) (only for CUVID)
 
 
-To compile you must have the 'requires' installed.
 
 
 This is a fork of johns original softhddevice work and I reworked it to support HEVC with CUDA and opengl output.
@@ -83,7 +82,9 @@ You have to adapt the Makefile. There are 3 possible Version that you can build:
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
     I recommend to use libplacebo and set LIBPLACEBO_GL=1 in the Makefile.
 
-    Libplacebo API Version >= 113 is needed.
+    You should use the following libplacebo Version:
+	https://github.com/haasn/libplacebo/archive/db794a2fcc8214624c950752b04f6c23f8fc567d.zip
+	Newer Versions may not work.
 
 
 Install:
