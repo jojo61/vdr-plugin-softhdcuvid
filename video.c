@@ -2500,6 +2500,7 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
 #endif
         }
     }
+
     glBindTexture(GL_TEXTURE_2D, 0);
     GlxCheck();
 #ifdef VAAPI
@@ -2520,11 +2521,23 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
         attribs[num_attribs] = EGL_NONE;                                                                              \
     } while (0)
 
-#define ADD_PLANE_ATTRIBS(plane)                                                                                      \
-    do {                                                                                                              \
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE##plane##_FD_EXT, desc.objects[desc.layers[n].object_index[plane]].fd);           \
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE##plane##_OFFSET_EXT, desc.layers[n].offset[plane]);                              \
-        ADD_ATTRIB(EGL_DMA_BUF_PLANE##plane##_PITCH_EXT, desc.layers[n].pitch[plane]);                                \
+
+#define ADD_DMABUF_PLANE_ATTRIBS(plane, fd, offset, stride)         \
+    do {                                                            \
+        ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _FD_EXT,           \
+                   fd);                                             \
+        ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _OFFSET_EXT,       \
+                   offset);                                         \
+        ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _PITCH_EXT,        \
+                   stride);                                         \
+    } while (0)
+
+#define ADD_DMABUF_PLANE_MODIFIERS(plane, mod)                      \
+    do {                                                            \
+        ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _MODIFIER_LO_EXT,  \
+                   (uint32_t) ((mod) & 0xFFFFFFFFlu));              \
+        ADD_ATTRIB(EGL_DMA_BUF_PLANE ## plane ## _MODIFIER_HI_EXT,  \
+                   (uint32_t) (((mod) >> 32u) & 0xFFFFFFFFlu));     \
     } while (0)
 
 void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame *frame, int image_width,
@@ -2555,13 +2568,19 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
     for (int n = 0; n < Planes; n++) {
         int attribs[20] = {EGL_NONE};
         uint num_attribs = 0;
-        int fd;
+        int id = desc.layers[n].object_index[0];
+        int fd = desc.objects[id].fd;
 
 #if defined(VAAPI)
-        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
+//Debug(3,"Plane %d w %d h %d layers %d planes %d pitch %d format %04x\n",n,image_width,image_height,desc.num_layers,desc.layers[n].num_planes,desc.layers[n].pitch[0],desc.layers[n].drm_format);
+       
+        
         ADD_ATTRIB(EGL_WIDTH, n == 0 ? image_width : image_width / 2);
         ADD_ATTRIB(EGL_HEIGHT, n == 0 ? image_height : image_height / 2);
-        ADD_PLANE_ATTRIBS(0);
+        ADD_DMABUF_PLANE_MODIFIERS(0, desc.objects[id].drm_format_modifier);
+        ADD_ATTRIB(EGL_LINUX_DRM_FOURCC_EXT, desc.layers[n].drm_format);
+        ADD_DMABUF_PLANE_ATTRIBS(0, fd, desc.layers[n].offset[0],desc.layers[n].pitch[0]);
+        
 #endif
 
         decoder->images[index * Planes + n] =
@@ -3471,7 +3490,6 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
     if (video_ctx->pix_fmt == PIXEL_FORMAT) {
         int w = decoder->InputWidth;
         int h = decoder->InputHeight;
-
         decoder->ColorSpace = color; // save colorspace
         decoder->trc = frame->color_trc;
         decoder->color_primaries = frame->color_primaries;
