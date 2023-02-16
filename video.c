@@ -1446,23 +1446,21 @@ typedef struct priv {
     const struct pl_vk_inst *vk_inst;
 #endif
     struct pl_context *ctx;
-#if PL_API_VER >= 113
     struct pl_custom_lut *lut;
-#endif
     struct pl_renderer *renderer;
     struct pl_renderer *renderertest;
     const struct pl_swapchain *swapchain;
     struct pl_log_params context;
-    // struct pl_frame r_target;
-    // struct pl_render_params r_params;
-    // struct pl_tex	  final_fbo;
 #ifndef PLACEBO_GL
     VkSurfaceKHR pSurface;
 #endif
-    // VkSemaphore sig_in;
     int has_dma_buf;
 #ifdef PLACEBO_GL
+#if PL_API_VER >= 229
+    struct pl_opengl_t *gl;
+#else
     struct pl_opengl *gl;
+#endif
 #endif
     const struct pl_hook *hook[NUM_SHADERS];
     int num_shaders;
@@ -2383,7 +2381,11 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         int fd = desc.objects[id].fd;
         uint32_t size = desc.objects[id].size;
         uint32_t offset = desc.layers[n].offset[0];
+#if PL_API_VER < 229
         struct pl_fmt *fmt;
+#else
+        struct pl_fmt_t *fmt;
+#endif
 
         if (fd == -1) {
             printf("Fehler beim Import von Surface %d\n", index);
@@ -3756,7 +3758,6 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     struct pl_cone_params cone;
     struct pl_tex_vk *vkp;
     struct pl_plane *pl;
-    const struct pl_fmt *fmt;
     struct pl_tex *tex0, *tex1;
 
     struct pl_frame *img;
@@ -3846,6 +3847,12 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     memcpy(&render_params, &pl_render_default_params, sizeof(render_params));
     render_params.deband_params = &deband;
 
+    // provide LUT Table
+    if (LUTon)
+        render_params.lut = p->lut;
+    else
+        render_params.lut = NULL;
+        
     frame = decoder->frames[current];
 
     // Fix Color Parameters
@@ -3870,9 +3877,10 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             memcpy(&img->repr, &pl_color_repr_uhdtv, sizeof(struct pl_color_repr));
             memcpy(&img->color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
             deband.grain = 0.0f; // no grain in HDR
-            img->color.sig_scale = 1.0f;
             pl->shift_x = -0.5f;
-
+            // Kein LUT bei HDR
+            render_params.lut = NULL;
+#if 0
             if ((sd = av_frame_get_side_data(frame, AV_FRAME_DATA_ICC_PROFILE))) {
                 img->profile = (struct pl_icc_profile){
                     .data = sd->data,
@@ -3901,13 +3909,14 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             // Make sure this value is more or less legal
             if (img->color.sig_peak < 1.0 || img->color.sig_peak > 50.0)
                 img->color.sig_peak = 0.0;
-
+#endif
 #if defined VAAPI || defined USE_DRM
             render_params.peak_detect_params = NULL;
             render_params.deband_params = NULL;
             render_params.dither_params = NULL;
             render_params.skip_anti_aliasing = true;
 #endif
+
             break;
 
         default: // fallback
@@ -4106,13 +4115,9 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         render_params.num_hooks = p->num_shaders;
     }
 #endif
-#if PL_API_VER >= 113
-    // provide LUT Table
-    if (LUTon)
-        render_params.lut = p->lut;
-    else
-        render_params.lut = NULL;
-#endif
+
+    
+
 
     if (decoder->newchannel && current == 0) {
         colors.brightness = -1.0f;
