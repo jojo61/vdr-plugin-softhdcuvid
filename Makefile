@@ -159,6 +159,7 @@ endif
 
 ifeq ($(LIBPLACEBO_GL),1)
 CONFIG += -DPLACEBO_GL -DPLACEBO
+_CFLAGS += $(shell pkg-config --cflags libplacebo)
 LIBS += $(shell pkg-config --libs epoxy libplacebo)
 else
 LIBS += $(shell pkg-config --libs egl)
@@ -166,6 +167,7 @@ endif
 
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
+_CFLAGS += $(shell pkg-config --cflags libplacebo)
 LIBS += $(shell pkg-config --libs egl libplacebo)
 endif
 
