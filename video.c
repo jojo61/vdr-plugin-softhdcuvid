@@ -4412,7 +4412,7 @@ static void CuvidDisplayFrame(void) {
             if (posd) {
                 pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
                                           // upload OSD
-#if PL_API_VER > 229
+#if PL_API_VER >= 229
                                           .tex = osdoverlay.tex,
 #else
                                           .tex = osdoverlay.plane.texture,
@@ -5723,7 +5723,7 @@ void exit_display() {
         return;
     }
     pl_gpu_finish(p->gpu);
-#if PL_API_VER > 229
+#if PL_API_VER >= 229
     if (osdoverlay.tex)
         pl_tex_destroy(p->gpu, &osdoverlay.tex);
 #else
