@@ -2375,7 +2375,11 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         return;
     }
     // vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
+#ifdef USE_DRM
+    SharedContext;
+#else
     Lock_and_SharedContext;
+#endif
     for (n = 0; n < 2; n++) { //  Set DMA_BUF from VAAPI decoder to Textures
         int id = desc.layers[n].object_index[0];
         int fd = desc.objects[id].fd;
@@ -2448,7 +2452,11 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
 
         decoder->pl_frames[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
     }
+#ifdef USE_DRM
+    NoContext;
+#else
     Unlock_and_NoContext;
+#endif
 }
 #endif
 
