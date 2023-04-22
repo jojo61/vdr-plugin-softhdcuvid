@@ -927,6 +927,7 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough) {
     const char *device;
     snd_pcm_t *handle;
     int err;
+    char tmp[80];
 
     // &&|| hell
     if (!(passthrough && ((device = AudioPassthroughDevice) || (device = getenv("ALSA_PASSTHROUGH_DEVICE")))) &&
@@ -936,30 +937,46 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough) {
     if (!AudioDoingInit) { // reduce blabla during init
         Info(_("audio/alsa: using %sdevice '%s'\n"), passthrough ? "pass-through " : "", device);
     }
+    //printf("audio/alsa: using %sdevice '%s'\n", passthrough ? "pass-through " : "", device);
+    
     //
     // for AC3 pass-through try to set the non-audio bit, use AES0=6
     //
-    if (passthrough && AudioAppendAES) {
-#if 0
-	// FIXME: not yet finished
-	char *buf;
-	const char *s;
-	int n;
+    if (passthrough) { //) && AudioAppendAES) {
 
-	n = strlen(device);
-	buf = alloca(n + sizeof(":AES0=6") + 1);
-	strcpy(buf, device);
-	if (!(s = strchr(buf, ':'))) {
-	    // no alsa parameters
-	    strcpy(buf + n, ":AES=6");
-	}
-	Debug(3, "audio/alsa: try '%s'\n", buf);
+#if 1
+        if (!(strchr(device, ':'))) {
+            sprintf(tmp,
+                        //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
+                        "%s:AES0=%d,AES1=%d,AES2=0",
+                        device,
+                        IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
+                        IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
+                        //map_iec958_srate(ao->samplerate));
+        } 
+        else {
+            sprintf(tmp,
+                        //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
+                        "%s,AES0=%d,AES1=%d,AES2=0",
+                        device,
+                        IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
+                        IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
+                        //map_iec958_srate(ao->samplerate));
+        }
+        
+        //printf( "opening device '%s' => '%s'\n", device, tmp);
+        if ((err = snd_pcm_open(&handle, tmp, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0 ) {
+            Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
+            return NULL;
+        } 
+;
 #endif
-    }
-    // open none blocking; if device is already used, we don't want wait
-    if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
-        Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
-        return NULL;
+    } else {
+        // open none blocking; if device is already used, we don't want wait
+        if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
+            Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
+            return NULL;
+        }
     }
 
     if ((err = snd_pcm_nonblock(handle, 0)) < 0) {
@@ -1951,7 +1968,7 @@ void AudioSetVolume(int volume) {
     }
     AudioAmplifier = volume;
     if (!AudioSoftVolume) {
-        AudioUsedModule->SetVolume(volume); // set Volume 
+        AudioUsedModule->SetVolume(volume);
     }
 }
 
