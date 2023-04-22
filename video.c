@@ -2375,7 +2375,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         return;
     }
     // vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
-#ifdef USE_DRM
+#if defined USE_DRM &&  defined PLACEBO_GL
     SharedContext;
 #else
     Lock_and_SharedContext;
@@ -2452,7 +2452,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
 
         decoder->pl_frames[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
     }
-#ifdef USE_DRM
+#if defined USE_DRM && defined PLACEBO_GL
     NoContext;
 #else
     Unlock_and_NoContext;
