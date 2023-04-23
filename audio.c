@@ -942,9 +942,7 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough) {
     //
     // for AC3 pass-through try to set the non-audio bit, use AES0=6
     //
-    if (passthrough) { //) && AudioAppendAES) {
-
-#if 1
+    if (passthrough && AudioAppendAES) {
         if (!(strchr(device, ':'))) {
             sprintf(tmp,
                         //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
@@ -964,13 +962,11 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough) {
                         //map_iec958_srate(ao->samplerate));
         }
         
-        //printf( "opening device '%s' => '%s'\n", device, tmp);
+        printf( "opening device '%s' => '%s'\n", device, tmp);
         if ((err = snd_pcm_open(&handle, tmp, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0 ) {
             Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
             return NULL;
         } 
-;
-#endif
     } else {
         // open none blocking; if device is already used, we don't want wait
         if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {

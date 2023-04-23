@@ -2375,11 +2375,9 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         return;
     }
     // vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
-#if defined USE_DRM &&  defined PLACEBO_GL
-    SharedContext;
-#else
+
     Lock_and_SharedContext;
-#endif
+
     for (n = 0; n < 2; n++) { //  Set DMA_BUF from VAAPI decoder to Textures
         int id = desc.layers[n].object_index[0];
         int fd = desc.objects[id].fd;
@@ -2452,11 +2450,9 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
 
         decoder->pl_frames[index].planes[n].texture = pl_tex_create(p->gpu, &tex_params);
     }
-#if defined USE_DRM && defined PLACEBO_GL
-    NoContext;
-#else
+
     Unlock_and_NoContext;
-#endif
+
 }
 #endif
 
@@ -4519,10 +4515,11 @@ static void CuvidDisplayFrame(void) {
 #if defined PLACEBO //  && !defined PLACEBO_GL
     // first_time = GetusTicks();
     if (!pl_swapchain_submit_frame(p->swapchain))
-        Fatal(_("Failed to submit swapchain buffer\n"));
+        Fatal(_("Failed to submit swapchain buffer\n")); 
+    VideoThreadUnlock();
     pl_swapchain_swap_buffers(p->swapchain); // swap buffers
     NoContext;
-    VideoThreadUnlock();
+   
 #else // not PLACEBO
 #ifdef CUVID
     glXGetVideoSyncSGI(&Count); // get current frame
