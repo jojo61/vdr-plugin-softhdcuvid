@@ -833,6 +833,8 @@ cOglCmdDrawRectangle::cOglCmdDrawRectangle(cOglFb *fb, GLint x, GLint y, GLint w
 }
 
 bool cOglCmdDrawRectangle::Execute(void) {
+    if (width <= 0 || height <= 0)
+        return false;
     GLfloat x1 = x;
     GLfloat y1 = y;
     GLfloat x2 = x + width;
@@ -879,6 +881,8 @@ cOglCmdDrawEllipse::cOglCmdDrawEllipse(cOglFb *fb, GLint x, GLint y, GLint width
 }
 
 bool cOglCmdDrawEllipse::Execute(void) {
+    if (width <= 0 || height <= 0)
+        return false;
     int numVertices = 0;
     GLfloat *vertices = NULL;
 
@@ -1086,6 +1090,8 @@ cOglCmdDrawSlope::cOglCmdDrawSlope(cOglFb *fb, GLint x, GLint y, GLint width, GL
 }
 
 bool cOglCmdDrawSlope::Execute(void) {
+    if (width <= 0 || height <= 0)
+        return false;
     bool falling = type & 0x02;
     bool vertical = type & 0x04;
 
@@ -1252,6 +1258,8 @@ cOglCmdDrawImage::cOglCmdDrawImage(cOglFb *fb, tColor *argb, GLint width, GLint 
 cOglCmdDrawImage::~cOglCmdDrawImage(void) { free(argb); }
 
 bool cOglCmdDrawImage::Execute(void) {
+    if (width <= 0 || height <= 0)
+        return false;
     GLuint texture;
 
 #ifdef USE_DRM
@@ -1318,6 +1326,8 @@ cOglCmdDrawTexture::cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x,
 }
 
 bool cOglCmdDrawTexture::Execute(void) {
+    if (imageRef->width <= 0 || imageRef->height <= 0)
+        return false;
     GLfloat x1 = x;                    // top
     GLfloat y1 = y;                    // left
     GLfloat x2 = x + imageRef->width;  // right
