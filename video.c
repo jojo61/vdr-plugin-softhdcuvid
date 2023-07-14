@@ -464,7 +464,7 @@ extern void AudioVideoReady(int64_t); ///< tell audio video is ready
 static pthread_t VideoThread;          ///< video decode thread
 static pthread_cond_t VideoWakeupCond; ///< wakeup condition variable
 static pthread_mutex_t VideoMutex;     ///< video condition mutex
-static pthread_mutex_t VideoLockMutex; ///< video lock mutex
+pthread_mutex_t VideoLockMutex; ///< video lock mutex
 pthread_mutex_t OSDMutex;              ///< OSD update mutex
 #endif
 
@@ -825,6 +825,8 @@ static uint64_t test_time = 0;
 #define Lock_and_SharedContext                                                                                        \
     {                                                                                                                 \
         VideoThreadLock();                                                                                            \
+        Debug(4,"Lock OSDMutex %s %d\n",__FILE__, __LINE__);                                                          \
+        pthread_mutex_lock(&OSDMutex);                                                                                \
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);                                 \
         EglCheck();                                                                                                   \
     }
@@ -832,10 +834,14 @@ static uint64_t test_time = 0;
     {                                                                                                                 \
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);                                   \
         EglCheck();                                                                                                   \
+        Debug(4,"UnLock OSDMutex %s %d\n",__FILE__, __LINE__);                                                        \
+        pthread_mutex_unlock(&OSDMutex);                                                                              \
         VideoThreadUnlock();                                                                                          \
     }
 #define SharedContext                                                                                                 \
     {                                                                                                                 \
+        Debug(4,"Lock OSDMutex %s %d\n",__FILE__, __LINE__);                                                          \
+        pthread_mutex_lock(&OSDMutex);                                                                                \
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);                                 \
         EglCheck();                                                                                                   \
     }
@@ -843,6 +849,8 @@ static uint64_t test_time = 0;
     {                                                                                                                 \
         eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);                                   \
         EglCheck();                                                                                                   \
+        Debug(4,"UnLock OSDMutex %s %d\n",__FILE__, __LINE__);                                                        \
+        pthread_mutex_unlock(&OSDMutex);                                                                              \
     }
 #else
 #ifdef PLACEBO
@@ -2576,7 +2584,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
     // vaSyncSurface(decoder->VaDisplay, (VASurfaceID) (uintptr_t)
     // frame->data[3]);
 #endif
-
+    pthread_mutex_lock(&OSDMutex);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
     EglCheck();
 
@@ -2612,6 +2620,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
     glBindTexture(GL_TEXTURE_2D, 0);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
+    pthread_mutex_unlock(&OSDMutex);
     return;
 
 esh_failed:
@@ -2620,6 +2629,7 @@ esh_failed:
         close(desc.objects[n].fd);
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     EglCheck();
+    pthread_mutex_unlock(&OSDMutex);
 }
 #endif
 #endif
@@ -4410,8 +4420,9 @@ static void CuvidDisplayFrame(void) {
         }
         valid_frame = 1;
 #ifdef PLACEBO
+        //pthread_mutex_lock(&OSDMutex);
         if (OsdShown == 1) { // New OSD opened
-            pthread_mutex_lock(&OSDMutex);
+            
             make_osd_overlay(OSDx, OSDy, OSDxsize, OSDysize);
             if (posd) {
                 pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
@@ -4425,7 +4436,7 @@ static void CuvidDisplayFrame(void) {
                                       });
             }
             OsdShown = 2;
-            pthread_mutex_unlock(&OSDMutex);
+            
         }
 
         if (OsdShown == 2) {
@@ -4433,7 +4444,7 @@ static void CuvidDisplayFrame(void) {
         } else {
             CuvidMixVideo(decoder, i, &target, NULL);
         }
-
+        //pthread_mutex_unlock(&OSDMutex);
 #else
         CuvidMixVideo(decoder, i);
 #endif
@@ -4518,7 +4529,11 @@ static void CuvidDisplayFrame(void) {
         Fatal(_("Failed to submit swapchain buffer\n")); 
     VideoThreadUnlock();
     pl_swapchain_swap_buffers(p->swapchain); // swap buffers
-    NoContext;
+#ifdef PLACEBO_GL
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    EglCheck();  
+#endif
+    
    
 #else // not PLACEBO
 #ifdef CUVID
@@ -7267,16 +7282,16 @@ int GlxInitopengl() {
         if (!eglOSDContext) {
             EglCheck();
             Fatal(_("video/egl: can't create thread egl context\n"));
-            return NULL;
+            return 1;
         }
     }
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglOSDContext);
-    return;
+    return 0;
 }
 
 int GlxDrawopengl() {
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, eglSharedContext);
-    return;
+    return 0;
 }
 
 void GlxDestroy() {

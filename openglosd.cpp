@@ -1263,7 +1263,8 @@ bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
 
 #ifdef USE_DRM
-    //  pthread_mutex_lock(&OSDMutex);
+    //esyslog("upload Image\n");
+    pthread_mutex_lock(&OSDMutex);
     GlxDrawopengl(); // here we need the Shared Context for upload
     GlxCheck();
 #endif
@@ -1276,10 +1277,10 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glFlush();
-#ifdef USE_DRM
+#ifdef USE_DRM  
     GlxInitopengl(); // Reset Context
     GlxCheck();
-//  pthread_mutex_unlock(&OSDMutex);
+    pthread_mutex_unlock(&OSDMutex);
 #endif
 
     GLfloat x1 = x;          // left
@@ -1369,7 +1370,8 @@ cOglCmdStoreImage::~cOglCmdStoreImage(void) { free(data); }
 
 bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
-    //  pthread_mutex_lock(&OSDMutex);
+    return false;
+    pthread_mutex_lock(&OSDMutex);
     GlxDrawopengl(); // here we need the Shared Context for upload
     GlxCheck();
 #endif
@@ -1386,7 +1388,7 @@ bool cOglCmdStoreImage::Execute(void) {
 #ifdef USE_DRM
     GlxInitopengl(); // Reset Context
     GlxCheck();
-//  pthread_mutex_lock(&OSDMutex);
+    pthread_mutex_lock(&OSDMutex);
 #endif
     return true;
 }
@@ -1466,7 +1468,9 @@ int cOglThread::StoreImage(const cImage &image) {
     if (!maxCacheSize) {
         return 0;
     }
-
+#ifdef USE_DRM
+    return 0;
+#endif
     if (image.Width() > maxTextureSize || image.Height() > maxTextureSize) {
         esyslog("[softhddev] cannot store image of %dpx x %dpx "
                 "(maximum size is %dpx x %dpx) - falling back to "
@@ -1646,6 +1650,7 @@ void cOglThread::Action(void) {
 
 bool cOglThread::InitOpenGL(void) {
 #ifdef USE_DRM
+    esyslog("InitOpenGL\n");
     GlxInitopengl();
 #else
     const char *displayName = X11DisplayName;
@@ -1657,7 +1662,7 @@ bool cOglThread::InitOpenGL(void) {
         }
     }
 
-    dsyslog("[softhddev]OpenGL using display %s", displayName);
+    esyslog("[softhddev]OpenGL using display %s", displayName);
 
     int argc = 3;
     char *buffer[3];
