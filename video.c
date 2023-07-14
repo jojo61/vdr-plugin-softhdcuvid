@@ -3191,9 +3191,9 @@ int get_RGB(CuvidDecoder *decoder) {
     target.repr.bits.bit_shift = 0;
     target.color.primaries = PL_COLOR_PRIM_BT_709;
     target.color.transfer = PL_COLOR_TRC_BT_1886;
-    target.color.light = PL_COLOR_LIGHT_DISPLAY;
-    target.color.sig_peak = 0;
-    target.color.sig_avg = 0;
+    //target.color.light = PL_COLOR_LIGHT_DISPLAY;
+    //target.color.sig_peak = 0;
+    //target.color.sig_avg = 0;
 
     if (ovl) {
         target.overlays = ovl;
