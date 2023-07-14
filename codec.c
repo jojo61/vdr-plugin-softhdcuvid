@@ -894,7 +894,7 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
         (CodecPassthrough & CodecEAC3 && audio_ctx->codec_id == AV_CODEC_ID_EAC3)) {
         if (audio_ctx->codec_id == AV_CODEC_ID_EAC3) {
             // E-AC-3 over HDMI some receivers need HBR
-            audio_decoder->HwSampleRate *= 4;
+            //audio_decoder->HwSampleRate *= 4;
         }
         audio_decoder->HwChannels = 2;
         audio_decoder->SpdifIndex = 0; // reset buffer
