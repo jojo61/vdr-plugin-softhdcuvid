@@ -2355,9 +2355,6 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
         img->repr.alpha = PL_ALPHA_UNKNOWN;
         img->color.primaries = pl_color_primaries_guess(size_x, size_y); // Gammut  overwritten later
         img->color.transfer = PL_COLOR_TRC_BT_1886;                      // overwritten later
-        img->color.light = PL_COLOR_LIGHT_SCENE_709_1886;                // needs config ???
-        img->color.sig_peak = 0.0f;                                      // needs config	 ????
-        img->color.sig_avg = 0.0f;
         img->num_overlays = 0;
     }
     NoContext;
@@ -3191,9 +3188,6 @@ int get_RGB(CuvidDecoder *decoder) {
     target.repr.bits.bit_shift = 0;
     target.color.primaries = PL_COLOR_PRIM_BT_709;
     target.color.transfer = PL_COLOR_TRC_BT_1886;
-    //target.color.light = PL_COLOR_LIGHT_DISPLAY;
-    //target.color.sig_peak = 0;
-    //target.color.sig_avg = 0;
 
     if (ovl) {
         target.overlays = ovl;
@@ -3579,8 +3573,13 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
             // %p\n",surface,decoder->pl_frames[surface].planes[0].texture,decoder->pl_frames[surface].planes[1].texture);
             bool ok = pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
                                                 .tex = decoder->pl_frames[surface].planes[0].texture,
+#if PL_API_VER < 292
                                                 .stride_w = output->linesize[0],
                                                 .stride_h = h,
+#else
+                                                .row_pitch = output->linesize[0],
+                                                .depth_pitch = h,
+#endif
                                                 .ptr = output->data[0],
                                                 .rc.x1 = w,
                                                 .rc.y1 = h,
@@ -3588,8 +3587,13 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
                                             });
             ok &= pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
                                             .tex = decoder->pl_frames[surface].planes[1].texture,
+#if PL_API_VER < 292
                                             .stride_w = output->linesize[0] / 2,
                                             .stride_h = h / 2,
+#else
+                                            .row_pitch = output->linesize[0] / 2,
+                                            .depth_pitch = h,
+#endif                                           
                                             .ptr = output->data[1],
                                             .rc.x1 = w / 2,
                                             .rc.y1 = h / 2,
@@ -3877,7 +3881,6 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             memcpy(&img->repr, &pl_color_repr_sdtv, sizeof(struct pl_color_repr));
             img->color.primaries = PL_COLOR_PRIM_BT_601_625;
             img->color.transfer = PL_COLOR_TRC_BT_1886;
-            img->color.light = PL_COLOR_LIGHT_DISPLAY;
             pl->shift_x = 0.0f;
             break;
         case AVCOL_SPC_BT709:
@@ -3964,7 +3967,6 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
                 target->color.primaries = PL_COLOR_PRIM_BT_601_625;
                 target->color.transfer = PL_COLOR_TRC_BT_1886;
-                target->color.light = PL_COLOR_LIGHT_DISPLAY;
             } else {
                 memcpy(&target->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
             }
@@ -3976,7 +3978,6 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             } else if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
                 target->color.primaries = PL_COLOR_PRIM_BT_601_625;
                 target->color.transfer = PL_COLOR_TRC_BT_1886;
-                target->color.light = PL_COLOR_LIGHT_DISPLAY;
                 ;
             } else {
                 memcpy(&target->color, &pl_color_space_bt709, sizeof(struct pl_color_space));
@@ -4004,8 +4005,6 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     }
 #endif
 
-    // printf("sys %d prim %d trc %d light
-    // %d\n",img->repr.sys,img->color.primaries,img->color.transfer,img->color.light);
     //  Source crop
     if (VideoScalerTest) { // right side defined scaler
 
