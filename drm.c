@@ -280,7 +280,7 @@ static int FindDevice(VideoRender *render) {
         if (DRMConnector && strcmp(DRMConnector, connectorstr))
             continue;
 
-        if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
+        if (/*connector->connection == DRM_MODE_CONNECTED && */ connector->count_modes > 0) {
             float aspect = (float)connector->mmWidth / (float)connector->mmHeight;
             if ((aspect > 1.70) && (aspect < 1.85)) {
                 render->mmHeight = 90;
@@ -492,6 +492,7 @@ static void drm_swap_buffers() {
     uint32_t fb;
 
     eglSwapBuffers(eglDisplay, eglSurface);
+    usleep(1000);
     struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbm.surface);
 #if 1
     if (bo == NULL)
