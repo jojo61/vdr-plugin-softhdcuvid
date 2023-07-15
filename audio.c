@@ -2187,14 +2187,14 @@ found:
     AudioRingInit();
     AudioUsedModule->Init();
 
-#if 1
+#if 0
     for (u = 0; u < AudioRatesMax; ++u) {
        
         AudioChannelMatrix[u][1]=AudioChannelMatrix[u][2]=AudioChannelMatrix[u][3]=AudioChannelMatrix[u][4]=\
         AudioChannelMatrix[u][5]=AudioChannelMatrix[u][6]=AudioChannelMatrix[u][7]=AudioChannelMatrix[u][8]=2;
-        //printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
-        //    AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
-        //    AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
+        printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+            AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
+            AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
 
     }
 
@@ -2319,7 +2319,7 @@ found:
         }
     }
     for (u = 0; u < AudioRatesMax; ++u) {
-        Info(_("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n"), AudioRatesTable[u],
+        Debug(3,"audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
              AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
              AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
     }
