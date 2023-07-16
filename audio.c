@@ -93,6 +93,7 @@ static const AudioModule NoopModule; ///< forward definition of noop module
 //  Variables
 //----------------------------------------------------------------------------
 
+char AudioAlsaNotest;          ///< disable Audio capbility test
 char AudioAlsaDriverBroken;   ///< disable broken driver message
 char AudioAlsaNoCloseOpen;    ///< disable alsa close/open fix
 char AudioAlsaCloseOpenDelay; ///< enable alsa close/open delay fix
@@ -2187,143 +2188,145 @@ found:
     AudioRingInit();
     AudioUsedModule->Init();
 
-#if 0
-    for (u = 0; u < AudioRatesMax; ++u) {
-       
-        AudioChannelMatrix[u][1]=AudioChannelMatrix[u][2]=AudioChannelMatrix[u][3]=AudioChannelMatrix[u][4]=\
-        AudioChannelMatrix[u][5]=AudioChannelMatrix[u][6]=AudioChannelMatrix[u][7]=AudioChannelMatrix[u][8]=2;
-        printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
-            AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
-            AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
+    if (AudioAlsaNotest) {
+        for (u = 0; u < AudioRatesMax; ++u) {
+        
+            AudioChannelMatrix[u][1]=AudioChannelMatrix[u][2]=2;
+            AudioChannelMatrix[u][3]=AudioChannelMatrix[u][4]=4;
+            AudioChannelMatrix[u][5]=AudioChannelMatrix[u][6]=6;
+            AudioChannelMatrix[u][7]=AudioChannelMatrix[u][8]=8;
+            printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+                AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
+                AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
 
+        }
+
+        AudioChannelsInHw[1]=AudioChannelsInHw[3]=AudioChannelsInHw[4]=AudioChannelsInHw[5]=AudioChannelsInHw[6]=AudioChannelsInHw[7]=AudioChannelsInHw[8]=0;
+        AudioChannelsInHw[2]=2;
     }
-
-    AudioChannelsInHw[1]=AudioChannelsInHw[3]=AudioChannelsInHw[4]=AudioChannelsInHw[5]=AudioChannelsInHw[6]=AudioChannelsInHw[7]=AudioChannelsInHw[8]=0;
-    AudioChannelsInHw[2]=2;
-
-#else
-    //
-    //	Check which channels/rates/formats are supported
-    //	FIXME: we force 44.1Khz and 48Khz must be supported equal
-    //	FIXME: should use bitmap of channels supported in RatesInHw
-    //	FIXME: use loop over sample-rates
-    freq = 44100;
-    AudioRatesInHw[Audio44100] = 0;
-    for (chan = 1; chan < 9; ++chan) {
-        int tchan;
-        int tfreq;
-
-        tchan = chan;
-        tfreq = freq;
-        if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-            AudioChannelsInHw[chan] = 0;
-        } else {
-            AudioChannelsInHw[chan] = chan;
-            AudioRatesInHw[Audio44100] |= (1 << chan);
-        }
-    }
-    freq = 48000;
-    AudioRatesInHw[Audio48000] = 0;
-    for (chan = 1; chan < 9; ++chan) {
-        int tchan;
-        int tfreq;
-
-        if (!AudioChannelsInHw[chan]) {
-            continue;
-        }
-        tchan = chan;
-        tfreq = freq;
-        if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-            // AudioChannelsInHw[chan] = 0;
-        } else {
-            AudioChannelsInHw[chan] = chan;
-            AudioRatesInHw[Audio48000] |= (1 << chan);
-        }
-    }
-    freq = 192000;
-    AudioRatesInHw[Audio192000] = 0;
-    for (chan = 1; chan < 9; ++chan) {
-        int tchan;
-        int tfreq;
-
-        if (!AudioChannelsInHw[chan]) {
-            continue;
-        }
-        tchan = chan;
-        tfreq = freq;
-        if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
-            // AudioChannelsInHw[chan] = 0;
-        } else {
-            AudioChannelsInHw[chan] = chan;
-            AudioRatesInHw[Audio192000] |= (1 << chan);
-        }
-    }
-    //	build channel support and conversion table
-    for (u = 0; u < AudioRatesMax; ++u) {
+    else {
+        //
+        //	Check which channels/rates/formats are supported
+        //	FIXME: we force 44.1Khz and 48Khz must be supported equal
+        //	FIXME: should use bitmap of channels supported in RatesInHw
+        //	FIXME: use loop over sample-rates
+        freq = 44100;
+        AudioRatesInHw[Audio44100] = 0;
         for (chan = 1; chan < 9; ++chan) {
-            AudioChannelMatrix[u][chan] = 0;
-            if (!AudioRatesInHw[u]) { // rate unsupported
+            int tchan;
+            int tfreq;
+
+            tchan = chan;
+            tfreq = freq;
+            if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+                AudioChannelsInHw[chan] = 0;
+            } else {
+                AudioChannelsInHw[chan] = chan;
+                AudioRatesInHw[Audio44100] |= (1 << chan);
+            }
+        }
+        freq = 48000;
+        AudioRatesInHw[Audio48000] = 0;
+        for (chan = 1; chan < 9; ++chan) {
+            int tchan;
+            int tfreq;
+
+            if (!AudioChannelsInHw[chan]) {
                 continue;
             }
-            if (AudioChannelsInHw[chan]) {
-                AudioChannelMatrix[u][chan] = chan;
+            tchan = chan;
+            tfreq = freq;
+            if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+                // AudioChannelsInHw[chan] = 0;
             } else {
-                switch (chan) {
-                    case 1:
-                        if (AudioChannelsInHw[2]) {
-                            AudioChannelMatrix[u][chan] = 2;
-                        }
-                        break;
-                    case 2:
-                    case 3:
-                        if (AudioChannelsInHw[4]) {
-                            AudioChannelMatrix[u][chan] = 4;
+                AudioChannelsInHw[chan] = chan;
+                AudioRatesInHw[Audio48000] |= (1 << chan);
+            }
+        }
+        freq = 192000;
+        AudioRatesInHw[Audio192000] = 0;
+        for (chan = 1; chan < 9; ++chan) {
+            int tchan;
+            int tfreq;
+
+            if (!AudioChannelsInHw[chan]) {
+                continue;
+            }
+            tchan = chan;
+            tfreq = freq;
+            if (AudioUsedModule->Setup(&tfreq, &tchan, 0)) {
+                // AudioChannelsInHw[chan] = 0;
+            } else {
+                AudioChannelsInHw[chan] = chan;
+                AudioRatesInHw[Audio192000] |= (1 << chan);
+            }
+        }
+        //	build channel support and conversion table
+        for (u = 0; u < AudioRatesMax; ++u) {
+            for (chan = 1; chan < 9; ++chan) {
+                AudioChannelMatrix[u][chan] = 0;
+                if (!AudioRatesInHw[u]) { // rate unsupported
+                    continue;
+                }
+                if (AudioChannelsInHw[chan]) {
+                    AudioChannelMatrix[u][chan] = chan;
+                } else {
+                    switch (chan) {
+                        case 1:
+                            if (AudioChannelsInHw[2]) {
+                                AudioChannelMatrix[u][chan] = 2;
+                            }
                             break;
-                        }
-                    case 4:
-                        if (AudioChannelsInHw[5]) {
-                            AudioChannelMatrix[u][chan] = 5;
+                        case 2:
+                        case 3:
+                            if (AudioChannelsInHw[4]) {
+                                AudioChannelMatrix[u][chan] = 4;
+                                break;
+                            }
+                        case 4:
+                            if (AudioChannelsInHw[5]) {
+                                AudioChannelMatrix[u][chan] = 5;
+                                break;
+                            }
+                        case 5:
+                            if (AudioChannelsInHw[6]) {
+                                AudioChannelMatrix[u][chan] = 6;
+                                break;
+                            }
+                        case 6:
+                            if (AudioChannelsInHw[7]) {
+                                AudioChannelMatrix[u][chan] = 7;
+                                break;
+                            }
+                        case 7:
+                            if (AudioChannelsInHw[8]) {
+                                AudioChannelMatrix[u][chan] = 8;
+                                break;
+                            }
+                        case 8:
+                            if (AudioChannelsInHw[6]) {
+                                AudioChannelMatrix[u][chan] = 6;
+                                break;
+                            }
+                            if (AudioChannelsInHw[2]) {
+                                AudioChannelMatrix[u][chan] = 2;
+                                break;
+                            }
+                            if (AudioChannelsInHw[1]) {
+                                AudioChannelMatrix[u][chan] = 1;
+                                break;
+                            }
                             break;
-                        }
-                    case 5:
-                        if (AudioChannelsInHw[6]) {
-                            AudioChannelMatrix[u][chan] = 6;
-                            break;
-                        }
-                    case 6:
-                        if (AudioChannelsInHw[7]) {
-                            AudioChannelMatrix[u][chan] = 7;
-                            break;
-                        }
-                    case 7:
-                        if (AudioChannelsInHw[8]) {
-                            AudioChannelMatrix[u][chan] = 8;
-                            break;
-                        }
-                    case 8:
-                        if (AudioChannelsInHw[6]) {
-                            AudioChannelMatrix[u][chan] = 6;
-                            break;
-                        }
-                        if (AudioChannelsInHw[2]) {
-                            AudioChannelMatrix[u][chan] = 2;
-                            break;
-                        }
-                        if (AudioChannelsInHw[1]) {
-                            AudioChannelMatrix[u][chan] = 1;
-                            break;
-                        }
-                        break;
+                    }
                 }
             }
         }
+        for (u = 0; u < AudioRatesMax; ++u) {
+            Debug(3,"audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+                AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
+                AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
+        }
     }
-    for (u = 0; u < AudioRatesMax; ++u) {
-        Debug(3,"audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
-             AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
-             AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
-    }
-#endif
 #ifdef USE_AUDIO_THREAD
     if (AudioUsedModule->Thread) { // supports threads
         AudioInitThread();

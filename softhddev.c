@@ -2817,8 +2817,8 @@ const char *CommandLineHelp(void) {
            "\tstill-h264-hw-decoder\tenable h264 hw decoder for still-pictures\n"
            "\talsa-driver-broken\tdisable broken alsa driver message\n"
            "\talsa-no-close-open\tdisable close open to fix alsa no sound bug\n"
-           "\talsa-close-open-delay\tenable close open delay to fix no sound "
-           "bug\n"
+           "\talsa-no-test\tdisable Alsa Capability test on start for NUC11/12\n"
+           "\talsa-close-open-delay\tenable close open delay to fix no sound bug\n"
            "\tignore-repeat-pict\tdisable repeat pict message\n"
            "\tuse-possible-defect-frames prefer faster channel switch\n"
            "	 -D\t\tstart in detached mode\n";
@@ -2908,6 +2908,8 @@ int ProcessArgs(int argc, char *const argv[]) {
                     AudioAlsaDriverBroken = 1;
                 } else if (!strcasecmp("alsa-no-close-open", optarg)) {
                     AudioAlsaNoCloseOpen = 1;
+                } else if (!strcasecmp("alsa-no-test", optarg)) {
+                    AudioAlsaNotest = 1;
                 } else if (!strcasecmp("alsa-close-open-delay", optarg)) {
                     AudioAlsaCloseOpenDelay = 1;
                 } else if (!strcasecmp("ignore-repeat-pict", optarg)) {

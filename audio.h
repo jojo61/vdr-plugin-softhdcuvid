@@ -60,6 +60,7 @@ extern void AudioExit(void);               ///< cleanup and exit audio module
 //  Variables
 //----------------------------------------------------------------------------
 
+extern char AudioAlsaNotest;         ///< disable Alsa capability test
 extern char AudioAlsaDriverBroken;   ///< disable broken driver message
 extern char AudioAlsaNoCloseOpen;    ///< disable alsa close/open fix
 extern char AudioAlsaCloseOpenDelay; ///< enable alsa close/open delay fix
