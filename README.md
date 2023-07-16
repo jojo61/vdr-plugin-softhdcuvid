@@ -123,6 +123,9 @@ Beginners Guide for libplacebo:
 
     All other settings can be in their default state.
 
+	Note for NUC11/12 Users:
+	Provide paramete -w alsa-no-test to get Audio working.
+
     Beginning with libplacebo API 58 user shaders from mpv are supported. Use -S parameter to set the shader.
     The plugins searches the shaders in $ConfigDir/plugins/shaders for the shaders. One example shader is
     provided in the shader subdirectory. Copy it to e.g.: /etc/vdr/plugins/shaders and then start
