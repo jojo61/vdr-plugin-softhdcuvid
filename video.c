@@ -3793,6 +3793,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     AVFrameSideData *sd, *sd1 = NULL, *sd2 = NULL;
 
 #ifdef PLACEBO
+
     if (level) {
         dst_rect.x0 = decoder->VideoX; // video window output (clip)
         dst_rect.y0 = decoder->VideoY;
@@ -4082,6 +4083,9 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
     render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
 
+    if (level)
+        render_params.skip_target_clearing = 1;
+
     render_params.color_adjustment = &colors;
 
     colors.brightness = VideoBrightness;
@@ -4175,6 +4179,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
         //	render_params.lut = NULL;
         render_params.num_hooks = 0;
+        render_params.skip_target_clearing = 1;
 
         if (!p->renderertest)
             p->renderertest = pl_renderer_create(p->ctx, p->gpu);
@@ -4413,7 +4418,7 @@ static void CuvidDisplayFrame(void) {
             if ((VideoShowBlackPicture && !decoder->TrickSpeed) ||
                 (VideoShowBlackPicture && decoder->Closing < -300)) {
                 CuvidBlackSurface(decoder);
-                CuvidMessage(4, "video/cuvid: black surface displayed\n");
+                CuvidMessage(4, "video/cuvid: black surface displayed Filled %d\n",filled);
             }
             continue;
         }
