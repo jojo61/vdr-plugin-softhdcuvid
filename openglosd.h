@@ -290,10 +290,11 @@ class cOglCmdRenderFbToBufferFb : public cOglCmd {
     GLfloat x, y;
     GLfloat drawPortX, drawPortY;
     GLint transparency;
+    GLint alphablending;
 
   public:
     cOglCmdRenderFbToBufferFb(cOglFb *fb, cOglFb *buffer, GLint x, GLint y, GLint transparency, GLint drawPortX,
-                              GLint drawPortY);
+                              GLint drawPortY, bool alphablending);
     virtual ~cOglCmdRenderFbToBufferFb(void){};
     virtual const char *Description(void) { return "Render Framebuffer to Buffer"; }
     virtual bool Execute(void);
@@ -528,6 +529,7 @@ class cOglOsd : public cOsd {
   public:
     cOglOsd(int Left, int Top, uint Level, std::shared_ptr<cOglThread> oglThread);
     virtual ~cOglOsd();
+    static void SetOsdPosition(int Left, int Top, int Width, int Height);
     virtual eOsdError SetAreas(const tArea *Areas, int NumAreas);
     virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null);
     virtual void DestroyPixmap(cPixmap *Pixmap);
