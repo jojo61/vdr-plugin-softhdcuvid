@@ -4881,7 +4881,7 @@ static void CuvidSyncRenderFrame(CuvidDecoder *decoder, const AVCodecContext *vi
     // if video output buffer is full, wait and display surface.
     // loop for interlace
     if (atomic_read(&decoder->SurfacesFilled) >= VIDEO_SURFACES_MAX) {
-        Fatal("video/cuvid: this code part shouldn't be used\n");
+        //Fatal("video/cuvid: this code part shouldn't be used\n");
         return;
     }
 
