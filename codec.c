@@ -307,12 +307,12 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 #ifdef CUVID
     if (strcmp(decoder->VideoCodec->long_name,
                "Nvidia CUVID MPEG2VIDEO decoder") == 0) { // deinterlace for mpeg2 is somehow broken
-        if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint, 0) < 0) { // adaptive
+        if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 1, 0) < 0) { // adaptive
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option deint to video codec!\n"));
         }
-#if 1
-        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 9, 0) < 0) {
+#if 0
+        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 13, 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option surfces to video codec!\n"));
         }
@@ -558,7 +558,7 @@ next_part:
                 if (decoder->filter) {
                     if (decoder->filter == 1) {
                         if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
-                            Fatal(_("video: Init of YADIF Filter failed\n"));
+                            Debug(3,"video: Init of YADIF Filter failed\n");
                             decoder->filter = 0;
                         } else {
                             Debug(3, "Init YADIF ok\n");
@@ -876,7 +876,7 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
     int err;
 
     audio_ctx = audio_decoder->AudioCtx;
-    Debug(3, "codec/audio: format change %s %dHz *%d channels%s%s%s%s%s\n",
+    Debug(3, "codec/audio: Chanlayout %lx format change %s %dHz *%d channels%s%s%s%s%s\n",audio_ctx->channel_layout,
           av_get_sample_fmt_name(audio_ctx->sample_fmt), audio_ctx->sample_rate, audio_ctx->channels,
           CodecPassthrough & CodecPCM ? " PCM" : "", CodecPassthrough & CodecMPA ? " MPA" : "",
           CodecPassthrough & CodecAC3 ? " AC-3" : "", CodecPassthrough & CodecEAC3 ? " E-AC-3" : "",

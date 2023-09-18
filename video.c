@@ -4151,7 +4151,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     if (!pl_render_image(p->renderer, &decoder->pl_frames[current], target, &render_params)) {
         Debug(4, "Failed rendering frame!\n");
     }
-    //   pl_gpu_finish(p->gpu);
+    if (level)
+       pl_gpu_finish(p->gpu);
     // printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) { // left side test scaler
@@ -4465,6 +4466,7 @@ static void CuvidDisplayFrame(void) {
             decoder->grab = 0;
         }
     }
+
 
 #ifndef PLACEBO
     //	add osd to surface
@@ -6888,10 +6890,10 @@ void VideoSetAbove() {
 void VideoSetDeinterlace(int mode[VideoResolutionMax]) {
 #ifdef CUVID
     VideoDeinterlace[0] = mode[0]; // 576i
-    VideoDeinterlace[1] = 1;       // mode[1];  // 720p
+    VideoDeinterlace[1] = 0;       // mode[1];  // 720p
     VideoDeinterlace[2] = mode[2]; // fake 1080
     VideoDeinterlace[3] = mode[3]; // 1080
-    VideoDeinterlace[4] = 1;       // mode[4];  2160p
+    VideoDeinterlace[4] = 0;       // mode[4];  2160p
 #else
     VideoDeinterlace[0] = 1; // 576i
     VideoDeinterlace[1] = 0; // mode[1];  // 720p

@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.12"
+static const char *const VERSION = "3.13"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -723,6 +723,12 @@ class cDummyOsd : public cOsd {
   public:
     cDummyOsd(int Left, int Top, uint Level) : cOsd(Left, Top, Level) {}
     virtual ~cDummyOsd() {}
+    static void SetOsdPosition(int Left, int Top, int Width, int Height) {
+        (void) Left;
+        (void) Top;
+        (void) Width;
+        (void) Height;
+    }
     virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null) {
         p = new cDummyPixmap(Layer, ViewPort, DrawPort);
         return p;
