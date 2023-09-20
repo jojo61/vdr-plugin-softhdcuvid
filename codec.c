@@ -307,16 +307,16 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 #ifdef CUVID
     if (strcmp(decoder->VideoCodec->long_name,
                "Nvidia CUVID MPEG2VIDEO decoder") == 0) { // deinterlace for mpeg2 is somehow broken
-        if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", 1, 0) < 0) { // adaptive
+        if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint, 0) < 0) { // adaptive
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option deint to video codec!\n"));
         }
-#if 0
-        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 13, 0) < 0) {
+
+        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 9, 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option surfces to video codec!\n"));
         }
-#endif
+
         if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false", 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option drop 2.field to video codec!\n"));
@@ -326,12 +326,10 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option deint to video codec!\n"));
         }
-#if 1
         if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 13, 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option surfces to video codec!\n"));
         }
-#endif
         if (av_opt_set(decoder->VideoCtx->priv_data, "drop_second_field", "false", 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option drop 2.field  to video codec!\n"));

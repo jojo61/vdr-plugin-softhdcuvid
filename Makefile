@@ -28,7 +28,7 @@ LIBPLACEBO ?= 1
 LIBPLACEBO_GL ?= 0
 
 # use YADIF deint - only available with cuvid
-#YADIF = 1
+YADIF = 1
 
 # use gamma correction
 #GAMMA ?= 0
