@@ -2960,6 +2960,18 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             VideoThreadUnlock();
             // dont show first frame
 #endif
+        } else {
+            decoder->SyncCounter = 0;
+            decoder->FrameCounter = 0;
+            decoder->FramesDisplayed = 0;
+            decoder->StartCounter = 0;
+            decoder->Closing = 0;
+            decoder->PTS = AV_NOPTS_VALUE;
+            VideoDeltaPTS = 0;
+            decoder->InputAspect = video_ctx->sample_aspect_ratio;
+            CuvidUpdateOutput(decoder); // update aspect/scaling
+        }
+
 #ifdef YADIF
             if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
                 deint = 0;
@@ -2973,17 +2985,6 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
                 Fatal(_("codec: can't set option deint to video codec!\n"));
             }
 #endif
-        } else {
-            decoder->SyncCounter = 0;
-            decoder->FrameCounter = 0;
-            decoder->FramesDisplayed = 0;
-            decoder->StartCounter = 0;
-            decoder->Closing = 0;
-            decoder->PTS = AV_NOPTS_VALUE;
-            VideoDeltaPTS = 0;
-            decoder->InputAspect = video_ctx->sample_aspect_ratio;
-            CuvidUpdateOutput(decoder); // update aspect/scaling
-        }
 
         CuvidMessage(2, "GetFormat Init ok %dx%d\n", video_ctx->width, video_ctx->height);
         decoder->InputAspect = video_ctx->sample_aspect_ratio;
