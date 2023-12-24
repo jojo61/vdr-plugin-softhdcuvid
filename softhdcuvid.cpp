@@ -53,6 +53,9 @@ extern "C" {
 #ifdef PLACEBO
 #include <libplacebo/filters.h>
 extern void ToggleLUT();
+#if PL_API_VER >= 338
+#define pl_named_filters pl_filter_presets
+#endif
 #endif
 }
 

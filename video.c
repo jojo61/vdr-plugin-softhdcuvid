@@ -192,6 +192,9 @@ typedef void *EGLImageKHR;
 #include <libplacebo/shaders/lut.h>
 #endif
 #include <libplacebo/renderer.h>
+#if PL_API_VER >= 338
+#define pl_named_filters pl_filter_presets
+#endif
 #endif
 
 #include <libswscale/swscale.h>
