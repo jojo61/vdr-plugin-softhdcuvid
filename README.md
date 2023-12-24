@@ -59,7 +59,7 @@ It also needs the NVIDIA driver 410.48 or newer as well as CUDA 10.
 
 I recommend to use libplacebo. It has much better scaler and does colorconversion for HDR the correct way.
 
-If your FFMEG supports it then you can enable YADIF in the Makefile and select between the buildin NVIDIA CUDA deinterlacer and the YADIF cuda deinterlacer.
+If your FFMEG supports it then you can enable YADIF or BWDIF in the Makefile and select between the buildin NVIDIA CUDA deinterlacer and the YADIF or BWDIF cuda deinterlacer.
 
 Good luck
 jojo61

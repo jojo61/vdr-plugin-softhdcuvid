@@ -16,7 +16,7 @@
 # if CUVID is enabled the pluginname is softhdcuvid
 # if DRM   is enabled the pluginname is softhddrm
 VAAPI ?= 0
-CUVID ?= 0
+CUVID ?= 1
 
 # if you enable DRM then the plugin will only run without X server
 # only valid for VAAPI
@@ -28,7 +28,10 @@ LIBPLACEBO ?= 1
 LIBPLACEBO_GL ?= 0
 
 # use YADIF deint - only available with cuvid
-YADIF = 1
+YADIF = 0
+
+# use BWDIF deint - only available with cuvid
+BWDIF = 1
 
 # use gamma correction
 #GAMMA ?= 0
@@ -184,6 +187,9 @@ CONFIG += -DCUVID			# enable CUVID decoder
 LIBS += -lEGL -lGL
 ifeq ($(YADIF),1)
 CONFIG += -DYADIF			# Yadif only with CUVID
+endif
+ifeq ($(BWDIF),1)
+CONFIG += -DBWDIF			# Bwdif only with CUVID
 endif
 endif
 

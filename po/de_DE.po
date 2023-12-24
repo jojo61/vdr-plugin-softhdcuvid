@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2021-12-30 10:23+0100\n"
+"POT-Creation-Date: 2023-12-02 19:49+0100\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -162,10 +162,6 @@ msgstr ""
 msgid "audio: '%s' output module isn't supported\n"
 msgstr ""
 
-#, c-format
-msgid "audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n"
-msgstr ""
-
 msgid "codec: can't allocate vodeo decoder\n"
 msgstr ""
 
@@ -194,9 +190,6 @@ msgid "codec: can't open video codec!\n"
 msgstr ""
 
 msgid "codec: can't allocate video decoder frame buffer\n"
-msgstr ""
-
-msgid "video: Init of YADIF Filter failed\n"
 msgstr ""
 
 msgid "codec: can't allocate audio decoder\n"

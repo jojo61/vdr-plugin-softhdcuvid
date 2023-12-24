@@ -199,7 +199,7 @@ typedef void *EGLImageKHR;
 
 #include <libswscale/swscale.h>
 
-#if defined(YADIF) || defined(VAAPI)
+#if defined(YADIF) || defined(BWDIF) || defined(VAAPI)
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavutil/opt.h>
@@ -243,11 +243,18 @@ typedef enum _video_resolutions_ {
 ///
 /// Video deinterlace modes.
 ///
+#ifdef YADIF
 typedef enum _video_deinterlace_modes_ {
     VideoDeinterlaceCuda,  ///< Cuda build in deinterlace
     VideoDeinterlaceYadif, ///< Yadif deinterlace
 } VideoDeinterlaceModes;
-
+#endif
+#ifdef BWDIF
+typedef enum _video_deinterlace_modes_ {
+    VideoDeinterlaceCuda,  ///< Cuda build in deinterlace
+    VideoDeinterlaceBwdif, ///< Bwdif deinterlace
+} VideoDeinterlaceModes;
+#endif
 ///
 /// Video scaleing modes.
 ///
@@ -1414,7 +1421,7 @@ typedef struct _cuvid_decoder_ {
     int SyncOnAudio;           ///< flag sync to audio
     int64_t PTS;               ///< video PTS clock
 
-#if defined(YADIF) || defined(VAAPI)
+#if defined(YADIF) || defined(BWDIF) || defined(VAAPI)
     AVFilterContext *buffersink_ctx;
     AVFilterContext *buffersrc_ctx;
     AVFilterGraph *filter_graph;
@@ -2666,7 +2673,7 @@ static unsigned CuvidGetVideoSurface(CuvidDecoder *decoder, const AVCodecContext
     return CuvidGetVideoSurface0(decoder);
 }
 
-#if defined(VAAPI) || defined(YADIF)
+#if defined(VAAPI) || defined(YADIF) || defined(BWDIF)
 static void CuvidSyncRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_ctx, AVFrame *frame);
 
 int push_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame) {
@@ -2703,6 +2710,10 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
 #endif
 #ifdef YADIF
     const char *filters_descr = "yadif_cuda=1:0:1"; // mode=send_field,parity=tff,deint=interlaced";
+    enum AVPixelFormat pix_fmts[] = {format, AV_PIX_FMT_NONE};
+#endif
+#ifdef BWDIF
+    const char *filters_descr = "bwdif_cuda=1:0:1"; // mode=send_field,parity=tff,deint=interlaced";
     enum AVPixelFormat pix_fmts[] = {format, AV_PIX_FMT_NONE};
 #endif
 
@@ -2757,7 +2768,7 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
         Debug(3, "Cannot create buffer sink\n");
         goto end;
     }
-#ifdef YADIF
+#if defined(YADIF) || defined(BWDIF)
     ret = av_opt_set_int_list(decoder->buffersink_ctx, "pix_fmts", pix_fmts, AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
         Debug(3, "Cannot set output pixel format\n");
@@ -2984,6 +2995,19 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
                 ist->filter = 0;
             }
             CuvidMessage(2, "deint = %s\n", deint == 0 ? "Yadif" : "Cuda");
+            if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
+                Fatal(_("codec: can't set option deint to video codec!\n"));
+            }
+#endif
+#ifdef BWDIF
+            if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceBwdif) {
+                deint = 0;
+                ist->filter = 1; // init bwdif_cuda
+            } else {
+                deint = 2;
+                ist->filter = 0;
+            }
+            CuvidMessage(2, "deint = %s\n", deint == 0 ? "Bwdif" : "Cuda");
             if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
                 Fatal(_("codec: can't set option deint to video codec!\n"));
             }

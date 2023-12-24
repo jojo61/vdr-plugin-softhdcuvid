@@ -1131,6 +1131,16 @@ void cMenuSetupSoft::Create(void) {
         "Y",
     };
 #endif
+#ifdef BWDIF
+    static const char *const deinterlace[] = {
+        "Cuda",
+        "Bwdif",
+    };
+    static const char *const deinterlace_short[] = {
+        "C",
+        "B",
+    };
+#endif
 
     static const char *const audiodrift[] = {"None", "PCM", "AC-3", "PCM + AC-3"};
     static const char *const resolution[RESOLUTIONS] = {"576i", "720p", "fake 1080", "1080", "2160p"};
@@ -1248,7 +1258,7 @@ void cMenuSetupSoft::Create(void) {
 #ifdef PLACEBO
                 Add(new cMenuEditStraItem(tr("Scaling"), &Scaling[i], scalers, scaling));
 #endif
-#ifdef YADIF
+#if defined(YADIF) || defined(BWDIF)
                 if (i == 0 || i == 2 || i == 3) {
                     Add(new cMenuEditStraItem(tr("Deinterlace"), &Deinterlace[i], 2, deinterlace));
                 }

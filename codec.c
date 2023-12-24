@@ -265,7 +265,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
-#ifdef YADIF
+#if defined(YADIF) || defined(BWDIF)
     deint = 2;
 #endif
 
@@ -370,7 +370,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 
     // reset buggy ffmpeg/libav flag
     decoder->GetFormatDone = 0;
-#if defined(YADIF)
+#if defined(YADIF) || defined(BWDIF)
     decoder->filter = 0;
 #endif
 }
@@ -446,7 +446,7 @@ void DisplayPts(AVCodecContext * video_ctx, AVFrame * frame)
 */
 extern int CuvidTestSurfaces();
 
-#if defined YADIF || defined(VAAPI)
+#if defined(YADIF) || defined(BWDIF) || defined(VAAPI)
 extern int init_filters(AVCodecContext *dec_ctx, void *decoder, AVFrame *frame);
 extern int push_filters(AVCodecContext *dec_ctx, void *decoder, AVFrame *frame);
 #endif
@@ -560,6 +560,25 @@ next_part:
                             decoder->filter = 0;
                         } else {
                             Debug(3, "Init YADIF ok\n");
+                            decoder->filter = 2;
+                        }
+                    }
+                    if (frame->interlaced_frame && decoder->filter == 2 &&
+                        (frame->height != 720)) { // broken ZDF sends Interlaced flag
+                        ret = push_filters(video_ctx, decoder->HwDecoder, frame);
+                        // av_frame_unref(frame);
+                        continue;
+                    }
+                }
+#endif
+#ifdef BWDIF
+                if (decoder->filter) {
+                    if (decoder->filter == 1) {
+                        if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
+                            Debug(3,"video: Init of BWDIF Filter failed\n");
+                            decoder->filter = 0;
+                        } else {
+                            Debug(3, "Init BWDIF ok\n");
                             decoder->filter = 2;
                         }
                     }
