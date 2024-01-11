@@ -2611,7 +2611,16 @@ void generateVAAPIImage(CuvidDecoder *decoder, VASurfaceID index, const AVFrame 
 
         glBindTexture(GL_TEXTURE_2D, decoder->gl_textures[index * Planes + n]);
         EGLImageTargetTexture2DOES(GL_TEXTURE_2D, decoder->images[index * Planes + n]);
-        decoder->fds[index * Planes + n] = desc.objects[n].fd;
+        if (n==0) {
+          decoder->fds[index * Planes + n] = fd;
+          
+        }
+        else if (fd == decoder->fds[index * Planes]) {
+          decoder->fds[index * Planes + n] = 0;
+        }
+        else {
+            decoder->fds[index * Planes + n] = fd;
+        }
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
