@@ -260,8 +260,8 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 
     decoder->VideoCtx->pkt_timebase.num = 1;
     decoder->VideoCtx->pkt_timebase.den = 90000;
-    decoder->VideoCtx->framerate.num = 50;
-    decoder->VideoCtx->framerate.den = 1;
+    //decoder->VideoCtx->framerate.num = 50;
+    //decoder->VideoCtx->framerate.den = 1;
 
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
@@ -312,7 +312,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
             Fatal(_("codec: can't set option deint to video codec!\n"));
         }
 
-        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 9, 0) < 0) {
+        if (av_opt_set_int(decoder->VideoCtx->priv_data, "surfaces", 10, 0) < 0) {
             pthread_mutex_unlock(&CodecLockMutex);
             Fatal(_("codec: can't set option surfces to video codec!\n"));
         }
@@ -490,8 +490,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                             decoder->filter = 2;
                         }
                     }
-                    if (frame->interlaced_frame && decoder->filter == 2 &&
-                        (frame->height != 720)) { // broken ZDF sends Interlaced flag
+                    if (decoder->filter == 2 && (frame->height != 720)) { // broken ZDF sends Interlaced flag
                         push_filters(video_ctx, decoder->HwDecoder, frame);
                         continue;
                     }
@@ -523,7 +522,6 @@ next_part:
     pkt = avpkt; // use copy
     got_frame = 0;
 
-    // printf("decode packet  %d\n",(GetusTicks()-first_time)/1000000);
     ret1 = avcodec_send_packet(video_ctx, pkt);
 
     // first_time = GetusTicks();
@@ -543,12 +541,12 @@ next_part:
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame); // get new frame
             if (ret >= 0) {                                // one is avail.
+            first_time = frame->pts;
                 got_frame = 1;
             } else {
                 got_frame = 0;
             }
-            //		  printf("got %s packet from
-            // decoder\n",got_frame?"1":"no");
+            //printf("got %s packet from decoder\n",got_frame?"1":"no");
             if (got_frame) { // frame completed
 //		printf("video frame pts %#012" PRIx64 "
 //%dms\n",frame->pts,(int)(apts - frame->pts) / 90);
