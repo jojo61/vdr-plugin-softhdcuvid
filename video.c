@@ -4088,8 +4088,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
     // render_params.upscaler = &pl_filter_ewa_lanczos;
 
-    render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
-    render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
+    render_params.upscaler = pl_filter_presets[VideoScaling[decoder->Resolution]].filter;
+    render_params.downscaler = pl_filter_presets[VideoScaling[decoder->Resolution]].filter;
 
     if (level)
         render_params.skip_target_clearing = 1;
@@ -4183,8 +4183,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         target->crop.y1 = dst_video_rect.y1;
 #endif
 
-        render_params.upscaler = pl_named_filters[VideoScalerTest - 1].filter;
-        render_params.downscaler = pl_named_filters[VideoScalerTest - 1].filter;
+        render_params.upscaler = pl_filter_presets[VideoScalerTest - 1].filter;
+        render_params.downscaler = pl_filter_presets[VideoScalerTest - 1].filter;
 
         //	render_params.lut = NULL;
         render_params.num_hooks = 0;

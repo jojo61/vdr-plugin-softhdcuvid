@@ -1153,9 +1153,9 @@ void cMenuSetupSoft::Create(void) {
 
     if (scalers == 0) {
         scalingtest[0] = (char *)"Off";
-        for (scalers = 0; pl_named_filters[scalers].name != NULL; scalers++) {
-            scaling[scalers] = (char *)pl_named_filters[scalers].name;
-            scalingtest[scalers + 1] = (char *)pl_named_filters[scalers].name;
+        for (scalers = 0; pl_filter_presets[scalers].name != NULL; scalers++) {
+            scaling[scalers] = (char *)pl_filter_presets[scalers].name;
+            scalingtest[scalers + 1] = (char *)pl_filter_presets[scalers].name;
             // printf("Scaler %s\n",pl_named_filters[scalers].name);
         }
         // scalers -= 2;
