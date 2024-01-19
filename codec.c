@@ -490,7 +490,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                             decoder->filter = 2;
                         }
                     }
-                    if (decoder->filter == 2 && (frame->height != 720)) { // broken ZDF sends Interlaced flag
+                    if (decoder->filter == 2) { 
                         push_filters(video_ctx, decoder->HwDecoder, frame);
                         continue;
                     }
@@ -561,8 +561,7 @@ next_part:
                             decoder->filter = 2;
                         }
                     }
-                    if (frame->interlaced_frame && decoder->filter == 2 &&
-                        (frame->height != 720)) { // broken ZDF sends Interlaced flag
+                    if (decoder->filter == 2)) { 
                         ret = push_filters(video_ctx, decoder->HwDecoder, frame);
                         // av_frame_unref(frame);
                         continue;

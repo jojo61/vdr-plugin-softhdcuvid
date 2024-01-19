@@ -2691,8 +2691,6 @@ int push_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
     while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
         filt_frame->pts /= 2;
         decoder->Interlaced = 0;
-        // printf("vaapideint video:new	 %#012" PRIx64 " old %#012" PRIx64
-        // "\n",filt_frame->pts,frame->pts);
         CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
         filt_frame = av_frame_alloc(); // get new frame
     }
@@ -2981,18 +2979,18 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             CuvidUpdateOutput(decoder); // update aspect/scaling
         }
 
-#ifdef YADIF
-            if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
-                deint = 0;
-                ist->filter = 1; // init yadif_cuda
-            } else {
-                deint = 2;
-                ist->filter = 0;
-            }
-            CuvidMessage(2, "deint = %s\n", deint == 0 ? "Yadif" : "Cuda");
-            if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
-                Fatal(_("codec: can't set option deint to video codec!\n"));
-            }
+#if defined YADIF && defined CUVID
+        if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
+            deint = 0;
+            ist->filter = 1; // init yadif_cuda
+        } else {
+            deint = 2;
+            ist->filter = 0;
+        }
+        CuvidMessage(2, "deint = %s\n", deint == 0 ? "Yadif" : "Cuda");
+        if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
+            Fatal(_("codec: can't set option deint to video codec!\n"));
+        }
 #endif
 
         CuvidMessage(2, "GetFormat Init ok %dx%d\n", video_ctx->width, video_ctx->height);
