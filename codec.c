@@ -561,7 +561,7 @@ next_part:
                             decoder->filter = 2;
                         }
                     }
-                    if (decoder->filter == 2)) { 
+                    if (decoder->filter == 2) { 
                         ret = push_filters(video_ctx, decoder->HwDecoder, frame);
                         // av_frame_unref(frame);
                         continue;
