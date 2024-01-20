@@ -4159,8 +4159,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     if (!pl_render_image(p->renderer, &decoder->pl_frames[current], target, &render_params)) {
         Debug(4, "Failed rendering frame!\n");
     }
-    if (level)
-       pl_gpu_finish(p->gpu);
+    
+    pl_gpu_finish(p->gpu);
     // printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) { // left side test scaler
