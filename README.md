@@ -82,9 +82,6 @@ You have to adapt the Makefile. There are 3 possible Version that you can build:
     runs without X Server. There are several commandline options to select the resolution and refresh rate.
     I recommend to use libplacebo and set LIBPLACEBO_GL=1 in the Makefile.
 
-    You should use the following libplacebo Version:
-	https://github.com/haasn/libplacebo/archive/f2c4da9d6121bb330c9fff640aad40e98c081190.zip
-	Newer Versions may not work.
 
 
 Install:
