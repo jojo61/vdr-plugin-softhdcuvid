@@ -4160,7 +4160,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         Debug(4, "Failed rendering frame!\n");
     }
     
-    pl_gpu_finish(p->gpu);
+    
     // printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) { // left side test scaler
@@ -4474,7 +4474,9 @@ static void CuvidDisplayFrame(void) {
             decoder->grab = 0;
         }
     }
-
+#ifdef PLACEBO
+    pl_gpu_finish(p->gpu);
+#endif
 
 #ifndef PLACEBO
     //	add osd to surface
