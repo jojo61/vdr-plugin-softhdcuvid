@@ -2691,8 +2691,6 @@ int push_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
     while ((ret = av_buffersink_get_frame(decoder->buffersink_ctx, filt_frame)) >= 0) {
         filt_frame->pts /= 2;
         decoder->Interlaced = 0;
-        // printf("vaapideint video:new	 %#012" PRIx64 " old %#012" PRIx64
-        // "\n",filt_frame->pts,frame->pts);
         CuvidSyncRenderFrame(decoder, dec_ctx, filt_frame);
         filt_frame = av_frame_alloc(); // get new frame
     }
@@ -2981,18 +2979,18 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             CuvidUpdateOutput(decoder); // update aspect/scaling
         }
 
-#ifdef YADIF
-            if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
-                deint = 0;
-                ist->filter = 1; // init yadif_cuda
-            } else {
-                deint = 2;
-                ist->filter = 0;
-            }
-            CuvidMessage(2, "deint = %s\n", deint == 0 ? "Yadif" : "Cuda");
-            if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
-                Fatal(_("codec: can't set option deint to video codec!\n"));
-            }
+#if defined YADIF && defined CUVID
+        if (VideoDeinterlace[decoder->Resolution] == VideoDeinterlaceYadif) {
+            deint = 0;
+            ist->filter = 1; // init yadif_cuda
+        } else {
+            deint = 2;
+            ist->filter = 0;
+        }
+        CuvidMessage(2, "deint = %s\n", deint == 0 ? "Yadif" : "Cuda");
+        if (av_opt_set_int(video_ctx->priv_data, "deint", deint, 0) < 0) { // adaptive
+            Fatal(_("codec: can't set option deint to video codec!\n"));
+        }
 #endif
 
         CuvidMessage(2, "GetFormat Init ok %dx%d\n", video_ctx->width, video_ctx->height);
@@ -4090,8 +4088,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
     // render_params.upscaler = &pl_filter_ewa_lanczos;
 
-    render_params.upscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
-    render_params.downscaler = pl_named_filters[VideoScaling[decoder->Resolution]].filter;
+    render_params.upscaler = pl_filter_presets[VideoScaling[decoder->Resolution]].filter;
+    render_params.downscaler = pl_filter_presets[VideoScaling[decoder->Resolution]].filter;
 
     if (level)
         render_params.skip_target_clearing = 1;
@@ -4161,8 +4159,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     if (!pl_render_image(p->renderer, &decoder->pl_frames[current], target, &render_params)) {
         Debug(4, "Failed rendering frame!\n");
     }
-    if (level)
-       pl_gpu_finish(p->gpu);
+    
+    
     // printf("Rendertime %ld -- \n,",GetusTicks() - tt);
 
     if (VideoScalerTest) { // left side test scaler
@@ -4185,8 +4183,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         target->crop.y1 = dst_video_rect.y1;
 #endif
 
-        render_params.upscaler = pl_named_filters[VideoScalerTest - 1].filter;
-        render_params.downscaler = pl_named_filters[VideoScalerTest - 1].filter;
+        render_params.upscaler = pl_filter_presets[VideoScalerTest - 1].filter;
+        render_params.downscaler = pl_filter_presets[VideoScalerTest - 1].filter;
 
         //	render_params.lut = NULL;
         render_params.num_hooks = 0;
@@ -4476,7 +4474,9 @@ static void CuvidDisplayFrame(void) {
             decoder->grab = 0;
         }
     }
-
+#ifdef PLACEBO
+    pl_gpu_finish(p->gpu);
+#endif
 
 #ifndef PLACEBO
     //	add osd to surface
