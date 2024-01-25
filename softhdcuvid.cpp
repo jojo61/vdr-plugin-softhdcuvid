@@ -658,6 +658,20 @@ class cDummyPixmap : public cPixmap {
         (void)Point;
         (void)ImageHandle;
     }
+    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY, bool AntiAlias) {
+        (void)Point;
+        (void)Image;
+        (void)FactorX;
+        (void)FactorY;
+        (void)AntiAlias;
+    }
+    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY, bool AntiAlias) {
+        (void)Point;
+        (void)ImageHandle;
+        (void)FactorX;
+        (void)FactorY;
+        (void)AntiAlias;
+    }
     virtual void DrawPixel(const cPoint &Point, tColor Color) {
         (void)Point;
         (void)Color;

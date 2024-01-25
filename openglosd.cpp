@@ -1287,10 +1287,10 @@ bool cOglCmdDrawImage::Execute(void) {
     pthread_mutex_unlock(&OSDMutex);
 #endif
 
-    GLfloat x1 = x;          // left
-    GLfloat y1 = y;          // top
-    GLfloat x2 = x + width;  // right
-    GLfloat y2 = y + height; // bottom
+    GLfloat x1 = x;                   // left
+    GLfloat y1 = y;                   // top
+    GLfloat x2 = x + width * scaleX;  // right
+    GLfloat y2 = y + height * scaleY; // bottom
 
     GLfloat quadVertices[] = {
         x1, y2, 0.0, 1.0, // left bottom
@@ -1324,19 +1324,21 @@ bool cOglCmdDrawImage::Execute(void) {
 }
 
 //------------------ cOglCmdDrawTexture --------------------
-cOglCmdDrawTexture::cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y) : cOglCmd(fb) {
+cOglCmdDrawTexture::cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y, double scaleX, double scaleY) : cOglCmd(fb) {
     this->imageRef = imageRef;
     this->x = x;
     this->y = y;
+    this->scaleX = scaleX;
+    this->scaleY = scaleY;
 }
 
 bool cOglCmdDrawTexture::Execute(void) {
     if (imageRef->width <= 0 || imageRef->height <= 0)
         return false;
-    GLfloat x1 = x;                    // top
-    GLfloat y1 = y;                    // left
-    GLfloat x2 = x + imageRef->width;  // right
-    GLfloat y2 = y + imageRef->height; // bottom
+    GLfloat x1 = x;                             // top
+    GLfloat y1 = y;                             // left
+    GLfloat x2 = x + imageRef->width * scaleX;  // right
+    GLfloat y2 = y + imageRef->height * scaleY; // bottom
 
     GLfloat quadVertices[] = {
         // Pos	  // TexCoords
@@ -1830,6 +1832,10 @@ void cOglPixmap::Fill(tColor Color) {
 }
 
 void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) {
+    DrawScaledImage(Point, Image);
+}
+
+void cOglPixmap::DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY, bool AntiAlias) {
     if (!oglThread->Active())
         return;
     tColor *argb = MALLOC(tColor, Image.Width() * Image.Height());
@@ -1838,19 +1844,25 @@ void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) {
         return;
     memcpy(argb, Image.Data(), sizeof(tColor) * Image.Width() * Image.Height());
 
-    oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Image.Width(), Image.Height(), Point.X(), Point.Y()));
+    oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Image.Width(), Image.Height(), Point.X(), Point.Y(), true, FactorX, FactorY));
     SetDirty();
-    MarkDrawPortDirty(cRect(Point, cSize(Image.Width(), Image.Height())).Intersected(DrawPort().Size()));
+    MarkDrawPortDirty(cRect(Point, cSize(Image.Width() * FactorX, Image.Height() * FactorY)).Intersected(DrawPort().Size()));
 }
 
 void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
+    DrawScaledImage(Point, ImageHandle);
+}
+
+void cOglPixmap::DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY, bool AntiAlias) {
     if (!oglThread->Active())
         return;
 
     if (ImageHandle < 0 && oglThread->GetImageRef(ImageHandle)) {
         sOglImage *img = oglThread->GetImageRef(ImageHandle);
 
-        oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y()));
+        oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y(), FactorX, FactorY));
+        SetDirty();
+        MarkDrawPortDirty(cRect(Point, cSize(img->width * FactorX, img->height * FactorY)).Intersected(DrawPort().Size()));
     }
     /*
        Fallback to VDR implementation, needs to separate cSoftOsdProvider from
@@ -1858,8 +1870,6 @@ void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
        DrawImage(Point, *cSoftOsdProvider::GetImageData(ImageHandle));
        }
      */
-    SetDirty();
-    MarkDrawPortDirty(DrawPort());
 }
 
 void cOglPixmap::DrawPixel(const cPoint &Point, tColor Color) {
