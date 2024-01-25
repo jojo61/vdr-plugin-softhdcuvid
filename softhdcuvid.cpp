@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.15"
+static const char *const VERSION = "3.16"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -657,6 +657,20 @@ class cDummyPixmap : public cPixmap {
     virtual void DrawImage(const cPoint &Point, int ImageHandle) {
         (void)Point;
         (void)ImageHandle;
+    }
+    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY, bool AntiAlias) {
+        (void)Point;
+        (void)Image;
+        (void)FactorX;
+        (void)FactorY;
+        (void)AntiAlias;
+    }
+    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY, bool AntiAlias) {
+        (void)Point;
+        (void)ImageHandle;
+        (void)FactorX;
+        (void)FactorY;
+        (void)AntiAlias;
     }
     virtual void DrawPixel(const cPoint &Point, tColor Color) {
         (void)Point;
