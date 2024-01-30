@@ -35,7 +35,6 @@ YADIF = 1
 
 CONFIG := -DDEBUG 		# remove '#' to enable debug output
 
-
 #--------------------- no more config needed past this point--------------------------------
 
 # sanitize selections --------
