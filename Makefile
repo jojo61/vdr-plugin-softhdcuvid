@@ -24,7 +24,7 @@ DRM ?= 0
 
 # use libplacebo -
 # available for all decoders but for DRM you need LIBPLACEBO_GL
-LIBPLACEBO ?= 1
+LIBPLACEBO ?= 0
 LIBPLACEBO_GL ?= 0
 
 # use YADIF deint - only available with cuvid
