@@ -159,29 +159,29 @@ endif
 
 ifeq ($(LIBPLACEBO_GL),1)
 CONFIG += -DPLACEBO_GL -DPLACEBO
-LIBS += -lepoxy
-LIBS += -lplacebo
+_CFLAGS += $(shell pkg-config --cflags libplacebo)
+LIBS += $(shell pkg-config --libs epoxy libplacebo)
 else
-LIBS += -lEGL
+LIBS += $(shell pkg-config --libs egl)
 endif
 
 ifeq ($(LIBPLACEBO),1)
 CONFIG += -DPLACEBO
-LIBS += -lEGL
-LIBS += -lplacebo
+_CFLAGS += $(shell pkg-config --cflags libplacebo)
+LIBS += $(shell pkg-config --libs egl libplacebo)
 endif
 
 ifeq ($(DRM),1)
 PLUGIN = softhddrm
 CONFIG += -DUSE_DRM -DVAAPI
 _CFLAGS += $(shell pkg-config --cflags libdrm)
-LIBS += -lgbm -ldrm -lEGL
+LIBS += $(shell pkg-config --libs egl gbm libdrm)
 endif
 
 ifeq ($(CUVID),1)
 #CONFIG += -DUSE_PIP			# PIP support
 CONFIG += -DCUVID			# enable CUVID decoder
-LIBS += -lEGL -lGL
+LIBS += $(shell pkg-config --libs egl gl)
 ifeq ($(YADIF),1)
 CONFIG += -DYADIF			# Yadif only with CUVID
 endif
@@ -273,7 +273,7 @@ ifeq ($(CUVID),1)
 LIBS += -lcuda -lnvcuvid
 endif
 
-LIBS += -lGLEW -lGLU  -ldl -lglut
+LIBS += -ldl $(shell pkg-config --libs glew glu glut)
 
 ### Includes and Defines (add further entries here):
 
