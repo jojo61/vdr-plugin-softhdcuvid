@@ -272,7 +272,8 @@ ifeq ($(CUVID),1)
 LIBS += -lcuda -lnvcuvid
 endif
 
-LIBS += -ldl $(shell pkg-config --libs glew glu glut)
+LIBS += -lGLEW -lGLU  -ldl -lglut
+#LIBS += -ldl $(shell pkg-config --libs glew glu glut)
 
 ### Includes and Defines (add further entries here):
 
