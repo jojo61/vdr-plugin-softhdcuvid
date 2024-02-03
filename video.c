@@ -1990,6 +1990,9 @@ make_egl() {
         Fatal(_("Could not make context current!\n"));
     }
     EglEnabled = 1;
+#ifdef USE_DRM
+    drm_swap_buffers();
+#endif
 }
 #endif
 
