@@ -1160,7 +1160,7 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
 
 #if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4,5,100)
         audio_decoder->Resample = swr_alloc_set_opts(audio_decoder->Resample, 
-                                    CodecDownMix ? AV_CH_LAYOUT_STEREO : audio_ctx->channel_layout,
+                                    CodecDownmix ? AV_CH_LAYOUT_STEREO : audio_ctx->channel_layout,
                                     AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
 	                                audio_ctx->channel_layout, audio_ctx->sample_fmt,audio_ctx->sample_rate,
                                     0, NULL);
