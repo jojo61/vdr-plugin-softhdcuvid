@@ -716,17 +716,6 @@ void CodecAudioOpen(AudioDecoder *audio_decoder, int codec_id) {
         Fatal(_("codec: can't allocate audio codec context\n"));
     }
 
-    if (CodecDownmix) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(53,61,100)
-	    audio_decoder->AudioCtx->request_channels = 2;
-#endif
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
-	    audio_decoder->AudioCtx->request_channel_layout = AV_CH_LAYOUT_STEREO;
-#else
-        AVChannelLayout dmlayout = AV_CHANNEL_LAYOUT_STEREO;
-        av_opt_set_chlayout(audio_decoder->AudioCtx->priv_data, "downmix", &dmlayout, 0);
-#endif
-    }
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
     if (1) {
@@ -889,7 +878,7 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
     audio_decoder->SampleRate = audio_ctx->sample_rate;
     audio_decoder->HwSampleRate = audio_ctx->sample_rate;
     audio_decoder->Channels = audio_ctx->channels;
-    audio_decoder->HwChannels = audio_ctx->channels;
+    audio_decoder->HwChannels = CodecDownmix ? 2 : audio_ctx->channels;
     audio_decoder->Passthrough = CodecPassthrough;
 
     // SPDIF/HDMI pass-through
@@ -903,10 +892,6 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
         audio_decoder->SpdifIndex = 0; // reset buffer
         audio_decoder->SpdifCount = 0;
         *passthrough = 1;
-    }
-    
-    if (audio_decoder->HwChannels > 2 && CodecDownmix) {
-        audio_decoder->HwChannels = 2;
     }
     // channels/sample-rate not support?
     if ((err = AudioSetup(&audio_decoder->HwSampleRate, &audio_decoder->HwChannels, *passthrough))) {
@@ -1174,34 +1159,20 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
 #endif
 
 #if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4,5,100)
-    if (audio_decoder->Channels > 2 && CodecDownmix) { 
         audio_decoder->Resample = swr_alloc_set_opts(audio_decoder->Resample, 
-                                    AV_CH_LAYOUT_STEREO, AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
+                                    CodecDownMix ? AV_CH_LAYOUT_STEREO : audio_ctx->channel_layout,
+                                    AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
 	                                audio_ctx->channel_layout, audio_ctx->sample_fmt,audio_ctx->sample_rate,
                                     0, NULL);
-    } else {
-        audio_decoder->Resample = swr_alloc_set_opts(audio_decoder->Resample, audio_ctx->channel_layout,
-	                                            AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
-	                                            audio_ctx->channel_layout, audio_ctx->sample_fmt,
-                                                audio_ctx->sample_rate, 0, NULL);
-    }
 #else
-    if (audio_decoder->Channels > 2 && CodecDownmix) {  // Codec does not Support Downmix
     //printf("last ressort downmix Layout in %lx Lyout out: %llx \n",audio_ctx->channel_layout,AV_CH_LAYOUT_STEREO);
         audio_decoder->Resample = swr_alloc();
         av_opt_set_channel_layout(audio_decoder->Resample, "in_channel_layout",audio_ctx->channel_layout, 0);
-        av_opt_set_channel_layout(audio_decoder->Resample, "out_channel_layout", AV_CH_LAYOUT_STEREO,  0);
+        av_opt_set_channel_layout(audio_decoder->Resample, "out_channel_layout", CodecDownmix ? AV_CH_LAYOUT_STEREO : audio_ctx->channel_layout ,  0);
         av_opt_set_int(audio_decoder->Resample, "in_sample_rate",     audio_ctx->sample_rate,                0);
         av_opt_set_int(audio_decoder->Resample, "out_sample_rate",    audio_ctx->sample_rate,                0);
         av_opt_set_sample_fmt(audio_decoder->Resample, "in_sample_fmt",  audio_ctx->sample_fmt, 0);
         av_opt_set_sample_fmt(audio_decoder->Resample, "out_sample_fmt", AV_SAMPLE_FMT_S16,  0);
-    }
-    else {
-        swr_alloc_set_opts2(&audio_decoder->Resample, &audio_ctx->ch_layout,
-                            AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
-                            &audio_ctx->ch_layout, audio_ctx->sample_fmt,
-                            audio_ctx->sample_rate, 0, NULL);
-    }
 #endif
     if (audio_decoder->Resample) {
 	    swr_init(audio_decoder->Resample);
