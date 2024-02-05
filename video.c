@@ -1246,14 +1246,22 @@ static void EglExit(void) {
         glxSharedContext = NULL;
     }
 #else
-    if (eglGetCurrentContext() == eglContext) {
-        // if currently used, set to none
-        eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#ifdef USE_DRM
+    drm_clean_up();
+
+#endif
+    
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+    if (eglSurface) {
+        eglDestroySurface(eglDisplay, eglSurface);
+        EglCheck();
+        eglSurface = NULL;
     }
-#ifndef USE_DRM
     if (eglSharedContext) {
         eglDestroyContext(eglDisplay, eglSharedContext);
         EglCheck();
+        eglSharedContext = NULL;
     }
 
     if (eglContext) {
@@ -1261,13 +1269,8 @@ static void EglExit(void) {
         EglCheck();
         eglContext = NULL;
     }
-
     eglTerminate(eglDisplay);
-#endif
-
-#ifdef USE_DRM
-    drm_clean_up();
-#endif
+    eglDisplay = NULL;
 
 #endif
 }
@@ -3001,10 +3004,12 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
 #ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
 #else
-        if (VideoDeinterlace[decoder->Resolution]) // need deinterlace
+        if (VideoDeinterlace[decoder->Resolution]) {// need deinterlace
             ist->filter = 1;                       // init deint vaapi
-        else
+        }
+        else {
             ist->filter = 0;
+        }
 
         ist->active_hwaccel_id = HWACCEL_VAAPI;
 #endif
@@ -7093,6 +7098,14 @@ void VideoInit(const char *display_name) {
     int i;
     xcb_screen_iterator_t screen_iter;
     xcb_screen_t const *screen;
+
+#ifdef VAAPI
+    VideoDeinterlace[0] = 1; // 576i
+    VideoDeinterlace[1] = 0; // mode[1];  // 720p
+    VideoDeinterlace[2] = 1; // fake 1080
+    VideoDeinterlace[3] = 1; // 1080
+    VideoDeinterlace[4] = 0; // mode[4];  2160p
+#endif
 
 #ifdef USE_DRM
     VideoInitDrm();

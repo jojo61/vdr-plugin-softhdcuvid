@@ -545,6 +545,7 @@ static void drm_swap_buffers() {
         m_need_modeset = 0;
         has_modeset = 1;
     }
+    
     drmModeSetCrtc(render->fd_drm, render->crtc_id, fb, 0, 0, &render->connector_id, 1, &render->mode);
 
     if (previous_bo) {
@@ -562,14 +563,15 @@ static void drm_clean_up() {
         return;
     Debug(3, "drm clean up\n");
 
+    
+    drmModeSetCrtc(render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id, render->saved_crtc->x,
+                   render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
+    drmModeFreeCrtc(render->saved_crtc);
+
     if (previous_bo) {
         drmModeRmFB(render->fd_drm, previous_fb);
         gbm_surface_release_buffer(gbm.surface, previous_bo);
     }
-
-    drmModeSetCrtc(render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id, render->saved_crtc->x,
-                   render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
-    drmModeFreeCrtc(render->saved_crtc);
 
     if (has_modeset) {
         drmModeAtomicReqPtr ModeReq;
@@ -613,22 +615,29 @@ static void drm_clean_up() {
     if (render->hdr_blob_id)
         drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
     render->hdr_blob_id = 0;
-
+#if 0
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface(eglDisplay, eglSurface);
-    EglCheck();
-    gbm_surface_destroy(gbm.surface);
-    eglDestroyContext(eglDisplay, eglContext);
     EglCheck();
     eglDestroyContext(eglDisplay, eglSharedContext);
     EglCheck();
+    eglDestroyContext(eglDisplay, eglContext);
+    EglCheck();
     eglSharedContext = NULL;
-
+    eglContext = NULL;
     eglTerminate(eglDisplay);
     EglCheck();
-
+    eglDisplay = NULL;
+#endif
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroySurface(eglDisplay, eglSurface);
+    EglCheck();
+    eglSurface = NULL;
+    gbm_surface_destroy(gbm.surface);
     gbm_device_destroy(gbm.dev);
     drmDropMaster(render->fd_drm);
     close(render->fd_drm);
-    eglDisplay = NULL;
     free(render);
+    render = NULL;
+    Debug(3, "nach drm clean up\n");
 }
