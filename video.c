@@ -1258,17 +1258,19 @@ static void EglExit(void) {
         EglCheck();
         eglSurface = NULL;
     }
+    
+    if (eglContext) {
+        eglDestroyContext(eglDisplay, eglContext);
+        EglCheck();
+        eglContext = NULL;
+    }
     if (eglSharedContext) {
         eglDestroyContext(eglDisplay, eglSharedContext);
         EglCheck();
         eglSharedContext = NULL;
     }
 
-    if (eglContext) {
-        eglDestroyContext(eglDisplay, eglContext);
-        EglCheck();
-        eglContext = NULL;
-    }
+    
     eglTerminate(eglDisplay);
     eglDisplay = NULL;
 
