@@ -209,8 +209,11 @@ static int FindDevice(VideoRender *render) {
     int found = 0;
     render->fd_drm = open("/dev/dri/card0", O_RDWR);
     if (render->fd_drm < 0) {
-        fprintf(stderr, "FindDevice: cannot open /dev/dri/card0: %m\n");
-        return -errno;
+        render->fd_drm = open("/dev/dri/card1", O_RDWR);
+        if (render->fd_drm < 0) {
+            fprintf(stderr, "FindDevice: cannot open /dev/dri/card0 or card1: %m\n");
+            return -errno;
+        }
     }
 
     int ret = drmSetMaster(render->fd_drm);
