@@ -249,6 +249,10 @@ extern int VideoRaiseWindow(void);
 /// Set Shaders
 extern int VideoSetShader(char *);
 
+extern void VideoSetRefresh(char *);
+
+extern void VideoSetConnector(char *);
+
 #ifdef USE_OPENGLOSD
 extern void ActivateOsd(GLuint, int, int, int, int);
 #endif
