@@ -125,7 +125,7 @@ struct _video_decoder_
 */
 static enum AVPixelFormat Codec_get_format(AVCodecContext *video_ctx, const enum AVPixelFormat *fmt) {
     VideoDecoder *decoder;
-    enum AVPixelFormat fmt1;
+
 
     decoder = video_ctx->opaque;
     // bug in ffmpeg 1.1.1, called with zero width or height
@@ -389,15 +389,19 @@ void CodecVideoClose(VideoDecoder *video_decoder) {
     Debug(3, "CodecVideoClose\n");
     if (video_decoder->VideoCtx) {
         pthread_mutex_lock(&CodecLockMutex);
-#if 1
+
         frame = av_frame_alloc();
         avcodec_send_packet(video_decoder->VideoCtx, NULL);
         while (avcodec_receive_frame(video_decoder->VideoCtx, frame) >= 0)
             ;
         av_frame_free(&frame);
+
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55,63,100)
+	    avcodec_close(video_decoder->VideoCtx);
+	    av_freep(&video_decoder->VideoCtx);
+#else
+	    avcodec_free_context(&video_decoder->VideoCtx);
 #endif
-        avcodec_close(video_decoder->VideoCtx);
-        av_freep(&video_decoder->VideoCtx);
         pthread_mutex_unlock(&CodecLockMutex);
     }
 }
@@ -513,7 +517,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
     int ret, ret1;
     int got_frame;
     int consumed = 0;
-    static uint64_t first_time = 0;
+    //static uint64_t first_time = 0;
     const AVPacket *pkt;
 
 next_part:
@@ -541,7 +545,7 @@ next_part:
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame); // get new frame
             if (ret >= 0) {                                // one is avail.
-            first_time = frame->pts;
+                //first_time = frame->pts;
                 got_frame = 1;
             } else {
                 got_frame = 0;
@@ -755,8 +759,12 @@ void CodecAudioClose(AudioDecoder *audio_decoder) {
     }
     if (audio_decoder->AudioCtx) {
         pthread_mutex_lock(&CodecLockMutex);
-        avcodec_close(audio_decoder->AudioCtx);
-        av_freep(&audio_decoder->AudioCtx);
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55,63,100)
+	    avcodec_close(audio_decoder->AudioCtx);
+	    av_freep(&audio_decoder->AudioCtx);
+#else
+	    avcodec_free_context(&audio_decoder->AudioCtx);
+#endif
         pthread_mutex_unlock(&CodecLockMutex);
     }
 }
