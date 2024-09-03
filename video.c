@@ -1258,19 +1258,17 @@ static void EglExit(void) {
         EglCheck();
         eglSurface = NULL;
     }
-    
-    if (eglContext) {
-        eglDestroyContext(eglDisplay, eglContext);
-        EglCheck();
-        eglContext = NULL;
-    }
     if (eglSharedContext) {
         eglDestroyContext(eglDisplay, eglSharedContext);
         EglCheck();
         eglSharedContext = NULL;
     }
 
-    
+    if (eglContext) {
+        eglDestroyContext(eglDisplay, eglContext);
+        EglCheck();
+        eglContext = NULL;
+    }
     eglTerminate(eglDisplay);
     eglDisplay = NULL;
 
@@ -2287,7 +2285,7 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
                                &decoder->pl_frames[i].planes[n].texture); // delete old texture
             }
 
-            if (p->has_dma_buf == 0) {
+            //if (p->has_dma_buf == 0) {
                 decoder->pl_frames[i].planes[n].texture = pl_tex_create(
                     p->gpu, &(struct pl_tex_params) {
                         .w = n == 0 ? size_x : size_x / 2, .h = n == 0 ? size_y : size_y / 2, .d = 0, .format = fmt,
@@ -2299,7 +2297,7 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
                         .export_handle = PL_HANDLE_FD,
 #endif
                     });
-            }
+            //}
 
             // make planes for image
             pl = &decoder->pl_frames[i].planes[n];
