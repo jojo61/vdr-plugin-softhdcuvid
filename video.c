@@ -2285,7 +2285,7 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
                                &decoder->pl_frames[i].planes[n].texture); // delete old texture
             }
 
-            //if (p->has_dma_buf == 0) {
+            if (p->has_dma_buf == 0) {
                 decoder->pl_frames[i].planes[n].texture = pl_tex_create(
                     p->gpu, &(struct pl_tex_params) {
                         .w = n == 0 ? size_x : size_x / 2, .h = n == 0 ? size_y : size_y / 2, .d = 0, .format = fmt,
@@ -2297,7 +2297,7 @@ void createTextureDst(CuvidDecoder *decoder, int anz, unsigned int size_x, unsig
                         .export_handle = PL_HANDLE_FD,
 #endif
                     });
-            //}
+            }
 
             // make planes for image
             pl = &decoder->pl_frames[i].planes[n];
@@ -5693,7 +5693,8 @@ void InitPlacebo() {
     if (!p->swapchain) {
         Fatal(_("Failed creating vulkan swapchain!"));
     }
-
+    
+#ifdef VAAPI
     if (!(p->gpu->import_caps.tex & PL_HANDLE_DMA_BUF)) {
         p->has_dma_buf = 0;
         Debug(3, "No support for dma_buf import \n");
@@ -5701,6 +5702,10 @@ void InitPlacebo() {
         p->has_dma_buf = 1;
         Debug(3, "dma_buf support available\n");
     }
+#else
+    p->has_dma_buf = 0;
+    Debug(3, "No support for dma_buf import \n");
+#endif
 
 #ifdef PLACEBO_GL
     if (!pl_swapchain_resize(p->swapchain, &VideoWindowWidth, &VideoWindowHeight)) {
