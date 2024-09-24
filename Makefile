@@ -113,8 +113,8 @@ TMPDIR ?= /tmp
 
 ### The compiler options:
 
-export CFLAGS	= $(call PKGCFG,cflags)
-export CXXFLAGS = $(call PKGCFG,cxxflags)
+export CFLAGS	= $(call PKGCFG,cflags) -fpermissive
+export CXXFLAGS = $(call PKGCFG,cxxflags) -fpermissive
 
 ifeq ($(CFLAGS),)
 $(warning CFLAGS not set)
