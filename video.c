@@ -3004,7 +3004,10 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
 #ifdef CUVID
         ist->active_hwaccel_id = HWACCEL_CUVID;
 #else
-        if (VideoDeinterlace[decoder->Resolution]) {// need deinterlace
+        if (video_ctx->codec_id == AV_CODEC_ID_HEVC) {
+            ist->filter = 0;
+        }
+        else if (VideoDeinterlace[decoder->Resolution]) {// need deinterlace
             ist->filter = 1;                       // init deint vaapi
         }
         else {

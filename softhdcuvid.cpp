@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.24"
+static const char *const VERSION = "3.25"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
