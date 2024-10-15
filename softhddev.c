@@ -60,7 +60,7 @@
 #include "codec.h"
 // clang-format on
 
-#ifdef DEBUG
+#if 0
 static int DumpH264(const uint8_t *data, int size);
 static void DumpMpeg(const uint8_t *data, int size);
 #endif
@@ -662,7 +662,13 @@ static void PesParse(PesDemux *pesdx, const uint8_t *data, int size, int is_star
                         break;
                     }
                     if (r > 0) {
-                        AVPacket avpkt[1];
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,33,100)
+				        AVPacket avpkt[1];
+				        av_init_packet(avpkt);
+#else
+                        AVPacket * avpkt;
+				        avpkt = av_packet_alloc();
+#endif
 
                         // new codec id, close and open new
                         if (AudioCodecID != codec_id) {
@@ -671,13 +677,15 @@ static void PesParse(PesDemux *pesdx, const uint8_t *data, int size, int is_star
                             CodecAudioOpen(MyAudioDecoder, codec_id);
                             AudioCodecID = codec_id;
                         }
-                        av_init_packet(avpkt);
                         avpkt->data = (void *)q;
                         avpkt->size = r;
                         avpkt->pts = pesdx->PTS;
                         avpkt->dts = pesdx->DTS;
                         // FIXME: not aligned for ffmpeg
                         CodecAudioDecode(MyAudioDecoder, avpkt);
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58,33,100)
+				        av_packet_free(&avpkt);
+#endif
                         pesdx->PTS = AV_NOPTS_VALUE;
                         pesdx->DTS = AV_NOPTS_VALUE;
                         pesdx->Skip += r;
@@ -1147,21 +1155,28 @@ int PlayAudio(const uint8_t *data, int size, uint8_t id) {
             break;
         }
         if (r > 0) {
-            AVPacket avpkt[1];
-
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,33,100)
+	        AVPacket avpkt[1];
+	        av_init_packet(avpkt);
+#else
+	        AVPacket * avpkt;
+	        avpkt = av_packet_alloc();
+#endif
             // new codec id, close and open new
             if (AudioCodecID != codec_id) {
                 CodecAudioClose(MyAudioDecoder);
                 CodecAudioOpen(MyAudioDecoder, codec_id);
                 AudioCodecID = codec_id;
             }
-            av_init_packet(avpkt);
             avpkt->data = (void *)p;
             avpkt->size = r;
             avpkt->pts = AudioAvPkt->pts;
             avpkt->dts = AudioAvPkt->dts;
             // FIXME: not aligned for ffmpeg
             CodecAudioDecode(MyAudioDecoder, avpkt);
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58,33,100)
+	        av_packet_free(&avpkt);
+#endif
             AudioAvPkt->pts = AV_NOPTS_VALUE;
             AudioAvPkt->dts = AV_NOPTS_VALUE;
             p += r;
@@ -1625,7 +1640,7 @@ static void VideoMpegEnqueue(VideoStream *stream, int64_t pts, int64_t dts, cons
 **  @param avpkt    ffmpeg a/v packet
 */
 
-#ifndef USE_PIP
+#if !defined USE_PIP &&  !defined VAAPI
 static void FixPacketForFFMpeg(VideoDecoder *vdecoder, AVPacket *avpkt) {
     uint8_t *p;
     int n;
@@ -1993,7 +2008,7 @@ static void StopVideo(void) {
 #endif
 }
 
-#ifdef DEBUG
+#if 0
 
 /**
 **  Dump mpeg video packet.

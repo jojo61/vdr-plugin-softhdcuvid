@@ -208,9 +208,13 @@ void CodecVideoDelDecoder(VideoDecoder *decoder) { free(decoder); }
 **  @param codec_id video codec id
 */
 void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
     AVCodec *video_codec;
+#else
+    const AVCodec *video_codec;
+#endif
     const char *name;
-    int ret, deint = 2;
+    int ret;
 
     Debug(3, "***************codec: Video Open using video codec ID %#06x (%s)\n", codec_id,
           avcodec_get_name(codec_id));
@@ -265,9 +269,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
-#ifdef YADIF
-    deint = 2;
-#endif
+
 
 #if defined VAAPI
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,8,100)
@@ -305,6 +307,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 #endif
 
 #ifdef CUVID
+    int deint = 2;
     if (strcmp(decoder->VideoCodec->long_name,
                "Nvidia CUVID MPEG2VIDEO decoder") == 0) { // deinterlace for mpeg2 is somehow broken
         if (av_opt_set_int(decoder->VideoCtx->priv_data, "deint", deint, 0) < 0) { // adaptive
@@ -619,7 +622,11 @@ typedef struct _audio_decoder_ AudioDecoder;
 /// Audio decoder structure.
 ///
 struct _audio_decoder_ {
-    AVCodec *AudioCodec;      ///< audio codec
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
+    AVCodec *AudioCodec;		///< audio codec
+#else
+    const AVCodec *AudioCodec;		///< audio codec
+#endif
     AVCodecContext *AudioCtx; ///< audio codec context
 
     char Passthrough; ///< current pass-through flags
@@ -706,8 +713,11 @@ void CodecAudioDelDecoder(AudioDecoder *decoder) {
 **  @param codec_id audio   codec id
 */
 void CodecAudioOpen(AudioDecoder *audio_decoder, int codec_id) {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
     AVCodec *audio_codec;
-
+#else
+    const AVCodec *audio_codec;
+#endif
     Debug(3, "codec: using audio codec ID %#06x (%s)\n", codec_id, avcodec_get_name(codec_id));
     if (!(audio_codec = avcodec_find_decoder(codec_id))) {
         // if (!(audio_codec = avcodec_find_decoder(codec_id))) {

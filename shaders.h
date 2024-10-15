@@ -126,7 +126,7 @@ void pl_shader_append_v(const char *fmt, ...) {
         Fatal(_("Shaderlenght fault\n"));
     strcat(shv, temp);
 }
-
+#ifndef PLACEBO
 static void compile_attach_shader(GLuint program, GLenum type, const char *source) {
     GLuint shader;
     GLint status = 1234, log_length;
@@ -158,6 +158,7 @@ static void link_shader(GLuint program) {
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
     Debug(3, "Link Status %d loglen %d\n", status, log_length);
 }
+
 
 static GLuint sc_generate_osd(GLuint gl_prog) {
 
@@ -209,7 +210,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     int n;
     GLint cmsLoc;
     float *m, *c, *cms;
-    char *frag;
+    //char *frag;
 
     GL_init();
     GLSL("%s\n", gl_version);
@@ -446,3 +447,4 @@ static void render_pass_quad(int flip, float xcrop, float ycrop) {
     for (n = 0; vertex_vao[n].name; n++)
         glDisableVertexAttribArray(n);
 }
+#endif

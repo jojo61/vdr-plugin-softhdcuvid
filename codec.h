@@ -56,7 +56,11 @@ struct _video_decoder_ {
     VideoHwDecoder *HwDecoder; ///< video hardware decoder
 
     int GetFormatDone;        ///< flag get format called!
-    AVCodec *VideoCodec;      ///< video codec
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
+     AVCodec *VideoCodec;                ///< video codec
+#else
+     const AVCodec *VideoCodec;          ///< video codec
+#endif
     AVCodecContext *VideoCtx; ///< video codec context
     // #ifdef FFMPEG_WORKAROUND_ARTIFACTS
     int FirstKeyFrame; ///< flag first frame
