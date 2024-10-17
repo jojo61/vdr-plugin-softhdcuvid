@@ -1226,7 +1226,7 @@ void cMenuSetupSoft::Create(void) {
 	Add(new cMenuEditIntItem(tr("Video background color (Alpha)"), (int *)&BackgroundAlpha, 0, 0xFF));
 #endif
 #ifdef PLACEBO
-        Add(new cMenuEditBoolItem(tr("RGB Level"), &StudioLevels, trVDR("limited RGB"), trVDR("Full RGB")));
+        Add(new cMenuEditBoolItem(tr("Color Range"), &StudioLevels, trVDR("limited RGB"), trVDR("Full RGB")));
 #endif
         Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode, trVDR("no"), trVDR("yes")));
         Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync, trVDR("no"), trVDR("yes")));
