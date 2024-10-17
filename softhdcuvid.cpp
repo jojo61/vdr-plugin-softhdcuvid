@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.26"
+static const char *const VERSION = "3.27"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -1226,7 +1226,7 @@ void cMenuSetupSoft::Create(void) {
 	Add(new cMenuEditIntItem(tr("Video background color (Alpha)"), (int *)&BackgroundAlpha, 0, 0xFF));
 #endif
 #ifdef PLACEBO
-        Add(new cMenuEditBoolItem(tr("Use studio levels"), &StudioLevels, trVDR("no"), trVDR("yes")));
+        Add(new cMenuEditBoolItem(tr("RGB Level"), &StudioLevels, trVDR("limited RGB"), trVDR("Full RGB")));
 #endif
         Add(new cMenuEditBoolItem(tr("60hz display mode"), &_60HzMode, trVDR("no"), trVDR("yes")));
         Add(new cMenuEditBoolItem(tr("Soft start a/v sync"), &SoftStartSync, trVDR("no"), trVDR("yes")));
