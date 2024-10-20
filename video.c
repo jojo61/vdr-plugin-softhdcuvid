@@ -3836,7 +3836,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     current = decoder->SurfacesRb[decoder->SurfaceRead];
 
 #ifdef USE_DRM
-    
+    AVFrame *frame;
     AVFrameSideData *sd, *sd1 = NULL, *sd2 = NULL;
     if (!decoder->Closing) {
         frame = decoder->frames[current];
@@ -3978,7 +3978,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     // target.repr.bits.bit_shift =0;
 
 #if USE_DRM
-    AVFrame *frame;
+    
     frame = decoder->frames[current];
 
     switch (VulkanTargetColorSpace) {
