@@ -251,8 +251,8 @@ Setup: /etc/vdr/setup.conf
 	(Red * 65536 +  Green * 256 + Blue)
 
 	softhddevice.StudioLevels = 0
-	0 use limited RGB (16-235) with vdpau.
-	1 use full RGB (0-255) with vdpau.
+	0 use limited RGB (16-235) with placebo.
+	1 use full RGB (0-255) with placebo.
 
 	softhddevice.Suspend.Close = 0
 	1 suspend closes x11 window, connection and audio device.

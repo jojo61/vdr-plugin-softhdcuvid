@@ -23,7 +23,7 @@ CUVID ?= 0
 DRM ?= 0
 
 # use libplacebo -
-# available for all decoders but for DRM you need LIBPLACEBO_GL
+# available for all decoders but for DRM and VAAPI you need LIBPLACEBO_GL
 LIBPLACEBO ?= 0
 LIBPLACEBO_GL ?= 0
 
