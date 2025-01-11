@@ -3503,6 +3503,18 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
         VideoSetPts(&decoder->PTS, decoder->Interlaced, video_ctx, frame);
     }
 
+    if  ((decoder->InputWidth != frame->width) || (decoder->InputHeight != frame->height)) {
+        printf("Framesize change\n");
+        CuvidCleanup(decoder);
+        decoder->InputAspect = frame->sample_aspect_ratio;
+        decoder->InputWidth = frame->width;
+        decoder->InputHeight = frame->height;
+        decoder->Interlaced = 0;
+        decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
+        CuvidSetupOutput(decoder);
+        
+    }
+
     // update aspect ratio changes
     if (decoder->InputWidth && decoder->InputHeight && av_cmp_q(decoder->InputAspect, frame->sample_aspect_ratio)) {
         Debug(3, "video/cuvid: aspect ratio changed\n");

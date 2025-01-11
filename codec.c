@@ -469,6 +469,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
 
         *pkt = *avpkt; // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
+        //printf("send packet %x\n",ret);
         if (ret < 0) {
             return;
         }
@@ -487,7 +488,8 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                 return;
             }
             if (ret >= 0) {
-                if (decoder->filter) {
+                //printf("Videosize %d:%d ttf %d\n",frame->width,frame->height,frame->interlaced_frame);
+                if ((frame->flags & AV_FRAME_FLAG_INTERLACED) && decoder->filter) {
                     if (decoder->filter == 1) {
                         if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
                             Debug(3, "video: Init of VAAPI deint Filter failed\n");
@@ -558,7 +560,7 @@ next_part:
 //		printf("video frame pts %#012" PRIx64 "
 //%dms\n",frame->pts,(int)(apts - frame->pts) / 90);
 #ifdef YADIF
-                if (decoder->filter) {
+                if ((frame->flags & AV_FRAME_FLAG_INTERLACED) && decoder->filter) {
                     if (decoder->filter == 1) {
                         if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
                             Debug(3,"video: Init of YADIF Filter failed\n");
