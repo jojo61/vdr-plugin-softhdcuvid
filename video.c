@@ -5383,8 +5383,10 @@ void VideoOsdInit(void) {
     // printf("\nset osd %d x %d\n",OsdWidth,OsdHeight);
     if (posd)
         free(posd);
-    posd = (unsigned char *)calloc((OsdWidth + 1) * (OsdHeight + 1) * 4, 1);
-    //	posd = (unsigned char *)calloc((4096 + 1) * (2160 + 1) * 4, 1);
+    if (OsdWidth >= 1920 && OsdHeight >= 1080)
+        posd = (unsigned char *)calloc((OsdWidth + 1) * (OsdHeight + 1) * 4, 1);
+    else
+        posd = (unsigned char *)calloc((4096 + 1) * (2160 + 1) * 4, 1);
     VideoOsdClear();
 }
 

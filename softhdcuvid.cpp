@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.28"
+static const char *const VERSION = "3.29"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -1526,8 +1526,8 @@ void cMenuSetupSoft::Store(void) {
     SetupStore("DetachFromMainMenu", ConfigDetachFromMainMenu = DetachFromMainMenu);
     switch (OsdSize) {
         case 0:
-            OsdWidth = 0;
-            OsdHeight = 0;
+            OsdWidth = 1920;
+            OsdHeight = 1080;
             break;
         case 1:
             OsdWidth = 1920;
