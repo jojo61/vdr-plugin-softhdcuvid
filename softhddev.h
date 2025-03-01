@@ -86,8 +86,6 @@ extern int Start(void);
 extern void Stop(void);
 /// C plugin house keeping
 extern void Housekeeping(void);
-/// C plugin main thread hook
-extern void MainThreadHook(void);
 
 /// Suspend plugin
 extern void Suspend(int, int, int);

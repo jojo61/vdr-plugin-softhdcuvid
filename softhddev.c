@@ -3211,18 +3211,6 @@ void Housekeeping(void) {
     }
 }
 
-/**
-**  Main thread hook, periodic called from main thread.
-*/
-void MainThreadHook(void) {
-    if (Usr1Signal) { // x11 server ready
-        // FIYME: x11 server keeps sending sigusr1 signals
-        signal(SIGUSR1, SIG_IGN); // ignore further signals
-        Usr1Signal = 0;
-        StartVideo();
-        VideoDisplayWakeup();
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////////
 //  Suspend/Resume

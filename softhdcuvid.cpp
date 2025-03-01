@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.29"
+static const char *const VERSION = "3.30"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -2960,7 +2960,6 @@ class cPluginSoftHdDevice : public cPlugin {
     virtual bool Start(void);
     virtual void Stop(void);
     virtual void Housekeeping(void);
-    virtual void MainThreadHook(void);
     virtual const char *MainMenuEntry(void);
     virtual cOsdObject *MainMenuAction(void);
     virtual cMenuSetupPage *SetupMenu(void);
@@ -3129,21 +3128,6 @@ cOsdObject *cPluginSoftHdDevice::MainMenuAction(void) {
     return new cSoftHdMenu("SoftHdDevice");
 }
 
-/**
-**  Called for every plugin once during every cycle of VDR's main program
-**  loop.
-*/
-void cPluginSoftHdDevice::MainThreadHook(void) {
-    // dsyslog("[softhddev]%s:\n", __FUNCTION__);
-
-    if (DoMakePrimary) {
-        dsyslog("[softhddev]%s: switching primary device to %d\n", __FUNCTION__, DoMakePrimary);
-        cDevice::SetPrimaryDevice(DoMakePrimary);
-        DoMakePrimary = 0;
-    }
-
-    ::MainThreadHook();
-}
 
 /**
 **  Return our setup menu.
