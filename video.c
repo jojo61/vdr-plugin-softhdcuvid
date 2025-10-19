@@ -2893,7 +2893,11 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             bitformat16 = 1;
     }
 #ifdef VAAPI
+#if (LIBAVCODEC_VERSION_INT > AV_VERSION_INT(62, 11, 100))
+    if (video_ctx->profile == AV_PROFILE_HEVC_MAIN_10)
+#else
     if (video_ctx->profile == FF_PROFILE_HEVC_MAIN_10)
+#endif
         bitformat16 = 1;
 #endif
 
@@ -6099,15 +6103,7 @@ void VideoReleaseSurface(VideoHwDecoder *hw_decoder, unsigned surface) {
 ///
 enum AVPixelFormat Video_get_format(VideoHwDecoder *hw_decoder, AVCodecContext *video_ctx,
                                     const enum AVPixelFormat *fmt) {
-#ifdef DEBUG
-    int ms_delay;
 
-    // FIXME: use frame time
-    ms_delay = (1000 * video_ctx->time_base.num * video_ctx->ticks_per_frame) / video_ctx->time_base.den;
-
-    Debug(3, "video: ready %s %2dms/frame %dms\n", Timestamp2String(VideoGetClock(hw_decoder)), ms_delay,
-          GetMsTicks() - VideoSwitch);
-#endif
 
     return VideoUsedModule->get_format(hw_decoder, video_ctx, fmt);
 }
