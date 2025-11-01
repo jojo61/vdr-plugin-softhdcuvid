@@ -2703,7 +2703,9 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
 #endif
 #ifdef YADIF
     const char *filters_descr = "yadif_cuda=1:0:1"; // mode=send_field,parity=tff,deint=interlaced";
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(59,40,100)
     enum AVPixelFormat pix_fmts[] = {format, AV_PIX_FMT_NONE};
+#endif
 #endif
 
     char args[512];
@@ -2723,16 +2725,25 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
         goto end;
     }
 
-    /* buffer video source: the decoded frames from the decoder will be inserted
-     * here. */
-    snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d", dec_ctx->width,
-             dec_ctx->height, format, 1, 90000, dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den);
 
-    ret = avfilter_graph_create_filter(&decoder->buffersrc_ctx, buffersrc, "in", args, NULL, decoder->filter_graph);
-    if (ret < 0) {
-        Debug(3, "Cannot create buffer source\n");
+#if LIBAVFILTER_VERSION_INT < AV_VERSION_INT(9,16,100)
+    snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d", 
+        dec_ctx->width,dec_ctx->height, format, 1, 90000, 
+        dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den);
+#else
+    snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d:colorspace=%d:range=%d",
+        dec_ctx->width,dec_ctx->height, dec_ctx->pix_fmt, 
+        dec_ctx->pkt_timebase.num, dec_ctx->pkt_timebase.den, 
+        dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den,
+        dec_ctx->colorspace,dec_ctx->color_range);
+#endif
+    decoder->buffersrc_ctx = avfilter_graph_alloc_filter(decoder->filter_graph, buffersrc, "in");
+
+    if (!decoder->buffersrc_ctx) {
+        Debug(3,"Cannot alloc buffer source %s\n", args);
         goto end;
     }
+    
     src_params = av_buffersrc_parameters_alloc();
     src_params->hw_frames_ctx = frame->hw_frames_ctx;
     src_params->format = format;
@@ -2747,10 +2758,19 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
     // printf("width %d height %d hw_frames_ctx
     // %p\n",dec_ctx->width,dec_ctx->height ,frame->hw_frames_ctx);
     ret = av_buffersrc_parameters_set(decoder->buffersrc_ctx, src_params);
+    av_free(src_params);
     if (ret < 0) {
         Debug(3, "Cannot set hw_frames_ctx to src\n");
         goto end;
     }
+
+    ret = avfilter_init_str(decoder->buffersrc_ctx, args);
+
+    if (ret < 0) {
+        Error(_("Cannot init buffer source %s\n"), args);
+        goto end;
+    }
+
     /* buffer video sink: to terminate the filter chain. */
     ret = avfilter_graph_create_filter(&decoder->buffersink_ctx, buffersink, "out", NULL, NULL, decoder->filter_graph);
     if (ret < 0) {
@@ -2758,11 +2778,13 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
         goto end;
     }
 #ifdef YADIF
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(59,40,100)
     ret = av_opt_set_int_list(decoder->buffersink_ctx, "pix_fmts", pix_fmts, AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
         Debug(3, "Cannot set output pixel format\n");
         goto end;
     }
+#endif
 #endif
     /*
      * Set the endpoints for the filter graph. The filter_graph will
