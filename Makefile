@@ -178,6 +178,8 @@ LIBS += $(shell pkg-config --libs egl gbm libdrm)
 endif
 
 ifeq ($(CUVID),1)
+export CFLAGS	= $(call PKGCFG,cflags) -fpermissive
+export CXXFLAGS = $(call PKGCFG,cxxflags) -fpermissive
 #CONFIG += -DUSE_PIP			# PIP support
 CONFIG += -DCUVID			# enable CUVID decoder
 LIBS += $(shell pkg-config --libs egl gl)
