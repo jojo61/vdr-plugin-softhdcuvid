@@ -733,7 +733,7 @@ cOglCmdRenderFbToBufferFb::cOglCmdRenderFbToBufferFb(cOglFb *fb, cOglFb *buffer,
     this->y = (GLfloat)y;
     this->drawPortX = (GLfloat)drawPortX;
     this->drawPortY = (GLfloat)drawPortY;
-     this->transparency = (alphablending ? transparency : ALPHA_OPAQUE);
+    this->transparency = (alphablending ? transparency : ALPHA_OPAQUE);
     this->alphablending = alphablending;
 }
 
@@ -1267,7 +1267,7 @@ bool cOglCmdDrawImage::Execute(void) {
     GLuint texture;
 
 #ifdef USE_DRM
-    //esyslog("upload Image\n");
+    // esyslog("upload Image\n");
     pthread_mutex_lock(&OSDMutex);
     GlxDrawopengl(); // here we need the Shared Context for upload
     GlxCheck();
@@ -1281,7 +1281,7 @@ bool cOglCmdDrawImage::Execute(void) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glFlush();
-#ifdef USE_DRM  
+#ifdef USE_DRM
     GlxInitopengl(); // Reset Context
     GlxCheck();
     pthread_mutex_unlock(&OSDMutex);
@@ -1324,7 +1324,8 @@ bool cOglCmdDrawImage::Execute(void) {
 }
 
 //------------------ cOglCmdDrawTexture --------------------
-cOglCmdDrawTexture::cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y, double scaleX, double scaleY) : cOglCmd(fb) {
+cOglCmdDrawTexture::cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y, double scaleX, double scaleY)
+    : cOglCmd(fb) {
     this->imageRef = imageRef;
     this->x = x;
     this->y = y;
@@ -1831,11 +1832,10 @@ void cOglPixmap::Fill(tColor Color) {
     MarkDrawPortDirty(DrawPort());
 }
 
-void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) {
-    DrawScaledImage(Point, Image);
-}
+void cOglPixmap::DrawImage(const cPoint &Point, const cImage &Image) { DrawScaledImage(Point, Image); }
 
-void cOglPixmap::DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY, bool AntiAlias) {
+void cOglPixmap::DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY,
+                                 bool AntiAlias) {
     if (!oglThread->Active())
         return;
     tColor *argb = MALLOC(tColor, Image.Width() * Image.Height());
@@ -1844,16 +1844,17 @@ void cOglPixmap::DrawScaledImage(const cPoint &Point, const cImage &Image, doubl
         return;
     memcpy(argb, Image.Data(), sizeof(tColor) * Image.Width() * Image.Height());
 
-    oglThread->DoCmd(new cOglCmdDrawImage(fb, argb, Image.Width(), Image.Height(), Point.X(), Point.Y(), true, FactorX, FactorY));
+    oglThread->DoCmd(
+        new cOglCmdDrawImage(fb, argb, Image.Width(), Image.Height(), Point.X(), Point.Y(), true, FactorX, FactorY));
     SetDirty();
-    MarkDrawPortDirty(cRect(Point, cSize(Image.Width() * FactorX, Image.Height() * FactorY)).Intersected(DrawPort().Size()));
+    MarkDrawPortDirty(
+        cRect(Point, cSize(Image.Width() * FactorX, Image.Height() * FactorY)).Intersected(DrawPort().Size()));
 }
 
-void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) {
-    DrawScaledImage(Point, ImageHandle);
-}
+void cOglPixmap::DrawImage(const cPoint &Point, int ImageHandle) { DrawScaledImage(Point, ImageHandle); }
 
-void cOglPixmap::DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY, bool AntiAlias) {
+void cOglPixmap::DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY,
+                                 bool AntiAlias) {
     if (!oglThread->Active())
         return;
 
@@ -1862,7 +1863,8 @@ void cOglPixmap::DrawScaledImage(const cPoint &Point, int ImageHandle, double Fa
 
         oglThread->DoCmd(new cOglCmdDrawTexture(fb, img, Point.X(), Point.Y(), FactorX, FactorY));
         SetDirty();
-        MarkDrawPortDirty(cRect(Point, cSize(img->width * FactorX, img->height * FactorY)).Intersected(DrawPort().Size()));
+        MarkDrawPortDirty(
+            cRect(Point, cSize(img->width * FactorX, img->height * FactorY)).Intersected(DrawPort().Size()));
     }
     /*
        Fallback to VDR implementation, needs to separate cSoftOsdProvider from
@@ -2110,12 +2112,13 @@ cPixmap *cOglOsd::CreatePixmap(int Layer, const cRect &ViewPort, const cRect &Dr
     return NULL;
 }
 
-
-extern "C" {void VideoSetOsdSize(int, int ) ;}
+extern "C" {
+void VideoSetOsdSize(int, int);
+}
 
 void SetOsdPosition(int Left, int Top, int Width, int Height) {
-    printf("Set OSD Position %d %d\n",Width,Height);
-  VideoSetOsdSize( Width, Height) ; 
+    printf("Set OSD Position %d %d\n", Width, Height);
+    VideoSetOsdSize(Width, Height);
 }
 
 void cOglOsd::DestroyPixmap(cPixmap *Pixmap) {
@@ -2163,16 +2166,12 @@ void cOglOsd::Flush(void) {
         for (int i = 0; i < oglPixmaps.Size(); i++) {
             if (oglPixmaps[i]) {
                 if (oglPixmaps[i]->Layer() == layer) {
-                    bool alphablending = layer == 0 ? false : true; // Decide wether to render (with alpha) or copy a pixmap
-                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb( oglPixmaps[i]->Fb(), 
-                                                                    bFb,
-                                                                    oglPixmaps[i]->ViewPort().X(), 
-                                                                    (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0,
-                                                                    oglPixmaps[i]->Alpha(), 
-                                                                    oglPixmaps[i]->DrawPort().X(), 
-                                                                    oglPixmaps[i]->DrawPort().Y(),
-                                                                    alphablending
-                                                                    ));
+                    bool alphablending =
+                        layer == 0 ? false : true; // Decide wether to render (with alpha) or copy a pixmap
+                    oglThread->DoCmd(new cOglCmdRenderFbToBufferFb(
+                        oglPixmaps[i]->Fb(), bFb, oglPixmaps[i]->ViewPort().X(),
+                        (!isSubtitleOsd) ? oglPixmaps[i]->ViewPort().Y() : 0, oglPixmaps[i]->Alpha(),
+                        oglPixmaps[i]->DrawPort().X(), oglPixmaps[i]->DrawPort().Y(), alphablending));
                     oglPixmaps[i]->SetDirty(false);
                 }
             }

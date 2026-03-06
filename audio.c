@@ -93,7 +93,7 @@ static const AudioModule NoopModule; ///< forward definition of noop module
 //  Variables
 //----------------------------------------------------------------------------
 
-char AudioAlsaNotest;          ///< disable Audio capbility test
+char AudioAlsaNotest;         ///< disable Audio capbility test
 char AudioAlsaDriverBroken;   ///< disable broken driver message
 char AudioAlsaNoCloseOpen;    ///< disable alsa close/open fix
 char AudioAlsaCloseOpenDelay; ///< enable alsa close/open delay fix
@@ -938,36 +938,31 @@ static snd_pcm_t *AlsaOpenPCM(int passthrough) {
     if (!AudioDoingInit) { // reduce blabla during init
         Info(_("audio/alsa: using %sdevice '%s'\n"), passthrough ? "pass-through " : "", device);
     }
-    //printf("audio/alsa: using %sdevice '%s'\n", passthrough ? "pass-through " : "", device);
-    
+    // printf("audio/alsa: using %sdevice '%s'\n", passthrough ? "pass-through " : "", device);
+
     //
     // for AC3 pass-through try to set the non-audio bit, use AES0=6
     //
     if (passthrough && AudioAppendAES) {
         if (!(strchr(device, ':'))) {
             sprintf(tmp,
-                        //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
-                        "%s:AES0=%d,AES1=%d,AES2=0",
-                        device,
-                        IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
-                        IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
-                        //map_iec958_srate(ao->samplerate));
-        } 
-        else {
+                    //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
+                    "%s:AES0=%d,AES1=%d,AES2=0", device, IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
+                    IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
+            // map_iec958_srate(ao->samplerate));
+        } else {
             sprintf(tmp,
-                        //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
-                        "%s,AES0=%d,AES1=%d,AES2=0",
-                        device,
-                        IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
-                        IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
-                        //map_iec958_srate(ao->samplerate));
+                    //"AES0=%d,AES1=%d,AES2=0,AES3=%d",
+                    "%s,AES0=%d,AES1=%d,AES2=0", device, IEC958_AES0_NONAUDIO | IEC958_AES0_PRO_EMPHASIS_NONE,
+                    IEC958_AES1_CON_ORIGINAL | IEC958_AES1_CON_PCM_CODER);
+            // map_iec958_srate(ao->samplerate));
         }
-        
-        printf( "opening device '%s' => '%s'\n", device, tmp);
-        if ((err = snd_pcm_open(&handle, tmp, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0 ) {
+
+        printf("opening device '%s' => '%s'\n", device, tmp);
+        if ((err = snd_pcm_open(&handle, tmp, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
             Error(_("audio/alsa: playback open '%s' error: %s\n"), device, snd_strerror(err));
             return NULL;
-        } 
+        }
     } else {
         // open none blocking; if device is already used, we don't want wait
         if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK)) < 0) {
@@ -2190,21 +2185,21 @@ found:
 
     if (AudioAlsaNotest) {
         for (u = 0; u < AudioRatesMax; ++u) {
-        
-            AudioChannelMatrix[u][1]=AudioChannelMatrix[u][2]=2;
-            AudioChannelMatrix[u][3]=AudioChannelMatrix[u][4]=4;
-            AudioChannelMatrix[u][5]=AudioChannelMatrix[u][6]=6;
-            AudioChannelMatrix[u][7]=AudioChannelMatrix[u][8]=8;
-            printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
-                AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
-                AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
 
+            AudioChannelMatrix[u][1] = AudioChannelMatrix[u][2] = 2;
+            AudioChannelMatrix[u][3] = AudioChannelMatrix[u][4] = 4;
+            AudioChannelMatrix[u][5] = AudioChannelMatrix[u][6] = 6;
+            AudioChannelMatrix[u][7] = AudioChannelMatrix[u][8] = 8;
+            printf("audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+                   AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3],
+                   AudioChannelMatrix[u][4], AudioChannelMatrix[u][5], AudioChannelMatrix[u][6],
+                   AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
         }
 
-        AudioChannelsInHw[1]=AudioChannelsInHw[3]=AudioChannelsInHw[4]=AudioChannelsInHw[5]=AudioChannelsInHw[6]=AudioChannelsInHw[7]=AudioChannelsInHw[8]=0;
-        AudioChannelsInHw[2]=2;
-    }
-    else {
+        AudioChannelsInHw[1] = AudioChannelsInHw[3] = AudioChannelsInHw[4] = AudioChannelsInHw[5] =
+            AudioChannelsInHw[6] = AudioChannelsInHw[7] = AudioChannelsInHw[8] = 0;
+        AudioChannelsInHw[2] = 2;
+    } else {
         //
         //	Check which channels/rates/formats are supported
         //	FIXME: we force 44.1Khz and 48Khz must be supported equal
@@ -2283,31 +2278,31 @@ found:
                                 AudioChannelMatrix[u][chan] = 4;
                                 break;
                             }
-                            __attribute__ ((fallthrough));
+                            __attribute__((fallthrough));
                         case 4:
                             if (AudioChannelsInHw[5]) {
                                 AudioChannelMatrix[u][chan] = 5;
                                 break;
                             }
-                            __attribute__ ((fallthrough));
+                            __attribute__((fallthrough));
                         case 5:
                             if (AudioChannelsInHw[6]) {
                                 AudioChannelMatrix[u][chan] = 6;
                                 break;
                             }
-                            __attribute__ ((fallthrough));
+                            __attribute__((fallthrough));
                         case 6:
                             if (AudioChannelsInHw[7]) {
                                 AudioChannelMatrix[u][chan] = 7;
                                 break;
                             }
-                            __attribute__ ((fallthrough));
+                            __attribute__((fallthrough));
                         case 7:
                             if (AudioChannelsInHw[8]) {
                                 AudioChannelMatrix[u][chan] = 8;
                                 break;
                             }
-                            __attribute__ ((fallthrough));
+                            __attribute__((fallthrough));
                         case 8:
                             if (AudioChannelsInHw[6]) {
                                 AudioChannelMatrix[u][chan] = 6;
@@ -2327,9 +2322,10 @@ found:
             }
         }
         for (u = 0; u < AudioRatesMax; ++u) {
-            Debug(3,"audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
-                AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3], AudioChannelMatrix[u][4],
-                AudioChannelMatrix[u][5], AudioChannelMatrix[u][6], AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
+            Debug(3, "audio: %6dHz supports %d %d %d %d %d %d %d %d channels\n", AudioRatesTable[u],
+                  AudioChannelMatrix[u][1], AudioChannelMatrix[u][2], AudioChannelMatrix[u][3],
+                  AudioChannelMatrix[u][4], AudioChannelMatrix[u][5], AudioChannelMatrix[u][6],
+                  AudioChannelMatrix[u][7], AudioChannelMatrix[u][8]);
         }
     }
 #ifdef USE_AUDIO_THREAD

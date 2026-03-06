@@ -71,8 +71,8 @@ class cShader {
     bool CheckCompileErrors(GLuint object, bool program = false);
 
   public:
-    cShader(void){};
-    virtual ~cShader(void){};
+    cShader(void) {};
+    virtual ~cShader(void) {};
     bool Load(eShaderType type);
     void Use(void);
     void SetFloat(const GLchar *name, GLfloat value);
@@ -249,7 +249,7 @@ class cOglCmd {
 
   public:
     cOglCmd(cOglFb *fb) { this->fb = fb; };
-    virtual ~cOglCmd(void){};
+    virtual ~cOglCmd(void) {};
     virtual const char *Description(void) = 0;
     virtual bool Execute(void) = 0;
 };
@@ -260,7 +260,7 @@ class cOglCmdInitOutputFb : public cOglCmd {
 
   public:
     cOglCmdInitOutputFb(cOglOutputFb *oFb);
-    virtual ~cOglCmdInitOutputFb(void){};
+    virtual ~cOglCmdInitOutputFb(void) {};
     virtual const char *Description(void) { return "InitOutputFramebuffer"; }
     virtual bool Execute(void);
 };
@@ -271,7 +271,7 @@ class cOglCmdInitFb : public cOglCmd {
 
   public:
     cOglCmdInitFb(cOglFb *fb, cCondWait *wait = NULL);
-    virtual ~cOglCmdInitFb(void){};
+    virtual ~cOglCmdInitFb(void) {};
     virtual const char *Description(void) { return "InitFramebuffer"; }
     virtual bool Execute(void);
 };
@@ -279,7 +279,7 @@ class cOglCmdInitFb : public cOglCmd {
 class cOglCmdDeleteFb : public cOglCmd {
   public:
     cOglCmdDeleteFb(cOglFb *fb);
-    virtual ~cOglCmdDeleteFb(void){};
+    virtual ~cOglCmdDeleteFb(void) {};
     virtual const char *Description(void) { return "DeleteFramebuffer"; }
     virtual bool Execute(void);
 };
@@ -295,7 +295,7 @@ class cOglCmdRenderFbToBufferFb : public cOglCmd {
   public:
     cOglCmdRenderFbToBufferFb(cOglFb *fb, cOglFb *buffer, GLint x, GLint y, GLint transparency, GLint drawPortX,
                               GLint drawPortY, bool alphablending);
-    virtual ~cOglCmdRenderFbToBufferFb(void){};
+    virtual ~cOglCmdRenderFbToBufferFb(void) {};
     virtual const char *Description(void) { return "Render Framebuffer to Buffer"; }
     virtual bool Execute(void);
 };
@@ -307,7 +307,7 @@ class cOglCmdCopyBufferToOutputFb : public cOglCmd {
 
   public:
     cOglCmdCopyBufferToOutputFb(cOglFb *fb, cOglOutputFb *oFb, GLint x, GLint y);
-    virtual ~cOglCmdCopyBufferToOutputFb(void){};
+    virtual ~cOglCmdCopyBufferToOutputFb(void) {};
     virtual const char *Description(void) { return "Copy buffer to OutputFramebuffer"; }
     virtual bool Execute(void);
 };
@@ -318,7 +318,7 @@ class cOglCmdFill : public cOglCmd {
 
   public:
     cOglCmdFill(cOglFb *fb, GLint color);
-    virtual ~cOglCmdFill(void){};
+    virtual ~cOglCmdFill(void) {};
     virtual const char *Description(void) { return "Fill"; }
     virtual bool Execute(void);
 };
@@ -331,7 +331,7 @@ class cOglCmdDrawRectangle : public cOglCmd {
 
   public:
     cOglCmdDrawRectangle(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color);
-    virtual ~cOglCmdDrawRectangle(void){};
+    virtual ~cOglCmdDrawRectangle(void) {};
     virtual const char *Description(void) { return "DrawRectangle"; }
     virtual bool Execute(void);
 };
@@ -348,7 +348,7 @@ class cOglCmdDrawEllipse : public cOglCmd {
 
   public:
     cOglCmdDrawEllipse(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint quadrants);
-    virtual ~cOglCmdDrawEllipse(void){};
+    virtual ~cOglCmdDrawEllipse(void) {};
     virtual const char *Description(void) { return "DrawEllipse"; }
     virtual bool Execute(void);
 };
@@ -362,7 +362,7 @@ class cOglCmdDrawSlope : public cOglCmd {
 
   public:
     cOglCmdDrawSlope(cOglFb *fb, GLint x, GLint y, GLint width, GLint height, GLint color, GLint type);
-    virtual ~cOglCmdDrawSlope(void){};
+    virtual ~cOglCmdDrawSlope(void) {};
     virtual const char *Description(void) { return "DrawSlope"; }
     virtual bool Execute(void);
 };
@@ -407,7 +407,7 @@ class cOglCmdDrawTexture : public cOglCmd {
 
   public:
     cOglCmdDrawTexture(cOglFb *fb, sOglImage *imageRef, GLint x, GLint y, double scaleX = 1.0f, double scaleY = 1.0f);
-    virtual ~cOglCmdDrawTexture(void){};
+    virtual ~cOglCmdDrawTexture(void) {};
     virtual const char *Description(void) { return "Draw Texture"; }
     virtual bool Execute(void);
 };
@@ -431,7 +431,7 @@ class cOglCmdDropImage : public cOglCmd {
 
   public:
     cOglCmdDropImage(sOglImage *imageRef, cCondWait *wait);
-    virtual ~cOglCmdDropImage(void){};
+    virtual ~cOglCmdDropImage(void) {};
     virtual const char *Description(void) { return "Drop Image"; }
     virtual bool Execute(void);
 };
@@ -502,8 +502,10 @@ class cOglPixmap : public cPixmap {
     virtual void Fill(tColor Color);
     virtual void DrawImage(const cPoint &Point, const cImage &Image);
     virtual void DrawImage(const cPoint &Point, int ImageHandle);
-    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX = 1.0f, double FactorY = 1.0f, bool AntiAlias = false);
-    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX = 1.0f, double FactorY = 1.0f, bool AntiAlias = false);
+    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX = 1.0f,
+                                 double FactorY = 1.0f, bool AntiAlias = false);
+    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX = 1.0f, double FactorY = 1.0f,
+                                 bool AntiAlias = false);
     virtual void DrawPixel(const cPoint &Point, tColor Color);
     virtual void DrawBitmap(const cPoint &Point, const cBitmap &Bitmap, tColor ColorFg = 0, tColor ColorBg = 0,
                             bool Overlay = false);

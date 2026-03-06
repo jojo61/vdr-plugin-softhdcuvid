@@ -159,7 +159,6 @@ static void link_shader(GLuint program) {
     Debug(3, "Link Status %d loglen %d\n", status, log_length);
 }
 
-
 static GLuint sc_generate_osd(GLuint gl_prog) {
 
     Debug(3, "vor create osd\n");
@@ -210,7 +209,7 @@ static GLuint sc_generate(GLuint gl_prog, enum AVColorSpace colorspace) {
     int n;
     GLint cmsLoc;
     float *m, *c, *cms;
-    //char *frag;
+    // char *frag;
 
     GL_init();
     GLSL("%s\n", gl_version);

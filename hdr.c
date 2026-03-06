@@ -530,7 +530,7 @@ static void set_hdr_metadata(int color, int trc, AVFrameSideData *sd1, AVFrameSi
         case AVCOL_PRI_BT2020: // 9
             cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.2020");
             break;
-        case AVCOL_PRI_BT470BG:                          // 5
+        case AVCOL_PRI_BT470BG:                                                      // 5
             cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.470 B/G"); // BT.601
             break;
         default:

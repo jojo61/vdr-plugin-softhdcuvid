@@ -658,14 +658,16 @@ class cDummyPixmap : public cPixmap {
         (void)Point;
         (void)ImageHandle;
     }
-    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY, bool AntiAlias) {
+    virtual void DrawScaledImage(const cPoint &Point, const cImage &Image, double FactorX, double FactorY,
+                                 bool AntiAlias) {
         (void)Point;
         (void)Image;
         (void)FactorX;
         (void)FactorY;
         (void)AntiAlias;
     }
-    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY, bool AntiAlias) {
+    virtual void DrawScaledImage(const cPoint &Point, int ImageHandle, double FactorX, double FactorY,
+                                 bool AntiAlias) {
         (void)Point;
         (void)ImageHandle;
         (void)FactorX;
@@ -738,10 +740,10 @@ class cDummyOsd : public cOsd {
     cDummyOsd(int Left, int Top, uint Level) : cOsd(Left, Top, Level) {}
     virtual ~cDummyOsd() {}
     static void SetOsdPosition(int Left, int Top, int Width, int Height) {
-        (void) Left;
-        (void) Top;
-        (void) Width;
-        (void) Height;
+        (void)Left;
+        (void)Top;
+        (void)Width;
+        (void)Height;
     }
     virtual cPixmap *CreatePixmap(int Layer, const cRect &ViewPort, const cRect &DrawPort = cRect::Null) {
         p = new cDummyPixmap(Layer, ViewPort, DrawPort);
@@ -2015,7 +2017,7 @@ static void TogglePip(void) {
             return;
         }
     }
-    NewPip(0);   // start always with current channel:   was PipChannelNr
+    NewPip(0); // start always with current channel:   was PipChannelNr
 }
 
 /**
@@ -3127,7 +3129,6 @@ cOsdObject *cPluginSoftHdDevice::MainMenuAction(void) {
 
     return new cSoftHdMenu("SoftHdDevice");
 }
-
 
 /**
 **  Return our setup menu.
