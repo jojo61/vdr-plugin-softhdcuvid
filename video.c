@@ -361,11 +361,13 @@ unsigned char *posd;
 static const char *VideoDriverName = "cuvid"; ///< video output device
 static Display *XlibDisplay;                  ///< Xlib X11 display
 static xcb_connection_t *Connection;          ///< xcb connection
-static xcb_colormap_t VideoColormap;          ///< video colormap
+static xcb_colormap_t VideoColormap __attribute__((unused));          ///< video colormap
 static xcb_window_t VideoWindow;              ///< video window
+#ifndef USE_DRM
 static xcb_screen_t const *VideoScreen;       ///< video screen
+#endif
 static uint32_t VideoBlankTick;               ///< blank cursor timer
-static xcb_pixmap_t VideoCursorPixmap;        ///< blank curosr pixmap
+static xcb_pixmap_t VideoCursorPixmap __attribute__((unused));        ///< blank curosr pixmap
 static xcb_cursor_t VideoBlankCursor;         ///< empty invisible cursor
 
 static int VideoWindowX;           ///< video output window x coordinate
@@ -422,7 +424,7 @@ static VideoZoomModes VideoOtherZoomMode;
 static char *DRMConnector = NULL;
 
 /// Default Value for DRM Refreshrate
-static int DRMRefresh = 50;
+static unsigned int DRMRefresh = 50;
 
 static char Video60HzMode;                   ///< handle 60hz displays
 static char VideoSoftStartSync;              ///< soft start sync audio/video
@@ -489,7 +491,7 @@ static void (*VideoEventCallback)(void) = NULL; /// callback function to notify 
 static int64_t VideoDeltaPTS; ///< FIXME: fix pts
 
 #ifdef USE_SCREENSAVER
-static char DPMSDisabled;            ///< flag we have disabled dpms
+static char DPMSDisabled __attribute__((unused));            ///< flag we have disabled dpms
 static char EnableDPMSatBlackScreen; ///< flag we should enable dpms at black screen
 #endif
 
@@ -497,7 +499,7 @@ static int EglEnabled;          ///< use EGL
 
 #ifdef CUVID
 static int GlxVSyncEnabled = 1; ///< enable/disable v-sync
-static unsigned int Count;
+static unsigned int Count __attribute__((unused));
 static GLXContext glxSharedContext; ///< shared gl context
 static GLXContext glxContext;       ///< our gl context
 
@@ -540,7 +542,7 @@ void VideoThreadLock(void);        ///< lock video thread
 void VideoThreadUnlock(void);      ///< unlock video thread
 static void VideoThreadExit(void); ///< exit/kill video thread
 
-#ifdef USE_SCREENSAVER
+#if defined(USE_SCREENSAVER) && !defined(USE_DRM)
 static void X11SuspendScreenSaver(xcb_connection_t *, int);
 static int X11HaveDPMS(xcb_connection_t *);
 static void X11DPMSReenable(xcb_connection_t *);
@@ -992,7 +994,7 @@ static void GlxSetupWindow(xcb_window_t window, int width, int height, EGLContex
 /// Initialize GLX.
 ///
 #ifdef CUVID
-static void EglInit(void) {
+static void __attribute__((unused)) EglInit(void) {
 
     XVisualInfo *vi = NULL;
 
@@ -1089,7 +1091,7 @@ static void EglInit(void) {
     glXGetFBConfigAttrib(XlibDisplay, fbc[0], GLX_BLUE_SIZE, &blueSize);
 
     Debug(3, "RGB size %d:%d:%d\n", redSize, greenSize, blueSize);
-    Debug(3, "Chosen visual ID = 0x%x\n", vi->visualid);
+    Debug(3, "Chosen visual ID = 0x%lx\n", vi->visualid);
 
     context = glXCreateContext(XlibDisplay, vi, NULL, GL_TRUE);
     if (!context) {
@@ -1175,7 +1177,7 @@ static void EglInit(void) {
 
 #else // VAAPI
 extern void make_egl(void);
-static void EglInit(void) {
+static void __attribute__((unused)) EglInit(void) {
     int redSize, greenSize, blueSize, alphaSize;
     static int glewdone = 0;
 
@@ -1802,7 +1804,7 @@ int CuvidTestSurfaces() {
     int i = 0;
 
     if (CuvidDecoders[0] != NULL) {
-        if (i = atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX - 1)
+        if ((i = atomic_read(&CuvidDecoders[0]->SurfacesFilled) < VIDEO_SURFACES_MAX - 1))
             return i;
         return 0;
     } else
@@ -2151,7 +2153,7 @@ static void CuvidDelHwDecoder(CuvidDecoder *decoder) {
             CuvidPrintFrames(decoder);
 #ifdef CUVID
             if (decoder->cuda_ctx && CuvidDecoderN == 1) {
-                cuCtxDestroy(decoder->cuda_ctx);
+                cu->cuCtxDestroy(decoder->cuda_ctx);
             }
 #endif
             free(decoder);
@@ -2372,9 +2374,9 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
     VAStatus status;
     VADRMPRIMESurfaceDescriptor desc;
     
-    vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
+    vaSyncSurface(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3]);
     status =
-        vaExportSurfaceHandle(decoder->VaDisplay, (unsigned int)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+        vaExportSurfaceHandle(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3], VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
                               VA_EXPORT_SURFACE_READ_ONLY | VA_EXPORT_SURFACE_SEPARATE_LAYERS, &desc);
 
     if (status != VA_STATUS_SUCCESS) {
@@ -2391,7 +2393,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         uint32_t size = desc.objects[id].size;
         uint32_t offset = desc.layers[n].offset[0];
 
-        struct pl_fmt_t *fmt;
+        pl_fmt fmt;
 
         if (fd == -1) {
             printf("Fehler beim Import von Surface %d\n", index);
@@ -2405,9 +2407,9 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         //	fmt = pl_find_fourcc(p->gpu,desc.lsayers[n].drm_format);
 
         if (decoder->PixFmt == AV_PIX_FMT_NV12) {
-            fmt = pl_find_named_fmt(p->gpu, n == 0 ? "r8" : "rg8"); // 8 Bit YUV
+            fmt = (pl_fmt)pl_find_named_fmt(p->gpu, n == 0 ? "r8" : "rg8"); // 8 Bit YUV
         } else {
-            fmt = pl_find_fourcc(p->gpu,
+            fmt = (pl_fmt)pl_find_fourcc(p->gpu,
                                  n == 0 ? 0x20363152 : 0x32335247); // 10 Bit YUV
         }
 
@@ -2915,7 +2917,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             bitformat16 = 1;
     }
 #ifdef VAAPI
-#if (LIBAVCODEC_VERSION_INT > AV_VERSION_INT(62, 11, 100))
+#if (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(62, 11, 100))
     if (video_ctx->profile == AV_PROFILE_HEVC_MAIN_10)
 #else
     if (video_ctx->profile == FF_PROFILE_HEVC_MAIN_10)
@@ -3620,13 +3622,13 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
             AVFrame *output;
 
             VideoThreadLock();
-            vaSyncSurface(decoder->VaDisplay, (unsigned int)frame->data[3]);
+            vaSyncSurface(decoder->VaDisplay, (VASurfaceID)(uintptr_t)frame->data[3]);
             output = av_frame_alloc();
             av_hwframe_transfer_data(output, frame, 0);
             av_frame_copy_props(output, frame);
             // printf("Save Surface ID %d %p
             // %p\n",surface,decoder->pl_frames[surface].planes[0].texture,decoder->pl_frames[surface].planes[1].texture);
-            bool ok = pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
+            (void)pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
                                                 .tex = decoder->pl_frames[surface].planes[0].texture,
 #if PL_API_VER < 292
                                                 .stride_w = output->linesize[0],
@@ -3640,7 +3642,7 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
                                                 .rc.y1 = h,
                                                 .rc.z1 = 0,
                                             });
-            ok &= pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
+            (void)pl_tex_upload(p->gpu, &(struct pl_tex_transfer_params){
                                             .tex = decoder->pl_frames[surface].planes[1].texture,
 #if PL_API_VER < 292
                                             .stride_w = output->linesize[0] / 2,
@@ -3875,7 +3877,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
 #ifdef USE_DRM
     AVFrame *frame;
-    AVFrameSideData *sd, *sd1 = NULL, *sd2 = NULL;
+    AVFrameSideData *sd1 = NULL, *sd2 = NULL;
     if (!decoder->Closing) {
         frame = decoder->frames[current];
         sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
@@ -4192,7 +4194,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             }
         }
     }
-    render_params.hooks = &p->hook;
+    render_params.hooks = p->hook;
     if (level || ovl || (video_src_rect.x1 > dst_video_rect.x1) || (video_src_rect.y1 > dst_video_rect.y1)) {
         render_params.num_hooks = 0; // no user shaders when OSD activ or downward scaling or PIP
     } else {
@@ -4269,7 +4271,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
 #ifdef PLACEBO
 void make_osd_overlay(int x, int y, int width, int height) {
-    const struct pl_fmt *fmt;
+    pl_fmt fmt;
     struct pl_overlay *pl;
 
     
@@ -4371,7 +4373,7 @@ static void CuvidDisplayFrame(void) {
     
     int i;
 
-#if defined PLACEBO_GL || defined CUVID
+#if defined PLACEBO || defined PLACEBO_GL || defined CUVID
     static uint64_t round_time = 0;
     //static uint64_t first_time = 0;
 #endif
@@ -5437,6 +5439,7 @@ extern void FeedKeyPress(const char *, const char *, int, int, const char *);
 ///
 /// @param display  display with i/o error
 ///
+#ifndef USE_DRM
 static int VideoIOErrorHandler(__attribute__((unused)) Display *display) {
 
     Error(_("video: fatal i/o error\n"));
@@ -5461,6 +5464,7 @@ static int VideoIOErrorHandler(__attribute__((unused)) Display *display) {
 
     return -1;
 }
+#endif
 
 ///
 /// Handle X11 events.
@@ -5700,16 +5704,14 @@ void InitPlacebo() {
 
     VkXcbSurfaceCreateInfoKHR xcbinfo;
 
-    char xcbext[] = {"VK_KHR_xcb_surface"};
-    char surfext[] = {"VK_KHR_surface"};
-    char *ext[2] = {&xcbext, &surfext};
+    const char *ext[2] = {"VK_KHR_xcb_surface", "VK_KHR_surface"};
 
     // create Vulkan instance
     //    memcpy(&iparams, &pl_vk_inst_default_params, sizeof(iparams));
     // iparams.debug = true;
 
     iparams.num_extensions = 2; // extensions_count;
-    iparams.extensions = &ext;
+    iparams.extensions = ext;
     iparams.debug = false;
 
     p->vk_inst = pl_vk_inst_create(p->ctx, &iparams);
@@ -5801,7 +5803,7 @@ void InitPlacebo() {
 /// Video render thread.
 ///
 
-void delete_decode() { Debug(3, "decoder thread exit\n"); }
+void delete_decode(void *arg) { (void)arg; Debug(3, "decoder thread exit\n"); }
 
 static void *VideoDisplayHandlerThread(void *dummy) {
 
@@ -5816,11 +5818,12 @@ static void *VideoDisplayHandlerThread(void *dummy) {
 
         VideoUsedModule->DisplayHandlerThread();
     }
-    pthread_cleanup_pop(NULL);
+    pthread_cleanup_pop(0);
     return dummy;
 }
 
-void exit_display() {
+void exit_display(void *arg) {
+    (void)arg;
 
 #ifdef GAMMA
     Exit_Gamma();
@@ -5882,7 +5885,7 @@ void exit_display() {
 }
 
 static void *VideoHandlerThread(void *dummy) {
-#if defined VAAPI && !defined PLACEBO_GL
+#if defined VAAPI && !defined PLACEBO_GL && !defined PLACEBO
     EGLint contextAttrs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
 #endif
 
@@ -5933,7 +5936,7 @@ static void *VideoHandlerThread(void *dummy) {
         CuvidSyncDisplayFrame();
         // printf("syncdisplayframe exec %d\n",(GetusTicks()-first_time)/1000);
     }
-    pthread_cleanup_pop(NULL);
+    pthread_cleanup_pop(0);
 
     return dummy;
 }
@@ -6401,7 +6404,7 @@ void VideoGetVideoSize(VideoHwDecoder *hw_decoder, int *width, int *height, int 
     }
 }
 
-#ifdef USE_SCREENSAVER
+#if defined(USE_SCREENSAVER) && !defined(USE_DRM)
 
 //----------------------------------------------------------------------------
 //  DPMS / Screensaver
@@ -6529,6 +6532,7 @@ static void X11DPMSReenable(xcb_connection_t *connection) {
 /// @param visual   visual of parent
 /// @param depth    depth of parent
 ///
+#ifndef USE_DRM
 static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual, uint8_t depth) {
     uint32_t values[4];
     xcb_intern_atom_reply_t *reply;
@@ -6624,6 +6628,7 @@ static void VideoCreateWindow(xcb_window_t parent, xcb_visualid_t visual, uint8_
     VideoBlankCursor = cursor;
     VideoBlankTick = 0;
 }
+#endif
 
 ///
 /// Set video device.
@@ -6634,7 +6639,7 @@ void VideoSetDevice(const char *device) { VideoDriverName = device; }
 
 void VideoSetConnector(char *c) { DRMConnector = c; }
 
-void VideoSetRefresh(char *r) { DRMRefresh = atoi(r); }
+void VideoSetRefresh(char *r) { DRMRefresh = (unsigned int)atoi(r); }
 
 int VideoSetShader(char *s) {
 #if defined PLACEBO && PL_API_VER >= 58
@@ -7153,10 +7158,7 @@ int VideoRaiseWindow(void) {
 /// @param display_name X11 display name
 ///
 void VideoInit(const char *display_name) {
-    int screen_nr;
     int i;
-    xcb_screen_iterator_t screen_iter;
-    xcb_screen_t const *screen;
 
 #ifdef VAAPI
     VideoDeinterlace[0] = 1; // 576i
@@ -7169,6 +7171,10 @@ void VideoInit(const char *display_name) {
 #ifdef USE_DRM
     VideoInitDrm();
 #else
+    {
+    int screen_nr;
+    xcb_screen_iterator_t screen_iter;
+    xcb_screen_t const *screen;
 
     if (XlibDisplay) { // allow multiple calls
         Debug(3, "video: x11 already setup\n");
@@ -7259,6 +7265,7 @@ void VideoInit(const char *display_name) {
     VideoCreateWindow(screen->root, screen->root_visual, screen->root_depth);
 
     Debug(3, "video: window prepared\n");
+    }
 #endif
     //
     //	prepare hardware decoder

@@ -1137,7 +1137,7 @@ void cMenuSetupSoft::Create(void) {
         "Cuda",
         "Yadif",
     };
-    static const char *const deinterlace_short[] = {
+    static const char *const deinterlace_short[] __attribute__((unused)) = {
         "C",
         "Y",
     };
