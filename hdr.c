@@ -453,13 +453,10 @@ const struct weston_colorspace *weston_colorspace_lookup(const char *name) {
     return NULL;
 }
 
-static int cleanup = 0;
-
 static uint16_t encode_xyy(float xyy) { return xyy * 50000; }
 static AVMasteringDisplayMetadata md_save = {0};
 static AVContentLightMetadata ld_save = {0};
 static void set_hdr_metadata(int color, int trc, AVFrameSideData *sd1, AVFrameSideData *sd2) {
-    drmModeAtomicReqPtr ModeReq;
     struct weston_colorspace *cs;
     enum hdr_metadata_eotf eotf;
     struct hdr_output_metadata data;
@@ -476,17 +473,18 @@ static void set_hdr_metadata(int color, int trc, AVFrameSideData *sd1, AVFrameSi
         return; // nothing to do
 
     if (sd1)
-        md = sd1->data;
+        md = (struct AVMasteringDisplayMetadata *)sd1->data;
 
     if (sd2)
-        ld = sd2->data;
+        ld = (struct AVContentLightMetadata *)sd2->data;
 
-    if (md && !memcmp(md, &md_save, sizeof(md_save)))
+    if (md && !memcmp(md, &md_save, sizeof(md_save))) {
         if (ld && !memcmp(ld, &ld_save, sizeof(ld_save))) {
             return;
         } else if (ld && !memcmp(ld, &ld_save, sizeof(ld_save))) {
             return;
         }
+    }
 
     if (ld)
         memcpy(&ld_save, ld, sizeof(ld_save));
@@ -527,16 +525,16 @@ static void set_hdr_metadata(int color, int trc, AVFrameSideData *sd1, AVFrameSi
     switch (color) {
         case AVCOL_PRI_BT709:       // 1
         case AVCOL_PRI_UNSPECIFIED: // 2
-            cs = weston_colorspace_lookup("BT.709");
+            cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.709");
             break;
         case AVCOL_PRI_BT2020: // 9
-            cs = weston_colorspace_lookup("BT.2020");
+            cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.2020");
             break;
-        case AVCOL_PRI_BT470BG:                          // 5
-            cs = weston_colorspace_lookup("BT.470 B/G"); // BT.601
+        case AVCOL_PRI_BT470BG:                                                      // 5
+            cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.470 B/G"); // BT.601
             break;
         default:
-            cs = weston_colorspace_lookup("BT.709");
+            cs = (struct weston_colorspace *)weston_colorspace_lookup("BT.709");
             break;
     }
 

@@ -126,7 +126,6 @@ struct _video_decoder_
 static enum AVPixelFormat Codec_get_format(AVCodecContext *video_ctx, const enum AVPixelFormat *fmt) {
     VideoDecoder *decoder;
 
-
     decoder = video_ctx->opaque;
     // bug in ffmpeg 1.1.1, called with zero width or height
     if (!video_ctx->width || !video_ctx->height) {
@@ -208,7 +207,7 @@ void CodecVideoDelDecoder(VideoDecoder *decoder) { free(decoder); }
 **  @param codec_id video codec id
 */
 void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 100)
     AVCodec *video_codec;
 #else
     const AVCodec *video_codec;
@@ -264,15 +263,14 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
 
     decoder->VideoCtx->pkt_timebase.num = 1;
     decoder->VideoCtx->pkt_timebase.den = 90000;
-    //decoder->VideoCtx->framerate.num = 50;
-    //decoder->VideoCtx->framerate.den = 1;
+    // decoder->VideoCtx->framerate.num = 50;
+    // decoder->VideoCtx->framerate.den = 1;
 
     pthread_mutex_lock(&CodecLockMutex);
     // open codec
 
-
 #if defined VAAPI
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,8,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 8, 100)
     // decoder->VideoCtx->extra_hw_frames = 8; // VIDEO_SURFACES_MAX +1
     if (video_codec->capabilities & (AV_CODEC_CAP_AUTO_THREADS)) {
         Debug(3, "codec: auto threads enabled");
@@ -300,7 +298,7 @@ void CodecVideoOpen(VideoDecoder *decoder, int codec_id) {
     }
     //    if (av_opt_set_int(decoder->VideoCtx, "refcounted_frames", 1, 0) < 0)
     //	  Fatal(_("VAAPI Refcounts invalid\n"));
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,8,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 8, 100)
     decoder->VideoCtx->thread_safe_callbacks = 0;
 #endif
 
@@ -399,11 +397,11 @@ void CodecVideoClose(VideoDecoder *video_decoder) {
             ;
         av_frame_free(&frame);
 
-#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55,63,100)
-	    avcodec_close(video_decoder->VideoCtx);
-	    av_freep(&video_decoder->VideoCtx);
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55, 63, 100)
+        avcodec_close(video_decoder->VideoCtx);
+        av_freep(&video_decoder->VideoCtx);
 #else
-	    avcodec_free_context(&video_decoder->VideoCtx);
+        avcodec_free_context(&video_decoder->VideoCtx);
 #endif
         pthread_mutex_unlock(&CodecLockMutex);
     }
@@ -469,7 +467,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
 
         *pkt = *avpkt; // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
-        //printf("send packet %x\n",ret);
+        // printf("send packet %x\n",ret);
         if (ret < 0) {
             return;
         }
@@ -488,9 +486,10 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                 return;
             }
             if (ret >= 0) {
-                //printf("Videosize %d:%d interlaced %d Flag %x\n",frame->width,frame->height,frame->interlaced_frame,frame->flags & AV_FRAME_FLAG_INTERLACED);
+                // printf("Videosize %d:%d interlaced %d Flag
+                // %x\n",frame->width,frame->height,frame->interlaced_frame,frame->flags & AV_FRAME_FLAG_INTERLACED);
                 if (((frame->flags & AV_FRAME_FLAG_INTERLACED) || (frame->height == 576)) && decoder->filter) {
-                //if ( decoder->filter) {
+                    // if ( decoder->filter) {
                     if (decoder->filter == 1) {
                         if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
                             Debug(3, "video: Init of VAAPI deint Filter failed\n");
@@ -500,7 +499,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                             decoder->filter = 2;
                         }
                     }
-                    if (decoder->filter == 2) { 
+                    if (decoder->filter == 2) {
                         push_filters(video_ctx, decoder->HwDecoder, frame);
                         continue;
                     }
@@ -523,7 +522,7 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
     int ret, ret1;
     int got_frame;
     int consumed = 0;
-    //static uint64_t first_time = 0;
+    // static uint64_t first_time = 0;
     const AVPacket *pkt;
 
 next_part:
@@ -551,12 +550,12 @@ next_part:
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame); // get new frame
             if (ret >= 0) {                                // one is avail.
-                //first_time = frame->pts;
+                // first_time = frame->pts;
                 got_frame = 1;
             } else {
                 got_frame = 0;
             }
-            //printf("got %s packet from decoder\n",got_frame?"1":"no");
+            // printf("got %s packet from decoder\n",got_frame?"1":"no");
             if (got_frame) { // frame completed
 //		printf("video frame pts %#012" PRIx64 "
 //%dms\n",frame->pts,(int)(apts - frame->pts) / 90);
@@ -564,14 +563,14 @@ next_part:
                 if (((frame->flags & AV_FRAME_FLAG_INTERLACED) || (frame->height == 576)) && decoder->filter) {
                     if (decoder->filter == 1) {
                         if (init_filters(video_ctx, decoder->HwDecoder, frame) < 0) {
-                            Debug(3,"video: Init of YADIF Filter failed\n");
+                            Debug(3, "video: Init of YADIF Filter failed\n");
                             decoder->filter = 0;
                         } else {
                             Debug(3, "Init YADIF ok\n");
                             decoder->filter = 2;
                         }
                     }
-                    if (decoder->filter == 2) { 
+                    if (decoder->filter == 2) {
                         ret = push_filters(video_ctx, decoder->HwDecoder, frame);
                         // av_frame_unref(frame);
                         continue;
@@ -625,10 +624,10 @@ typedef struct _audio_decoder_ AudioDecoder;
 /// Audio decoder structure.
 ///
 struct _audio_decoder_ {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
-    AVCodec *AudioCodec;		///< audio codec
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 100)
+    AVCodec *AudioCodec; ///< audio codec
 #else
-    const AVCodec *AudioCodec;		///< audio codec
+    const AVCodec *AudioCodec; ///< audio codec
 #endif
     AVCodecContext *AudioCtx; ///< audio codec context
 
@@ -716,7 +715,7 @@ void CodecAudioDelDecoder(AudioDecoder *decoder) {
 **  @param codec_id audio   codec id
 */
 void CodecAudioOpen(AudioDecoder *audio_decoder, int codec_id) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,0,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 0, 100)
     AVCodec *audio_codec;
 #else
     const AVCodec *audio_codec;
@@ -772,11 +771,11 @@ void CodecAudioClose(AudioDecoder *audio_decoder) {
     }
     if (audio_decoder->AudioCtx) {
         pthread_mutex_lock(&CodecLockMutex);
-#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55,63,100)
-	    avcodec_close(audio_decoder->AudioCtx);
-	    av_freep(&audio_decoder->AudioCtx);
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(55, 63, 100)
+        avcodec_close(audio_decoder->AudioCtx);
+        av_freep(&audio_decoder->AudioCtx);
 #else
-	    avcodec_free_context(&audio_decoder->AudioCtx);
+        avcodec_free_context(&audio_decoder->AudioCtx);
 #endif
         pthread_mutex_unlock(&CodecLockMutex);
     }
@@ -889,33 +888,30 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
     int err;
 
     audio_ctx = audio_decoder->AudioCtx;
-    
- 
-    Debug(3, "codec/audio: format change %s %dHz *%d channels%s%s%s%s%s%s\n",
-	av_get_sample_fmt_name(audio_ctx->sample_fmt), audio_ctx->sample_rate,
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
-	audio_ctx->channels, CodecPassthrough & CodecPCM ? " PCM" : "",
-#else
-	audio_ctx->ch_layout.nb_channels, CodecPassthrough & CodecPCM ? " PCM" : "",
-#endif
-	CodecPassthrough & CodecMPA ? " MPA" : "",
-	CodecPassthrough & CodecAC3 ? " AC-3" : "",
-	CodecPassthrough & CodecEAC3 ? " E-AC-3" : "",
-	CodecPassthrough & CodecDTS ? " DTS" : "",
-	CodecPassthrough ? " pass-through" : "");
 
+    Debug(3, "codec/audio: format change %s %dHz *%d channels%s%s%s%s%s%s\n",
+          av_get_sample_fmt_name(audio_ctx->sample_fmt), audio_ctx->sample_rate,
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
+          audio_ctx->channels, CodecPassthrough & CodecPCM ? " PCM" : "",
+#else
+          audio_ctx->ch_layout.nb_channels, CodecPassthrough & CodecPCM ? " PCM" : "",
+#endif
+          CodecPassthrough & CodecMPA ? " MPA" : "", CodecPassthrough & CodecAC3 ? " AC-3" : "",
+          CodecPassthrough & CodecEAC3 ? " E-AC-3" : "", CodecPassthrough & CodecDTS ? " DTS" : "",
+          CodecPassthrough ? " pass-through" : "");
 
     *passthrough = 0;
     audio_decoder->SampleRate = audio_ctx->sample_rate;
     audio_decoder->HwSampleRate = audio_ctx->sample_rate;
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
     audio_decoder->Channels = audio_ctx->channels;
     audio_decoder->HwChannels = audio_ctx->channels;
 #else
     audio_decoder->Channels = audio_ctx->ch_layout.nb_channels;
     audio_decoder->HwChannels = audio_ctx->ch_layout.nb_channels;
 #endif
-    if (CodecDownmix && !CodecPassthrough) audio_decoder->HwChannels = 2;
+    if (CodecDownmix && !CodecPassthrough)
+        audio_decoder->HwChannels = 2;
 
     audio_decoder->Passthrough = CodecPassthrough;
     // SPDIF/HDMI pass-through
@@ -923,7 +919,7 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
         (CodecPassthrough & CodecEAC3 && audio_ctx->codec_id == AV_CODEC_ID_EAC3)) {
         if (audio_ctx->codec_id == AV_CODEC_ID_EAC3) {
             // E-AC-3 over HDMI some receivers need HBR
-            //audio_decoder->HwSampleRate *= 4;
+            // audio_decoder->HwSampleRate *= 4;
         }
         audio_decoder->HwChannels = 2;
         audio_decoder->SpdifIndex = 0; // reset buffer
@@ -946,15 +942,14 @@ static int CodecAudioUpdateHelper(AudioDecoder *audio_decoder, int *passthrough)
         }
     }
 
-    Debug(3, "codec/audio: resample %s %dHz *%d -> %s %dHz *%d\n",
-	    av_get_sample_fmt_name(audio_ctx->sample_fmt), audio_ctx->sample_rate,
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
-	    audio_ctx->channels, av_get_sample_fmt_name(AV_SAMPLE_FMT_S16),
+    Debug(3, "codec/audio: resample %s %dHz *%d -> %s %dHz *%d\n", av_get_sample_fmt_name(audio_ctx->sample_fmt),
+          audio_ctx->sample_rate,
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
+          audio_ctx->channels, av_get_sample_fmt_name(AV_SAMPLE_FMT_S16),
 #else
-	    audio_ctx->ch_layout.nb_channels, av_get_sample_fmt_name(AV_SAMPLE_FMT_S16),
+          audio_ctx->ch_layout.nb_channels, av_get_sample_fmt_name(AV_SAMPLE_FMT_S16),
 #endif
-	    audio_decoder->HwSampleRate, audio_decoder->HwChannels);
-
+          audio_decoder->HwSampleRate, audio_decoder->HwChannels);
 
     return 0;
 }
@@ -1183,7 +1178,7 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
     int passthrough;
     const AVCodecContext *audio_ctx;
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
     int64_t dmlayout = AV_CH_LAYOUT_STEREO;
 #else
     AVChannelLayout dmlayout = AV_CHANNEL_LAYOUT_STEREO;
@@ -1199,10 +1194,12 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
 
     audio_ctx = audio_decoder->AudioCtx;
 
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
-    if (!CodecDownmix || CodecPassthrough) dmlayout = audio_ctx->channel_layout;
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
+    if (!CodecDownmix || CodecPassthrough)
+        dmlayout = audio_ctx->channel_layout;
 #else
-    if (!CodecDownmix || CodecPassthrough) dmlayout = audio_ctx->ch_layout;
+    if (!CodecDownmix || CodecPassthrough)
+        dmlayout = audio_ctx->ch_layout;
 #endif
 
 #ifdef DEBUG
@@ -1212,26 +1209,22 @@ static void CodecAudioUpdateFormat(AudioDecoder *audio_decoder) {
         fprintf(stderr, "no resample needed\n");
     }
 #endif
-    
-#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4,5,100)
+
+#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
     audio_decoder->Resample =
-        swr_alloc_set_opts(audio_decoder->Resample, dmlayout,
-        AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
-        audio_ctx->channel_layout, audio_ctx->sample_fmt,
+        swr_alloc_set_opts(audio_decoder->Resample, dmlayout, AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
+                           audio_ctx->channel_layout, audio_ctx->sample_fmt,
 #else
-        swr_alloc_set_opts2(&audio_decoder->Resample, &dmlayout,
-        AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
-        &audio_ctx->ch_layout, audio_ctx->sample_fmt,
+    swr_alloc_set_opts2(&audio_decoder->Resample, &dmlayout, AV_SAMPLE_FMT_S16, audio_decoder->HwSampleRate,
+                        &audio_ctx->ch_layout, audio_ctx->sample_fmt,
 #endif
-	   audio_ctx->sample_rate, 0, NULL); 
+                           audio_ctx->sample_rate, 0, NULL);
 
     if (audio_decoder->Resample) {
-	swr_init(audio_decoder->Resample);
+        swr_init(audio_decoder->Resample);
     } else {
-	Error(_("codec/audio: can't setup resample\n"));
+        Error(_("codec/audio: can't setup resample\n"));
     }
-
-
 }
 
 /**
@@ -1274,7 +1267,7 @@ void CodecAudioDecode(AudioDecoder *audio_decoder, const AVPacket *avpkt) {
             // format change
             if (audio_decoder->Passthrough != CodecPassthrough ||
                 audio_decoder->SampleRate != audio_ctx->sample_rate ||
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59,24,100)
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
                 audio_decoder->Channels != audio_ctx->channels) {
 #else
                 audio_decoder->Channels != audio_ctx->ch_layout.nb_channels) {
@@ -1287,15 +1280,15 @@ void CodecAudioDecode(AudioDecoder *audio_decoder, const AVPacket *avpkt) {
             if (CodecAudioPassthroughHelper(audio_decoder, avpkt)) {
                 return;
             }
-            
+
             if (audio_decoder->Resample) {
-                uint8_t outbuf[8192  * 2 * 8];
+                uint8_t outbuf[8192 * 2 * 8];
                 uint8_t *out[1];
 
                 out[0] = outbuf;
                 ret = swr_convert(audio_decoder->Resample, out, sizeof(outbuf) / (2 * audio_decoder->HwChannels),
                                   (const uint8_t **)frame->extended_data, frame->nb_samples);
-                                  
+
                 if (ret > 0) {
                     if (!(audio_decoder->Passthrough & CodecPCM)) {
                         CodecReorderAudioFrame((int16_t *)outbuf, ret * 2 * audio_decoder->HwChannels,

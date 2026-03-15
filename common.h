@@ -73,7 +73,7 @@ enum {
 
 // E.g. 310 means 3.1
 // Code doesn't have to use the macros; they are for convenience only.
-#define MPGL_VER(major, minor) (((major)*100) + (minor)*10)
+#define MPGL_VER(major, minor) (((major) * 100) + (minor) * 10)
 #define MPGL_VER_GET_MAJOR(ver) ((unsigned)(ver) / 100)
 #define MPGL_VER_GET_MINOR(ver) ((unsigned)(ver) % 100 / 10)
 
@@ -199,17 +199,14 @@ struct GL {
 
 #if HAVE_GL_WIN32
     // The HANDLE type might not be present on non-Win32
-    BOOL(GLAPIENTRY *DXSetResourceShareHandleNV)
-    (void *dxObject, HANDLE shareHandle);
+    BOOL(GLAPIENTRY *DXSetResourceShareHandleNV)(void *dxObject, HANDLE shareHandle);
     HANDLE(GLAPIENTRY *DXOpenDeviceNV)(void *dxDevice);
     BOOL(GLAPIENTRY *DXCloseDeviceNV)(HANDLE hDevice);
     HANDLE(GLAPIENTRY *DXRegisterObjectNV)
     (HANDLE hDevice, void *dxObject, GLuint name, GLenum type, GLenum access);
     BOOL(GLAPIENTRY *DXUnregisterObjectNV)(HANDLE hDevice, HANDLE hObject);
-    BOOL(GLAPIENTRY *DXLockObjectsNV)
-    (HANDLE hDevice, GLint count, HANDLE *hObjects);
-    BOOL(GLAPIENTRY *DXUnlockObjectsNV)
-    (HANDLE hDevice, GLint count, HANDLE *hObjects);
+    BOOL(GLAPIENTRY *DXLockObjectsNV)(HANDLE hDevice, GLint count, HANDLE *hObjects);
+    BOOL(GLAPIENTRY *DXUnlockObjectsNV)(HANDLE hDevice, GLint count, HANDLE *hObjects);
 #endif
 
     GLint(GLAPIENTRY *GetVideoSync)(GLuint *);

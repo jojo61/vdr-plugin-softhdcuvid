@@ -70,7 +70,7 @@ static void DumpMpeg(const uint8_t *data, int size);
 //////////////////////////////////////////////////////////////////////////////
 
 extern int ConfigAudioBufferTime;        ///< config size ms of audio buffer
-extern int ConfigVideoClearOnSwitch;     //<  clear decoder on channel switch
+extern char ConfigVideoClearOnSwitch;    //<  clear decoder on channel switch
 char ConfigStartX11Server;               ///< flag start the x11 server
 static signed char ConfigStartSuspended; ///< flag to start in suspend mode
 static char ConfigFullscreen;            ///< fullscreen modus
@@ -662,12 +662,12 @@ static void PesParse(PesDemux *pesdx, const uint8_t *data, int size, int is_star
                         break;
                     }
                     if (r > 0) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,33,100)
-				        AVPacket avpkt[1];
-				        av_init_packet(avpkt);
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 33, 100)
+                        AVPacket avpkt[1];
+                        av_init_packet(avpkt);
 #else
-                        AVPacket * avpkt;
-				        avpkt = av_packet_alloc();
+                        AVPacket *avpkt;
+                        avpkt = av_packet_alloc();
 #endif
 
                         // new codec id, close and open new
@@ -683,8 +683,8 @@ static void PesParse(PesDemux *pesdx, const uint8_t *data, int size, int is_star
                         avpkt->dts = pesdx->DTS;
                         // FIXME: not aligned for ffmpeg
                         CodecAudioDecode(MyAudioDecoder, avpkt);
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58,33,100)
-				        av_packet_free(&avpkt);
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 33, 100)
+                        av_packet_free(&avpkt);
 #endif
                         pesdx->PTS = AV_NOPTS_VALUE;
                         pesdx->DTS = AV_NOPTS_VALUE;
@@ -1155,12 +1155,12 @@ int PlayAudio(const uint8_t *data, int size, uint8_t id) {
             break;
         }
         if (r > 0) {
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58,33,100)
-	        AVPacket avpkt[1];
-	        av_init_packet(avpkt);
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 33, 100)
+            AVPacket avpkt[1];
+            av_init_packet(avpkt);
 #else
-	        AVPacket * avpkt;
-	        avpkt = av_packet_alloc();
+            AVPacket *avpkt;
+            avpkt = av_packet_alloc();
 #endif
             // new codec id, close and open new
             if (AudioCodecID != codec_id) {
@@ -1174,8 +1174,8 @@ int PlayAudio(const uint8_t *data, int size, uint8_t id) {
             avpkt->dts = AudioAvPkt->dts;
             // FIXME: not aligned for ffmpeg
             CodecAudioDecode(MyAudioDecoder, avpkt);
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58,33,100)
-	        av_packet_free(&avpkt);
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(58, 33, 100)
+            av_packet_free(&avpkt);
 #endif
             AudioAvPkt->pts = AV_NOPTS_VALUE;
             AudioAvPkt->dts = AV_NOPTS_VALUE;
@@ -1640,7 +1640,7 @@ static void VideoMpegEnqueue(VideoStream *stream, int64_t pts, int64_t dts, cons
 **  @param avpkt    ffmpeg a/v packet
 */
 
-#if !defined USE_PIP &&  !defined VAAPI
+#if !defined USE_PIP && !defined VAAPI
 static void FixPacketForFFMpeg(VideoDecoder *vdecoder, AVPacket *avpkt) {
     uint8_t *p;
     int n;
@@ -2157,7 +2157,7 @@ int PlayVideo3(VideoStream *stream, const uint8_t *data, int size) {
     }
     // hard limit buffer full: needed for replay
     if (atomic_read(&stream->PacketsFilled) >= VIDEO_PACKET_MAX - 10) {
-        //Debug(3, "video: video buffer full\n");
+        // Debug(3, "video: video buffer full\n");
         return 0;
     }
 #ifdef USE_SOFTLIMIT
@@ -3210,7 +3210,6 @@ void Housekeeping(void) {
         }
     }
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //  Suspend/Resume
