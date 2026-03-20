@@ -2398,7 +2398,7 @@ void generateVAAPIImage(CuvidDecoder *decoder, int index, const AVFrame *frame, 
         uint32_t size = desc.objects[id].size;
         uint32_t offset = desc.layers[n].offset[0];
 
-        pl_fmt fmt;
+        struct pl_fmt_t *fmt;
 
         if (fd == -1) {
             printf("Fehler beim Import von Surface %d\n", index);
@@ -5675,7 +5675,7 @@ void InitPlacebo() {
                                                          .framebuffer.flipped = true,
                                                          .framebuffer.id = 0,
                                                          .max_swapchain_depth = 3,
-                                                         .priv = VideoWindow,
+                                                         .priv = (void*)(uintptr_t)VideoWindow,
                                                      });
 
     p->gpu = p->gl->gpu;
