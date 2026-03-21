@@ -1259,7 +1259,7 @@ static void EglExit(void) {
     drm_clean_up();
 
 #endif
-
+#if  !defined PLACEBO_GL
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     if (eglSurface) {
@@ -1278,7 +1278,8 @@ static void EglExit(void) {
         EglCheck();
         eglContext = NULL;
     }
-    eglTerminate(eglDisplay);
+#endif
+    // eglTerminate(eglDisplay);   does crash whyever
     eglDisplay = NULL;
 
 #endif

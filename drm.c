@@ -628,11 +628,13 @@ static void drm_clean_up() {
     eglTerminate(eglDisplay);
     EglCheck();
     eglDisplay = NULL;
-#endif
+
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface(eglDisplay, eglSurface);
     EglCheck();
     eglSurface = NULL;
+
+#endif
     gbm_surface_destroy(gbm.surface);
     gbm_device_destroy(gbm.dev);
     drmDropMaster(render->fd_drm);
