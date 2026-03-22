@@ -459,18 +459,19 @@ extern int push_filters(AVCodecContext *dec_ctx, void *decoder, AVFrame *frame);
 #ifdef VAAPI
 void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
     AVCodecContext *video_ctx = decoder->VideoCtx;
+   int consumed = 0;
 
+next_try:
     if (video_ctx->codec_type == AVMEDIA_TYPE_VIDEO && CuvidTestSurfaces()) {
         int ret;
-        AVPacket pkt[1];
+        const AVPacket *pkt;
         AVFrame *frame;
 
-        *pkt = *avpkt; // use copy
+        pkt = avpkt; // use copy
         ret = avcodec_send_packet(video_ctx, pkt);
-        // printf("send packet %x\n",ret);
-        if (ret < 0) {
-            return;
-        }
+        if (ret != AVERROR(EAGAIN)) {
+            consumed = 1;
+        }   
 
         if (!CuvidTestSurfaces())
             usleep(1000);
@@ -479,15 +480,14 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
         while (ret >= 0 && CuvidTestSurfaces()) {
             frame = av_frame_alloc();
             ret = avcodec_receive_frame(video_ctx, frame);
-
+            //printf("Got Frame %d Video PTS %#012" PRIx64 " \n",ret,frame->pts);
             if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF) {
                 Debug(4, "codec: receiving video frame failed");
                 av_frame_free(&frame);
-                return;
+                break;
             }
             if (ret >= 0) {
-                // printf("Videosize %d:%d interlaced %d Flag
-                // %x\n",frame->width,frame->height,frame->interlaced_frame,frame->flags & AV_FRAME_FLAG_INTERLACED);
+                // printf("Videosize %d:%d Flag %x\n",frame->width,frame->height,frame->flags);
                 if (((frame->flags & AV_FRAME_FLAG_INTERLACED) || (frame->height == 576)) && decoder->filter) {
                     // if ( decoder->filter) {
                     if (decoder->filter == 1) {
@@ -507,9 +507,14 @@ void CodecVideoDecode(VideoDecoder *decoder, const AVPacket *avpkt) {
                 VideoRenderFrame(decoder->HwDecoder, video_ctx, frame);
             } else {
                 av_frame_free(&frame);
-                return;
+                break;
             }
         }
+    }
+    
+    if (!consumed) {
+        usleep(50000);
+        goto next_try;
     }
 }
 #endif
