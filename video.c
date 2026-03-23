@@ -2945,6 +2945,7 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
 
     //	  decoder->newchannel = 1;
 #ifdef VAAPI
+    ist->filter = 0;
     init_generic_hwaccel(decoder, PIXEL_FORMAT, video_ctx);
 #endif
     if (ist->GetFormatDone) {
