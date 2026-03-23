@@ -2822,7 +2822,7 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
 end:
     avfilter_inout_free(&inputs);
     avfilter_inout_free(&outputs);
-
+    Debug(3, "Init Filter Done\n");
     return ret;
 }
 #endif
@@ -2848,15 +2848,17 @@ static int init_generic_hwaccel(CuvidDecoder *decoder, enum AVPixelFormat hw_fmt
     if (decoder->cached_hw_frames_ctx) {
         AVHWFramesContext *old_fctx = (void *)decoder->cached_hw_frames_ctx->data;
 
-        Debug(3, "CMP %d:%d %d:%d %d:%d %d:%d %d:%d\n,", new_fctx->format, old_fctx->format, new_fctx->sw_format,
+        Debug(3, "CMP %d:%d %d:%d %d:%d %d:%d %d:%d\n", new_fctx->format, old_fctx->format, new_fctx->sw_format,
               old_fctx->sw_format, new_fctx->width, old_fctx->width, new_fctx->height, old_fctx->height,
               new_fctx->initial_pool_size, old_fctx->initial_pool_size);
         if (new_fctx->format != old_fctx->format || new_fctx->sw_format != old_fctx->sw_format ||
-            new_fctx->width != old_fctx->width || new_fctx->height != old_fctx->height ||
-            new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
+            new_fctx->width != old_fctx->width || new_fctx->height != old_fctx->height ) {
+            //new_fctx->initial_pool_size != old_fctx->initial_pool_size) {
             Debug(3, "delete old cache");
-            if (decoder->filter_graph)
+            if (decoder->filter_graph) {
                 avfilter_graph_free(&decoder->filter_graph);
+                decoder->filter_graph = NULL;
+            }
             av_buffer_unref(&decoder->cached_hw_frames_ctx);
         }
     }
