@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.38"
+static const char *const VERSION = "3.39"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -2555,7 +2555,9 @@ void cSoftHdDevice::MakePrimaryDevice(bool on) {
             Resume();
             SuspendMode = NOT_SUSPENDED;
         }
-    } else if (SuspendMode == NOT_SUSPENDED) {
+    }
+#if 0 
+    else if (SuspendMode == NOT_SUSPENDED) {
         Suspend(1, 1, 0);
         SuspendMode = SUSPEND_DETACHED;
 #ifdef USE_OPENGLOSD
@@ -2563,6 +2565,7 @@ void cSoftHdDevice::MakePrimaryDevice(bool on) {
         cSoftOsdProvider::StopOpenGlThread();
 #endif
     }
+#endif
 }
 
 #ifdef USE_VDR_SPU
