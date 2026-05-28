@@ -491,8 +491,9 @@ static int has_modeset = 0;
 static void drm_swap_buffers() {
 
     uint32_t fb;
-
-    eglSwapBuffers(eglDisplay, eglSurface);
+    if (eglSwapBuffers(eglDisplay, eglSurface) != EGL_TRUE) {
+        Debug(3,"eglswap failed\n");
+    }
     usleep(1000);
     struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbm.surface);
 #if 1
@@ -563,17 +564,13 @@ static void drm_clean_up() {
     if (!render)
         return;
     Debug(3, "drm clean up\n");
-
-    drmModeSetCrtc(render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id, render->saved_crtc->x,
-                   render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
-    drmModeFreeCrtc(render->saved_crtc);
-
-    if (previous_bo) {
-        drmModeRmFB(render->fd_drm, previous_fb);
-        gbm_surface_release_buffer(gbm.surface, previous_bo);
-    }
-
-    if (has_modeset) {
+    eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglSwapBuffers(eglDisplay, eglSurface);
+    usleep(50000);
+    
+    
+    
+    if (1 || has_modeset) {
         drmModeAtomicReqPtr ModeReq;
         const uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
         uint32_t modeID = 0;
@@ -612,6 +609,17 @@ static void drm_clean_up() {
         has_modeset = 0;
     }
 
+    if (0 && previous_bo) {
+        drmModeRmFB(render->fd_drm, previous_fb);
+        gbm_surface_release_buffer(gbm.surface, previous_bo);
+    }
+    
+    drmModeSetCrtc(render->fd_drm, render->saved_crtc->crtc_id, render->saved_crtc->buffer_id, render->saved_crtc->x,
+                   render->saved_crtc->y, &render->connector_id, 1, &render->saved_crtc->mode);
+    drmModeFreeCrtc(render->saved_crtc);
+
+
+
     if (render->hdr_blob_id)
         drmModeDestroyPropertyBlob(render->fd_drm, render->hdr_blob_id);
     render->hdr_blob_id = 0;
@@ -628,13 +636,12 @@ static void drm_clean_up() {
     eglTerminate(eglDisplay);
     EglCheck();
     eglDisplay = NULL;
-
+#endif
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface(eglDisplay, eglSurface);
     EglCheck();
     eglSurface = NULL;
 
-#endif
     gbm_surface_destroy(gbm.surface);
     gbm_device_destroy(gbm.dev);
     drmDropMaster(render->fd_drm);

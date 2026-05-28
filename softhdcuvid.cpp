@@ -2618,14 +2618,15 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode) {
         case pmExtern_THIS_SHOULD_BE_AVOIDED:
             dsyslog("[softhddev] play mode external\n");
             // FIXME: what if already suspended?
-            Setup.CurrentVolume = cDevice::CurrentVolume();
-            Setup.Save();
-            Suspend(1, 1, 0);
-            SuspendMode = SUSPEND_EXTERNAL;
 #ifdef USE_OPENGLOSD
             dsyslog("[softhddev]stopping Ogl Thread pmExtern_THIS_SHOULD_BE_AVOIDED");
             cSoftOsdProvider::StopOpenGlThread();
 #endif
+            Setup.CurrentVolume = cDevice::CurrentVolume();
+            Setup.Save();
+            Suspend(1, 1, 0);
+            SuspendMode = SUSPEND_EXTERNAL;
+
             return true;
         default:
             dsyslog("[softhddev] playmode not implemented... %d\n", play_mode);
@@ -2637,7 +2638,8 @@ bool cSoftHdDevice::SetPlayMode(ePlayMode play_mode) {
             return false;
         }
         Resume();
-        SuspendMode = NOT_SUSPENDED;
+        if (play_mode != 0)
+           SuspendMode = NOT_SUSPENDED;
     }
     if (!cDevice::IsMute())
         SetVolume(cDevice::CurrentVolume(), true);

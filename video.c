@@ -1254,12 +1254,13 @@ static void EglExit(void) {
         GlxCheck();
         glxSharedContext = NULL;
     }
+    
 #else
 #ifdef USE_DRM
     drm_clean_up();
 
 #endif
-#if  !defined PLACEBO_GL
+#if   !defined PLACEBO_GL
     eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     if (eglSurface) {
@@ -1267,19 +1268,19 @@ static void EglExit(void) {
         EglCheck();
         eglSurface = NULL;
     }
+    
     if (eglSharedContext) {
         eglDestroyContext(eglDisplay, eglSharedContext);
         EglCheck();
         eglSharedContext = NULL;
     }
-
     if (eglContext) {
         eglDestroyContext(eglDisplay, eglContext);
         EglCheck();
         eglContext = NULL;
     }
 #endif
-    // eglTerminate(eglDisplay);   does crash whyever
+    //eglTerminate(eglDisplay);   
     eglDisplay = NULL;
 
 #endif
@@ -1861,20 +1862,20 @@ static bool create_context_cb(EGLDisplay display, int es_version, EGLContext *ou
     Debug(3, "Trying to create %s context \n", name);
 
     EGLint attributes8[] = {
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
-        EGL_RENDERABLE_TYPE, rend,           EGL_NONE};
-    EGLint attributes10[] = {EGL_SURFACE_TYPE,
-                             EGL_WINDOW_BIT,
-                             EGL_RED_SIZE,
-                             10,
-                             EGL_GREEN_SIZE,
-                             10,
-                             EGL_BLUE_SIZE,
-                             10,
-                             EGL_ALPHA_SIZE,
-                             2,
-                             EGL_RENDERABLE_TYPE,
-                             rend,
+        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT, 
+        EGL_RED_SIZE, 8, 
+        EGL_GREEN_SIZE, 8, 
+        EGL_BLUE_SIZE, 8, 
+        EGL_ALPHA_SIZE, 8,
+        EGL_RENDERABLE_TYPE, rend,
+        EGL_NONE};
+
+    EGLint attributes10[] = {EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                             EGL_RED_SIZE,     10,
+                             EGL_GREEN_SIZE,   10,
+                             EGL_BLUE_SIZE,    10,
+                             EGL_ALPHA_SIZE,   2,
+                             EGL_RENDERABLE_TYPE,   rend,
                              EGL_NONE};
     EGLint num_configs = 0;
 
@@ -7355,6 +7356,7 @@ void VideoExit(void) {
         Connection = 0;
     }
 #endif
+
 }
 
 #ifdef USE_DRM
@@ -7381,8 +7383,10 @@ int GlxDrawopengl() {
 }
 
 void GlxDestroy() {
-    eglDestroyContext(eglDisplay, eglOSDContext);
-    eglOSDContext = NULL;
+    if (eglOSDContext) {
+        eglDestroyContext(eglDisplay, eglOSDContext);
+        eglOSDContext = NULL;
+    }
 }
 
 #endif
