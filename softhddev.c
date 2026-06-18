@@ -2530,6 +2530,8 @@ void TrickSpeed(int speed) {
         // can happen, during startup
         Debug(3, "softhddev: %s called without hw decoder\n", __FUNCTION__);
     }
+    if (!speed)
+        Clear();
     StreamFreezed = 0;
     MyVideoStream->Freezed = 0;
 }
