@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.41"
+static const char *const VERSION = "3.42"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -1271,9 +1271,12 @@ void cMenuSetupSoft::Create(void) {
 			trVDR("yes")));
 		Add(new cMenuEditBoolItem(tr("Inverse Telecine (vdpau)"), &InverseTelecine[i], trVDR("no"),
 			trVDR("yes")));
-		Add(new cMenuEditIntItem(tr("Denoise (0..1000) (vdpau)"), &Denoise[i], 0, 1000, tr("off"), tr("max")));
-		Add(new cMenuEditIntItem(tr("Sharpen (-1000..1000) (vdpau)"), &Sharpen[i], -1000, 1000, tr("blur max"),
-			tr("sharpen max")));
+#endif
+#ifdef VAAPI
+                if (i == 0 || i == 2 || i == 3) {
+		            Add(new cMenuEditIntItem(tr("Denoise (0..64)"), &Denoise[i], 0, 64, tr("off"), tr("max")));
+		            Add(new cMenuEditIntItem(tr("Sharpen (0..64)"), &Sharpen[i], 0, 64, tr("off"), tr("max")));
+                }
 #endif
                 Add(new cMenuEditIntItem(tr("Cut top and bottom (pixel)"), &CutTopBottom[i], 0, 250));
                 Add(new cMenuEditIntItem(tr("Cut left and right (pixel)"), &CutLeftRight[i], 0, 250));

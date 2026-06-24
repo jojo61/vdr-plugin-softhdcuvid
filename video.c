@@ -2699,7 +2699,28 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
     enum AVPixelFormat format = PIXEL_FORMAT;
 
 #ifdef VAAPI
-    const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";
+    //const char *filters_descr = "deinterlace_vaapi=rate=field:auto=1";
+    char filters_descr[200],buf[80];
+    const char *filters_deint = "deinterlace_vaapi=mode=motion_compensated:rate=field:auto=1";
+    const char *filter_denoise = ",denoise_vaapi=denoise=%d";
+    const char *filter_scale =   ",scale_vaapi=w=%d:h=%d:mode=hq:format=nv12";
+    const char *filter_sharpen = ",sharpness_vaapi=sharpness=%d";
+
+    strcpy(filters_descr,filters_deint);
+
+    if (VideoDenoise[decoder->Resolution]) {
+        sprintf(buf,filter_denoise,VideoDenoise[decoder->Resolution]);
+        strcat(filters_descr,buf);
+    }
+
+    sprintf(buf,filter_scale,VideoWindowWidth,VideoWindowHeight);
+    strcat(filters_descr,buf);
+
+    if (VideoSharpen[decoder->Resolution]) {
+        sprintf(buf,filter_sharpen,VideoSharpen[decoder->Resolution]);
+        strcat(filters_descr,buf);
+    }
+
 #endif
 #ifdef YADIF
     const char *filters_descr = "yadif_cuda=1:0:1"; // mode=send_field,parity=tff,deint=interlaced";
@@ -2707,6 +2728,7 @@ int init_filters(AVCodecContext *dec_ctx, CuvidDecoder *decoder, AVFrame *frame)
     enum AVPixelFormat pix_fmts[] = {format, AV_PIX_FMT_NONE};
 #endif
 #endif
+    Debug(3,"VAAPI Filter: %s",filters_descr);
 
     char args[512];
     int ret = 0;
@@ -3526,7 +3548,7 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
     }
 
     if ((decoder->InputWidth != frame->width) || (decoder->InputHeight != frame->height)) {
-        printf("Framesize change\n");
+        //printf("Framesize change\n");
         CuvidCleanup(decoder);
         decoder->InputAspect = frame->sample_aspect_ratio;
         decoder->InputWidth = frame->width;
@@ -7000,7 +7022,7 @@ void VideoSetInverseTelecine(int onoff[]) {
 }
 
 ///
-/// Set denoise level (0 .. 1000).
+/// Set denoise level (0 .. 64).
 ///
 void VideoSetDenoise(int level[]) {
     VideoDenoise[0] = level[0];
@@ -7012,7 +7034,7 @@ void VideoSetDenoise(int level[]) {
 }
 
 ///
-/// Set sharpness level (-1000 .. 1000).
+/// Set sharpness level (0 .. 64).
 ///
 void VideoSetSharpen(int level[]) {
     VideoSharpen[0] = level[0];
