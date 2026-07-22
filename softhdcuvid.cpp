@@ -2827,10 +2827,6 @@ void cSoftHdDevice::GetOsdSize(int &width, int &height, double &pixel_aspect) {
 */
 int cSoftHdDevice::PlayAudio(const uchar *data, int length, uchar id) {
     // dsyslog("[softhddev]%s: %p %p %d %d\n", __FUNCTION__, this, data, length,id);
-    if (SoftIsPlayingVideo == -1) {
-	    SoftIsPlayingVideo = cDevice::IsPlayingVideo();
-	    //dsyslog( "[softhddev]%s: SoftIsPlayingVideo: %d\n", __FUNCTION__, SoftIsPlayingVideo);
-    }
     return ::PlayAudio(data, length, id);
 }
 
@@ -2897,10 +2893,6 @@ int cSoftHdDevice::PlayTsVideo(const uchar *data, int length) {}
 */
 int cSoftHdDevice::PlayTsAudio(const uchar *data, int length) {
 #ifndef NO_TS_AUDIO
-    if (SoftIsPlayingVideo == -1) {
-	    SoftIsPlayingVideo = cDevice::IsPlayingVideo();
-	    //dsyslog( "[softhddev]%s: SoftIsPlayingVideo: %d\n", __FUNCTION__, SoftIsPlayingVideo);
-    }
     return ::PlayTsAudio(data, length);
 #else
     AudioPoller();

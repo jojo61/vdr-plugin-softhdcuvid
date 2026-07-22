@@ -97,7 +97,7 @@ static VideoStream *AudioSyncStream; ///< video stream for audio/video sync
 #define AUDIO_BUFFER_SIZE (512 * 1024) ///< audio PES buffer default size
 static AVPacket AudioAvPkt[1];         ///< audio a/v packet
 int AudioDelay = 0;
-int SoftIsPlayingVideo;
+int hasVideo;
 //////////////////////////////////////////////////////////////////////////////
 //  Audio codec parser
 //////////////////////////////////////////////////////////////////////////////
@@ -2107,6 +2107,7 @@ int PlayVideo3(VideoStream *stream, const uint8_t *data, int size) {
     int z;
     int l;
 
+    hasVideo = 1;
     if (!stream->Decoder) { // no x11 video started
         return size;
     }
@@ -2426,6 +2427,7 @@ int SetPlayMode(int play_mode) {
     switch (play_mode) {
         case 0: // audio/video from decoder
             // tell video parser we get new stream
+            hasVideo = 0;
             if (MyVideoStream->Decoder && !MyVideoStream->SkipStream) {
                 // clear buffers on close configured always or replay only
                 if (ConfigVideoClearOnSwitch || MyVideoStream->ClearClose) {
@@ -2434,7 +2436,6 @@ int SetPlayMode(int play_mode) {
                 }
                 if (MyVideoStream->CodecID != AV_CODEC_ID_NONE) {
                     MyVideoStream->NewStream = 1;
-                    SoftIsPlayingVideo = -1;
                     MyVideoStream->InvalidPesCounter = 0;
                     // tell hw decoder we are closing stream
                     VideoSetClosing(MyVideoStream->HwDecoder);
@@ -2476,10 +2477,9 @@ int SetPlayMode(int play_mode) {
 int64_t GetSTC(void) {
 
     //printf("GetPTC %lx\n",AudioGetClock());
-    if (SoftIsPlayingVideo == 1) {
-        if (MyVideoStream->HwDecoder) {
-            return VideoGetClock(MyVideoStream->HwDecoder);
-        }
+    
+    if (MyVideoStream->HwDecoder && hasVideo) {
+        return VideoGetClock(MyVideoStream->HwDecoder);
     } else {
         return AudioGetClock();
     }
