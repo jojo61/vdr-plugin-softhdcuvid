@@ -61,7 +61,7 @@ extern void ToggleLUT();
 /// vdr-plugin version number.
 /// Makefile extracts the version number for generating the file name
 /// for the distribution archive.
-static const char *const VERSION = "3.42"
+static const char *const VERSION = "3.43"
 #ifdef GIT_REV
                                    "-GIT" GIT_REV
 #endif
@@ -189,6 +189,7 @@ static volatile int DoMakePrimary; ///< switch primary device to this
 #define SUSPEND_NORMAL 1        ///< normal suspend mode
 #define SUSPEND_DETACHED 2      ///< detached suspend mode
 static signed char SuspendMode; ///< suspend mode
+
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2825,9 +2826,11 @@ void cSoftHdDevice::GetOsdSize(int &width, int &height, double &pixel_aspect) {
 **  @param id	type of audio data this packet holds
 */
 int cSoftHdDevice::PlayAudio(const uchar *data, int length, uchar id) {
-    // dsyslog("[softhddev]%s: %p %p %d %d\n", __FUNCTION__, this, data, length,
-    // id);
-
+    // dsyslog("[softhddev]%s: %p %p %d %d\n", __FUNCTION__, this, data, length,id);
+    if (SoftIsPlayingVideo == -1) {
+	    SoftIsPlayingVideo = cDevice::IsPlayingVideo();
+	    //dsyslog( "[softhddev]%s: SoftIsPlayingVideo: %d\n", __FUNCTION__, SoftIsPlayingVideo);
+    }
     return ::PlayAudio(data, length, id);
 }
 
@@ -2894,6 +2897,10 @@ int cSoftHdDevice::PlayTsVideo(const uchar *data, int length) {}
 */
 int cSoftHdDevice::PlayTsAudio(const uchar *data, int length) {
 #ifndef NO_TS_AUDIO
+    if (SoftIsPlayingVideo == -1) {
+	    SoftIsPlayingVideo = cDevice::IsPlayingVideo();
+	    //dsyslog( "[softhddev]%s: SoftIsPlayingVideo: %d\n", __FUNCTION__, SoftIsPlayingVideo);
+    }
     return ::PlayTsAudio(data, length);
 #else
     AudioPoller();

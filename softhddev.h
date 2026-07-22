@@ -107,6 +107,7 @@ extern void PipStop(void);
 extern int PipPlayVideo(const uint8_t *, int);
 
 extern const char *X11DisplayName; ///< x11 display name
+extern int SoftIsPlayingVideo;
 #ifdef __cplusplus
 }
 #endif

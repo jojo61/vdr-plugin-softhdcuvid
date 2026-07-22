@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR \n"
 "Report-Msgid-Bugs-To: <see README>\n"
-"POT-Creation-Date: 2026-02-01 12:10+0100\n"
+"POT-Creation-Date: 2026-07-21 11:17+0200\n"
 "PO-Revision-Date: blabla\n"
 "Last-Translator: blabla\n"
 "Language-Team: blabla\n"
@@ -337,20 +337,14 @@ msgstr ""
 msgid "Inverse Telecine (vdpau)"
 msgstr "Inverse Filmübertragung (vdpau)"
 
-msgid "Denoise (0..1000) (vdpau)"
+msgid "Denoise (0..64)"
 msgstr ""
 
 msgid "off"
 msgstr "aus"
 
-msgid "Sharpen (-1000..1000) (vdpau)"
-msgstr "Schärfen (-1000..1000) (vdpau)"
-
-msgid "blur max"
-msgstr "Weichzeichnen max."
-
-msgid "sharpen max"
-msgstr "Schärfen max."
+msgid "Sharpen (0..64)"
+msgstr ""
 
 msgid "Cut top and bottom (pixel)"
 msgstr "Schneide oben und unten ab (Pixel)"
@@ -848,6 +842,15 @@ msgstr ""
 
 msgid "video: error closing display\n"
 msgstr ""
+
+#~ msgid "Sharpen (-1000..1000) (vdpau)"
+#~ msgstr "Schärfen (-1000..1000) (vdpau)"
+
+#~ msgid "blur max"
+#~ msgstr "Weichzeichnen max."
+
+#~ msgid "sharpen max"
+#~ msgstr "Schärfen max."
 
 #~ msgid "A software and GPU emulated HD device"
 #~ msgstr "Ein Software und GPU emulieres HD-Gerät"

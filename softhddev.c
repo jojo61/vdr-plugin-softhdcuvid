@@ -97,7 +97,7 @@ static VideoStream *AudioSyncStream; ///< video stream for audio/video sync
 #define AUDIO_BUFFER_SIZE (512 * 1024) ///< audio PES buffer default size
 static AVPacket AudioAvPkt[1];         ///< audio a/v packet
 int AudioDelay = 0;
-
+int SoftIsPlayingVideo;
 //////////////////////////////////////////////////////////////////////////////
 //  Audio codec parser
 //////////////////////////////////////////////////////////////////////////////
@@ -2434,6 +2434,7 @@ int SetPlayMode(int play_mode) {
                 }
                 if (MyVideoStream->CodecID != AV_CODEC_ID_NONE) {
                     MyVideoStream->NewStream = 1;
+                    SoftIsPlayingVideo = -1;
                     MyVideoStream->InvalidPesCounter = 0;
                     // tell hw decoder we are closing stream
                     VideoSetClosing(MyVideoStream->HwDecoder);
@@ -2473,8 +2474,14 @@ int SetPlayMode(int play_mode) {
 **  synchronize audio, video and subtitles.
 */
 int64_t GetSTC(void) {
-    if (MyVideoStream->HwDecoder) {
-        return VideoGetClock(MyVideoStream->HwDecoder);
+
+    //printf("GetPTC %lx\n",AudioGetClock());
+    if (SoftIsPlayingVideo == 1) {
+        if (MyVideoStream->HwDecoder) {
+            return VideoGetClock(MyVideoStream->HwDecoder);
+        }
+    } else {
+        return AudioGetClock();
     }
     // could happen during dettached
     Warning(_("softhddev: %s called without hw decoder\n"), __FUNCTION__);
@@ -2523,6 +2530,9 @@ void GetVideoSize(int *width, int *height, double *aspect) {
 **  @param speed    trick speed
 */
 void TrickSpeed(int speed) {
+    //printf("speed %d FReezed %d TRickspeed %d\n",speed,MyVideoStream->Freezed,MyVideoStream->TrickSpeed);
+    if (MyVideoStream->TrickSpeed && !speed)
+        Clear();
     MyVideoStream->TrickSpeed = speed;
     if (MyVideoStream->HwDecoder) {
         VideoSetTrickSpeed(MyVideoStream->HwDecoder, speed);
@@ -2530,8 +2540,6 @@ void TrickSpeed(int speed) {
         // can happen, during startup
         Debug(3, "softhddev: %s called without hw decoder\n", __FUNCTION__);
     }
-    if (!speed)
-        Clear();
     StreamFreezed = 0;
     MyVideoStream->Freezed = 0;
 }

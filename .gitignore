@@ -11,3 +11,7 @@ po/*.pot
 .includepath
 .settings
 vdr-softhdcuvid*.tgz
+.vscode
+libvdr-*
+
+
