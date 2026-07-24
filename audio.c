@@ -1132,9 +1132,10 @@ static int AlsaSetup(int *freq, int *channels, int passthrough) {
     int err;
     int delay;
 
-    if (!AlsaPCMHandle) { // alsa not running yet
-        // FIXME: if open fails for fe. pass-through, we never recover
-        return -1;
+    if (!AlsaPCMHandle) { // alsa not running yet - try to recover
+        if (!(AlsaPCMHandle = AlsaOpenPCM(passthrough))) {
+            return -1;
+        }
     }
     if (!AudioAlsaNoCloseOpen) { // close+open to fix HDMI no sound bug
         snd_pcm_t *handle;
@@ -1147,8 +1148,18 @@ static int AlsaSetup(int *freq, int *channels, int passthrough) {
         if (AudioAlsaCloseOpenDelay) {
             usleep(50 * 1000); // 50ms delay for alsa recovery
         }
-        // FIXME: can use multiple retries
-        if (!(handle = AlsaOpenPCM(passthrough))) {
+        // the device can be transiently busy right after close, so retry
+        {
+            int retry;
+
+            handle = NULL;
+            for (retry = 0; retry < 25 && !handle; retry++) {
+                if (!(handle = AlsaOpenPCM(passthrough))) {
+                    usleep(20 * 1000);
+                }
+            }
+        }
+        if (!handle) {
             return -1;
         }
         AlsaPCMHandle = handle;
@@ -1594,15 +1605,24 @@ static const AudioModule *AudioModules[] = {
 
 void AudioDelayms(int delayms) {
     int count;
+    int rest;
+    int framesize;
     unsigned char *p;
 
-#ifdef DEBUG
-    printf("Try Delay Audio for %d ms  Samplerate %d Channels %d bps %d\n", delayms,
-           AudioRing[AudioRingWrite].HwSampleRate, AudioRing[AudioRingWrite].HwChannels, AudioBytesProSample);
-#endif
+    framesize = AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample;
 
     count = delayms * AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels *
             AudioBytesProSample / 1000;
+    // integer division above can leave a partial frame (e.g. 44100Hz/139ms
+    // -> 24519 bytes); that shifts the ring buffer write pointer permanently
+    rest = framesize ? count % framesize : 0;
+    count -= rest;
+
+#ifdef DEBUG
+    Error(_("audio: delay %d ms rate %d ch %d bps %d bytes %d rest %d\n"), delayms,
+          AudioRing[AudioRingWrite].HwSampleRate, AudioRing[AudioRingWrite].HwChannels, AudioBytesProSample, count,
+          rest);
+#endif
 
     if (delayms < 5000 && delayms > 0) { // not more than 5seconds
         p = calloc(1, count);
@@ -1686,10 +1706,11 @@ void AudioEnqueue(const void *samples, int count) {
 
     if (!AudioRunning) { // check, if we can start the thread
         int skip;
+        int framesize;
 
+        framesize = AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample;
         n = RingBufferUsedBytes(AudioRing[AudioRingWrite].RingBuffer);
         skip = AudioSkip;
-        // FIXME: round to packet size
 
         Debug(4, "audio: start? %4zdms skip %dms\n",
               (n * 1000) / (AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels *
@@ -1701,7 +1722,14 @@ void AudioEnqueue(const void *samples, int count) {
             if (n < (unsigned)skip) {
                 skip = n;
             }
+            // never advance the read pointer by a partial frame
+            if (framesize) {
+                skip -= skip % framesize;
+            }
             AudioSkip -= skip;
+            if (AudioSkip < framesize) { // drop sub-frame residue
+                AudioSkip = 0;
+            }
             RingBufferReadAdvance(AudioRing[AudioRingWrite].RingBuffer, skip);
             n = RingBufferUsedBytes(AudioRing[AudioRingWrite].RingBuffer);
         }
@@ -1773,10 +1801,16 @@ void AudioVideoReady(int64_t pts) {
         if (skip > 0 && skip < 4000 * 90) {
             skip = (((int64_t)skip * AudioRing[AudioRingWrite].HwSampleRate) / (1000 * 90)) *
                    AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample;
-            // FIXME: round to packet size
             if ((unsigned)skip > used) {
                 AudioSkip = skip - used;
                 skip = used;
+            }
+            { // never advance the read pointer by a partial frame
+                int framesize = AudioRing[AudioRingWrite].HwChannels * AudioBytesProSample;
+
+                if (framesize) {
+                    skip -= skip % framesize;
+                }
             }
             Debug(3, "audio: sync advance %dms %d/%zd  Rest %d\n",
                   (skip * 1000) / (AudioRing[AudioRingWrite].HwSampleRate * AudioRing[AudioRingWrite].HwChannels *
