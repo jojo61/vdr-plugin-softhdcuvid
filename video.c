@@ -688,8 +688,14 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
 
     // input not initialized yet, return immediately
     if (!input_aspect_ratio.num || !input_aspect_ratio.den) {
+        Debug(3, "video: UpdateOutput early-return, SAR 0/0, stale crop was %dx%d\n",
+              *crop_width, *crop_height);
         *output_width = video_width;
         *output_height = video_height;
+        *crop_x = 0;
+        *crop_y = 0;
+        *crop_width = input_width;
+        *crop_height = input_height;
         return;
     }
 #ifdef USE_DRM
@@ -2959,11 +2965,15 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
 
     Debug(3, "video profile %d codec id %d\n", video_ctx->profile, video_ctx->codec_id);
     if (*fmt_idx == AV_PIX_FMT_NONE) {
-        Fatal(_("video: no valid pixfmt found\n"));
+        Error(_("video: no valid pixfmt found (profile %d codec %d) - HW decode unavailable, aborting stream\n"),
+              video_ctx->profile, video_ctx->codec_id);
+        return AV_PIX_FMT_NONE;
     }
 
     if (*fmt_idx != PIXEL_FORMAT) {
-        Fatal(_("video: no valid profile found\n"));
+        Error(_("video: no valid profile found (profile %d codec %d)\n"),
+              video_ctx->profile, video_ctx->codec_id);
+        return AV_PIX_FMT_NONE;
     }
 
     //	  decoder->newchannel = 1;
@@ -3012,6 +3022,8 @@ static enum AVPixelFormat Cuvid_get_format(CuvidDecoder *decoder, AVCodecContext
             // dont show first frame
 #endif
         } else {
+            Debug(3, "GATE: SKIP reinit codec %dx%d InputW %dx%d\n",
+                  video_ctx->width, video_ctx->height, decoder->InputWidth, decoder->InputHeight);
             decoder->SyncCounter = 0;
             decoder->FrameCounter = 0;
             decoder->FramesDisplayed = 0;
@@ -3548,7 +3560,11 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
     }
 
     if ((decoder->InputWidth != frame->width) || (decoder->InputHeight != frame->height)) {
-        //printf("Framesize change\n");
+        Debug(3, "RENDER framesize change InputW %d frame %d\n",
+              decoder->InputWidth, frame->width);
+#ifdef PLACEBO
+        VideoThreadLock();
+#endif
         CuvidCleanup(decoder);
         decoder->InputAspect = frame->sample_aspect_ratio;
         decoder->InputWidth = frame->width;
@@ -3556,6 +3572,9 @@ static void CuvidRenderFrame(CuvidDecoder *decoder, const AVCodecContext *video_
         decoder->Interlaced = 0;
         decoder->SurfacesNeeded = VIDEO_SURFACES_MAX + 1;
         CuvidSetupOutput(decoder);
+#ifdef PLACEBO
+        VideoThreadUnlock();
+#endif
     }
 
     // update aspect ratio changes
@@ -3888,14 +3907,17 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
     current = decoder->SurfacesRb[decoder->SurfaceRead];
 
 #ifdef USE_DRM
-    AVFrame *frame;
+    AVFrame *frame = NULL;
     AVFrameSideData *sd1 = NULL, *sd2 = NULL;
     if (!decoder->Closing) {
         frame = decoder->frames[current];
-        sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
-        sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
-
-        set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
+        if (frame)
+            frame = av_frame_clone(frame); // Weg B: eigene refcounted Referenz, entkoppelt vom Slot
+        if (frame) {
+            sd1 = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
+            sd2 = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
+            set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
+        }
     }
 #endif
 
@@ -4030,7 +4052,7 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
 
 #if USE_DRM
 
-    frame = decoder->frames[current];
+    // Weg B: frame ist bereits die geklonte Referenz von oben (nicht erneut roh aus dem Slot holen)
 
     switch (VulkanTargetColorSpace) {
         case 0: // Monitor
@@ -4040,7 +4062,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             memcpy(&target->color, &pl_color_space_srgb, sizeof(struct pl_color_space));
             break;
         case 2: // HD TV
-            set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
+            if (frame)
+                set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
             if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
                 target->color.primaries = PL_COLOR_PRIM_BT_601_625;
                 target->color.transfer = PL_COLOR_TRC_BT_1886;
@@ -4049,7 +4072,8 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             }
             break;
         case 3: // HDR TV
-            set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
+            if (frame)
+                set_hdr_metadata(frame->color_primaries, frame->color_trc, sd1, sd2);
             if (decoder->ColorSpace == AVCOL_SPC_BT2020_NCL) {
                 memcpy(&target->color, &pl_color_space_bt2020_hlg, sizeof(struct pl_color_space));
             } else if (decoder->ColorSpace == AVCOL_SPC_BT470BG) {
@@ -4220,6 +4244,10 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
             Debug(3, "Failed rendering first frame!\n");
         }
         decoder->newchannel = 2;
+#ifdef USE_DRM
+        if (frame)
+            av_frame_free(&frame); // Weg B: Referenz freigeben (früher Austritt)
+#endif
         return;
     }
 
@@ -4272,6 +4300,10 @@ static void CuvidMixVideo(CuvidDecoder *decoder, __attribute__((unused)) int lev
         pl_renderer_destroy(&p->renderertest);
         p->renderertest = NULL;
     }
+#endif
+#ifdef USE_DRM
+    if (frame)
+        av_frame_free(&frame); // Weg B: Referenz freigeben (regulärer Austritt)
 #endif
 }
 
@@ -4345,35 +4377,57 @@ void make_osd_overlay(int x, int y, int width, int height) {
     pl->repr.alpha = PL_ALPHA_INDEPENDENT;
 
     memcpy(&osdoverlay.color, &pl_color_space_srgb, sizeof(struct pl_color_space));
+
+    // the OSD is rendered at OsdWidth x OsdHeight, the window can be larger
+    // (e.g. 1080p OSD on a 2160p screen). Keep the texture at OSD size and
+    // scale only the destination rect, so the GPU does the upscaling.
+    {
+        int dx0, dx1, dy0, dy1;
+
+        if (OsdWidth > 0 && OsdHeight > 0) {
+            dx0 = (x * (int)VideoWindowWidth) / OsdWidth;
+            dx1 = ((x + width) * (int)VideoWindowWidth) / OsdWidth;
+            dy0 = (y * (int)VideoWindowHeight) / OsdHeight;
+            dy1 = ((y + height) * (int)VideoWindowHeight) / OsdHeight;
+        } else {
+            dx0 = x;
+            dx1 = x + width;
+            dy0 = y;
+            dy1 = y + height;
+        }
+
 #if PL_API_VER < 229
 #ifdef PLACEBO_GL
-    pl->rect.x0 = x;
-    pl->rect.y1 = VideoWindowHeight - y; // Boden von oben
-    pl->rect.x1 = x + width;
-    pl->rect.y0 = VideoWindowHeight - height - y;
+        pl->rect.x0 = dx0;
+        pl->rect.y1 = VideoWindowHeight - dy0; // Boden von oben
+        pl->rect.x1 = dx1;
+        pl->rect.y0 = VideoWindowHeight - dy1;
 #else
-    int offset = VideoWindowHeight - (VideoWindowHeight - height - y) - (VideoWindowHeight - y);
-    pl->rect.x0 = x;
-    pl->rect.y0 = VideoWindowHeight - y + offset; // Boden von oben
-    pl->rect.x1 = x + width;
-    pl->rect.y1 = VideoWindowHeight - height - y + offset;
+        int offset = VideoWindowHeight - (VideoWindowHeight - dy1) - (VideoWindowHeight - dy0);
+
+        pl->rect.x0 = dx0;
+        pl->rect.y0 = VideoWindowHeight - dy0 + offset; // Boden von oben
+        pl->rect.x1 = dx1;
+        pl->rect.y1 = VideoWindowHeight - dy1 + offset;
 #endif
 #else
-    osdoverlay.parts = &part;
-    osdoverlay.num_parts = 1;
+        osdoverlay.parts = &part;
+        osdoverlay.num_parts = 1;
 #ifdef PLACEBO_GL
-    part.dst.x0 = x;
-    part.dst.y1 = VideoWindowHeight - y; // Boden von oben
-    part.dst.x1 = x + width;
-    part.dst.y0 = VideoWindowHeight - height - y;
+        part.dst.x0 = dx0;
+        part.dst.y1 = VideoWindowHeight - dy0; // Boden von oben
+        part.dst.x1 = dx1;
+        part.dst.y0 = VideoWindowHeight - dy1;
 #else
-    int offset = VideoWindowHeight - (VideoWindowHeight - height - y) - (VideoWindowHeight - y);
-    part.dst.x0 = x;
-    part.dst.y0 = VideoWindowHeight - y + offset; // Boden von oben
-    part.dst.x1 = x + width;
-    part.dst.y1 = VideoWindowHeight - height - y + offset;
+        int offset = VideoWindowHeight - (VideoWindowHeight - dy1) - (VideoWindowHeight - dy0);
+
+        part.dst.x0 = dx0;
+        part.dst.y0 = VideoWindowHeight - dy0 + offset; // Boden von oben
+        part.dst.x1 = dx1;
+        part.dst.y1 = VideoWindowHeight - dy1 + offset;
 #endif
 #endif
+    }
 }
 #endif
 ///
@@ -7339,6 +7393,9 @@ void VideoExit(void) {
     VideoThreadExit(); // destroy all mutexes
 #endif
 
+#ifdef USE_DRM
+    drm_clean_up();     // drmDropMaster + close(fd) -> gibt card1 frei
+#endif
 #ifdef USE_GLX
     if (EglEnabled) {
         EglExit(); // delete all contexts
