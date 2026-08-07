@@ -686,9 +686,9 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
     AVRational display_aspect_ratio;
     AVRational tmp_ratio;
 
-    // input not initialized yet, return immediately
-    if (!input_aspect_ratio.num || !input_aspect_ratio.den) {
-        Debug(3, "video: UpdateOutput early-return, SAR 0/0, stale crop was %dx%d\n",
+    // decoder not initialized yet, return immediately
+    if (!input_width || !input_height) {
+        Debug(3, "video: UpdateOutput early-return, no dimensions yet, stale crop was %dx%d\n",
               *crop_width, *crop_height);
         *output_width = video_width;
         *output_height = video_height;
@@ -698,6 +698,17 @@ static void VideoUpdateOutput(AVRational input_aspect_ratio, int input_width, in
         *crop_height = input_height;
         return;
     }
+
+    // SAR unspecified: common for phone / IPTV style remuxes (e.g. 720x1280).
+    // Assume square pixels instead of bailing out - otherwise the display
+    // format setting below is never evaluated and the picture is stretched
+    // to full screen regardless of Video4to3DisplayFormat / VideoOtherDisplayFormat.
+    if (!input_aspect_ratio.num || !input_aspect_ratio.den) {
+        Debug(3, "video: SAR unspecified, assuming 1:1 for %dx%d\n", input_width, input_height);
+        input_aspect_ratio.num = 1;
+        input_aspect_ratio.den = 1;
+    }
+
 #ifdef USE_DRM
     get_drm_aspect(&display_aspect_ratio.num, &display_aspect_ratio.den);
 #else
